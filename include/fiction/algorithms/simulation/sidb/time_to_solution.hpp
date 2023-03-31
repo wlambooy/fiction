@@ -50,6 +50,10 @@ struct time_to_solution_stats
     double single_runtime_exhaustive{};
 
     /**
+     * Number of physically valid charge configurations found by ExGS.
+     */
+    std::size_t number_valid_layouts_exgs{};
+    /**
      * Print the results to the given output stream.
      *
      * @param out Output stream.
@@ -72,7 +76,7 @@ struct time_to_solution_stats
  * @param confidence_level The time-to-solution also depends on the given confidence level which can be set here.
  */
 template <typename Lyt>
-void sim_acc_tts(const Lyt& lyt, const quicksim_params& quicksim_params, time_to_solution_stats* ps = nullptr,
+void sim_acc_tts(Lyt& lyt, const quicksim_params& quicksim_params, time_to_solution_stats* ps = nullptr,
                  const uint64_t& repetitions = 100, const double confidence_level = 0.997) noexcept
 {
     static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout");
@@ -83,6 +87,7 @@ void sim_acc_tts(const Lyt& lyt, const quicksim_params& quicksim_params, time_to
     exhaustive_ground_state_simulation(lyt, quicksim_params.phys_params, &stats_exhaustive);
 
     time_to_solution_stats st{};
+    st.number_valid_layouts_exgs = stats_exhaustive.valid_lyts.size();
     st.single_runtime_exhaustive = mockturtle::to_seconds(stats_exhaustive.time_total);
 
     std::size_t         gs_count = 0;
