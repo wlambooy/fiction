@@ -113,6 +113,40 @@ TEMPLATE_TEST_CASE(
         CHECK(found == 1);
     }
 
+    SECTION("charge distribution defined by a given charge index (base 3)")
+    {
+        lyt.assign_cell_type({5, 4}, TestType::cell_type::NORMAL);
+        lyt.assign_cell_type({5, 5}, TestType::cell_type::NORMAL);
+        lyt.assign_cell_type({5, 6}, TestType::cell_type::NORMAL);
+        charge_distribution_surface charge_layout{lyt, sidb_simulation_parameters{}};
+        charge_layout.assign_charge_index(charge_layout.get_max_charge_index());
+        CHECK(charge_layout.get_charge_state({5, 4}) == sidb_charge_state::POSITIVE);
+        CHECK(charge_layout.get_charge_state({5, 5}) == sidb_charge_state::POSITIVE);
+        CHECK(charge_layout.get_charge_state({5, 6}) == sidb_charge_state::POSITIVE);
+
+        charge_layout.assign_charge_index(0);
+        CHECK(charge_layout.get_charge_state({5, 4}) == sidb_charge_state::NEGATIVE);
+        CHECK(charge_layout.get_charge_state({5, 5}) == sidb_charge_state::NEGATIVE);
+        CHECK(charge_layout.get_charge_state({5, 6}) == sidb_charge_state::NEGATIVE);
+    }
+
+    SECTION("charge distribution defined by a given charge index (base 2)")
+    {
+        lyt.assign_cell_type({5, 4}, TestType::cell_type::NORMAL);
+        lyt.assign_cell_type({5, 5}, TestType::cell_type::NORMAL);
+        lyt.assign_cell_type({5, 6}, TestType::cell_type::NORMAL);
+        charge_distribution_surface charge_layout{lyt, sidb_simulation_parameters{2}};
+        charge_layout.assign_charge_index(charge_layout.get_max_charge_index());
+        CHECK(charge_layout.get_charge_state({5, 4}) == sidb_charge_state::NEUTRAL);
+        CHECK(charge_layout.get_charge_state({5, 5}) == sidb_charge_state::NEUTRAL);
+        CHECK(charge_layout.get_charge_state({5, 6}) == sidb_charge_state::NEUTRAL);
+
+        charge_layout.assign_charge_index(0);
+        CHECK(charge_layout.get_charge_state({5, 4}) == sidb_charge_state::NEGATIVE);
+        CHECK(charge_layout.get_charge_state({5, 5}) == sidb_charge_state::NEGATIVE);
+        CHECK(charge_layout.get_charge_state({5, 6}) == sidb_charge_state::NEGATIVE);
+    }
+
     SECTION("perturber is replaced by an equivalent defect")
     {
         lyt.assign_cell_type({5, 4}, TestType::cell_type::NORMAL);
@@ -217,7 +251,7 @@ TEMPLATE_TEST_CASE(
         CHECK(charge_layout.get_charge_state({5, 5}) == sidb_charge_state::NEGATIVE);
         CHECK(charge_layout.get_charge_state({5, 6}) == sidb_charge_state::NEGATIVE);
         CHECK(charge_layout.get_charge_state({5, 1}) == sidb_charge_state::NONE);
-        //
+
         charge_layout.set_all_charge_states(sidb_charge_state::NEGATIVE);
     }
 
@@ -370,7 +404,7 @@ TEMPLATE_TEST_CASE(
         charge_layout.recompute_system_energy();
         CHECK(charge_layout.get_system_energy() > 0);
     }
-    //
+
     SECTION("Physical validity check, far distance of SIDBs, all NEGATIVE")
     {
 
@@ -415,7 +449,7 @@ TEMPLATE_TEST_CASE(
         CHECK(charge_layout_five.get_charge_state({0, 2, 0}) == sidb_charge_state::NEGATIVE);
         CHECK(charge_layout_five.get_charge_state({4, 1, 1}) == sidb_charge_state::NEUTRAL);
     }
-    //
+
     SECTION("Physical validity check, small distance, not all can be negatively charged anymore")
     {
         lyt.assign_cell_type({1, 0, 0}, TestType::cell_type::NORMAL);

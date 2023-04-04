@@ -130,16 +130,33 @@ class charge_distribution_surface<Lyt, false> : public Lyt
          * exists.
          */
         uint64_t max_charge_index{};
-
+        /**
+         * This pair stores the cell and its previously charge state (important when all possible charge distributions
+         * are enumerated and checked for physical validity).
+         */
         std::pair<uint64_t, int8_t> cell_history_gray_code{};
-
+        /**
+         * This vector stores the cells and its previously charge states of the charge distribution before the charge
+         * index was changed.
+         */
         std::vector<std::pair<uint64_t, int8_t>> cell_history{};
-
+        /**
+         * This unordered map stores the cells and the placed defect.
+         */
         std::unordered_map<typename Lyt::cell, const sidb_defect> defects{};
-
+        /**
+         * Dependent cell is the cell which charge state is determined by all other SiDBs in the layout.
+         */
         typename Lyt::cell dependent_cell{};
-
+        /**
+         * Charge index of the dependent cell in the layout.
+         */
         uint64_t dependent_cell_index{};
+        /**
+         * This vector collects all cells that could potentially be positively charged based on the maximum possible
+         * local potential.
+         */
+        std::vector<typename Lyt::cell> positive_candidates{};
     };
 
     using storage = std::shared_ptr<charge_distribution_storage>;
@@ -468,7 +485,8 @@ class charge_distribution_surface<Lyt, false> : public Lyt
      */
     bool three_state_sim_required() noexcept
     {
-        bool required = false;
+        strg->positive_candidates = {};
+        bool required             = false;
         this->foreach_cell(
             [&required, this](const auto& c)
             {
@@ -476,11 +494,17 @@ class charge_distribution_surface<Lyt, false> : public Lyt
                 {
                     if (-*local_pot + strg->phys_params.mu_p > -physical_constants::POP_STABILITY_ERR)
                     {
+                        strg->positive_candidates.emplace_back(c);
                         required = true;
                     }
                 }
             });
         return required;
+    }
+
+    std::vector<typename Lyt::cell> get_positive_candidates() const noexcept
+    {
+        return strg->positive_candidates;
     }
     /**
      * Returns the charge state of a cell of the layout at a given index.
@@ -1079,46 +1103,53 @@ class charge_distribution_surface<Lyt, false> : public Lyt
         auto       counter              = num_charges - 1;
         const auto dependent_cell_index = cell_to_index(strg->dependent_cell);
 
-        while (charge_quot > 0)
+        if (charge_quot == 0)
         {
-            const auto    charge_quot_int = static_cast<int64_t>(charge_quot);
-            const auto    base_int        = static_cast<int64_t>(base);
-            const int64_t quotient_int    = charge_quot_int / base_int;
-            const int64_t remainder_int   = charge_quot_int % base_int;
-            charge_quot                   = static_cast<uint64_t>(quotient_int);
+            this->set_all_charge_states(sidb_charge_state::NEGATIVE);
+        }
+        else
+        {
+            while (charge_quot > 0)
+            {
+                const auto    charge_quot_int = static_cast<int64_t>(charge_quot);
+                const auto    base_int        = static_cast<int64_t>(base);
+                const int64_t quotient_int    = charge_quot_int / base_int;
+                const int64_t remainder_int   = charge_quot_int % base_int;
+                charge_quot                   = static_cast<uint64_t>(quotient_int);
 
-            if (counter != dependent_cell_index)
-            {
-                const auto sign = sign_to_charge_state(static_cast<int8_t>(remainder_int - 1));
-                if (const auto new_chargesign = this->get_charge_state_by_index(counter); new_chargesign != sign)
+                if (counter != dependent_cell_index)
                 {
-                    strg->cell_history.emplace_back(static_cast<uint64_t>(counter),
-                                                    charge_state_to_sign(new_chargesign));
-                    this->assign_charge_state_by_cell_index(counter, sign, false);
+                    const auto sign = sign_to_charge_state(static_cast<int8_t>(remainder_int - 1));
+                    if (const auto new_chargesign = this->get_charge_state_by_index(counter); new_chargesign != sign)
+                    {
+                        strg->cell_history.emplace_back(static_cast<uint64_t>(counter),
+                                                        charge_state_to_sign(new_chargesign));
+                        this->assign_charge_state_by_cell_index(counter, sign, false);
+                    }
+                    counter -= 1;
                 }
-                counter -= 1;
-            }
-            else
-            {
-                counter -= 1;
-                const auto sign = sign_to_charge_state(static_cast<int8_t>(remainder_int - 1));
-                if (const auto old_chargesign = this->get_charge_state_by_index(counter); old_chargesign != sign)
+                else
                 {
-                    strg->cell_history.emplace_back(static_cast<uint64_t>(counter),
-                                                    charge_state_to_sign(old_chargesign));
-                    this->assign_charge_state_by_cell_index(counter, sign, false);
+                    counter -= 1;
+                    const auto sign = sign_to_charge_state(static_cast<int8_t>(remainder_int - 1));
+                    if (const auto old_chargesign = this->get_charge_state_by_index(counter); old_chargesign != sign)
+                    {
+                        strg->cell_history.emplace_back(static_cast<uint64_t>(counter),
+                                                        charge_state_to_sign(old_chargesign));
+                        this->assign_charge_state_by_cell_index(counter, sign, false);
+                    }
+                    counter -= 1;
                 }
-                counter -= 1;
             }
         }
     }
 
-    void index_to_charge_distribution_new(uint64_t new_index, uint64_t old_index) noexcept
+    void index_to_charge_distribution_gray_code(uint64_t new_gray_code, uint64_t old_gray_code) noexcept
     {
         strg->cell_history_gray_code = {};
 
-        const std::bitset<64> r_new(new_index);
-        const std::bitset<64> r_old(old_index);
+        const std::bitset<64> r_new(new_gray_code);
+        const std::bitset<64> r_old(old_gray_code);
         std::bitset<64>       diff = r_new ^ r_old;
 
         uint64_t index_changed = 0;
@@ -1170,13 +1201,24 @@ class charge_distribution_surface<Lyt, false> : public Lyt
         }
     }
 
-    void set_charge_index_by_gray(uint64_t& gray_code, uint64_t& gray_code_old, const bool dependent_cell_fixed = true,
-                                  const bool& recompute_system_energy = true,
-                                  const bool& consider_history        = false) noexcept
+    /**
+     * The charge index is set by a gray code number in decimal.
+     *
+     * @param gray_code gray code in decimal representing the new charge distribution.
+     * @param gray_code_old gray code in decimal representing the old charge distribution.
+     * @param dependent_cell_fixed if set to true, the dependent cell's charge state is changed based on the local
+     * potential at its position.
+     * @param recompute_system_energy if set to true, the system energy is calculated for the new charge distribution.
+     * @param consider_histroy if set to true, the cells which changed due to the change of the charge index, are used
+     * to speed up the calculation of the calculation of the local potential, etc.
+     */
+    void set_charge_index_by_gray(const uint64_t gray_code, const uint64_t gray_code_old,
+                                  const bool dependent_cell_fixed = true, const bool& recompute_system_energy = true,
+                                  const bool& consider_history = false) noexcept
     {
         if (gray_code <= strg->max_charge_index)
         {
-            this->assign_charge_index(gray_code, gray_code_old);
+            this->assign_charge_index_by_gray_code(gray_code, gray_code_old);
             this->update_after_charge_change(dependent_cell_fixed, recompute_system_energy, consider_history);
         }
     }
@@ -1190,13 +1232,29 @@ class charge_distribution_surface<Lyt, false> : public Lyt
         return strg->max_charge_index;
     }
     /**
-     * Assigns a certain charge state to a given index (which corresponds to a certain SiDB) and the charge distribution
-     * is updated correspondingly.
+     * Assign a given charge index to the charge distribution layout. This function should be used if new and old charge
+     * index are given as gray code to provide high performance.
+     *
+     * @param gray_code charge index (as gray code in decimal) of the new charge distribution.
+     * @param gray_code_old charge index (as gray code in decimal) of the old charge distribution.
      */
-    void assign_charge_index(uint64_t& index, uint64_t& index_old) noexcept
+    void assign_charge_index_by_gray_code(uint64_t gray_code, uint64_t gray_code_old) noexcept
     {
-        strg->charge_index.first = index;
-        this->index_to_charge_distribution_new(index, index_old);
+        strg->charge_index.first = gray_code;
+        this->index_to_charge_distribution_gray_code(gray_code, gray_code_old);
+    }
+
+    /**
+     * Assign a given charge index to the charge distribution layout. Charge distribution is updated according to the
+     * set charge index.
+     *
+     * @param charge_index charge index of the new charge distribution.
+     */
+    void assign_charge_index(uint64_t charge_index) noexcept
+    {
+        assert((charge_index <= strg->max_charge_index) && "number of SiDBs is too large");
+        strg->charge_index.first = charge_index;
+        this->index_to_charge_distribution();
     }
     /**
      * This function is used for the *QuickSim* algorithm (see quicksim.hpp). It gets a vector with indices representing
@@ -1267,14 +1325,23 @@ class charge_distribution_surface<Lyt, false> : public Lyt
         }
     }
 
+    /**
+     * This function returns all SiDBs of the layout.
+     *
+     * @return vector with all SiDBs.
+     */
     std::vector<typename Lyt::cell> get_sidb_order() noexcept
     {
         return strg->sidb_order;
     }
 
+    /**
+     * This function can be used to add an SiDB to the layout. The SiDB is only added to the cell_charge and the
+     * sidb_order vector.
+     *
+     */
     void adding_sidb_to_layout(const typename Lyt::cell& cell, const int8_t& charge) noexcept
     {
-
         strg->cell_charge.push_back(sign_to_charge_state(charge));
         strg->sidb_order.push_back(cell);
     }
@@ -1315,39 +1382,8 @@ class charge_distribution_surface<Lyt, false> : public Lyt
         this->update_local_potential();
         this->recompute_system_energy();
         this->validity_check();
-        //        this->foreach_cell(
-        //            [this](const auto& c1)
-        //            {
-        //                if (c1 != strg->dependent_cell)
-        //                {
-        //                    strg->sidb_order_wo_dependent.push_back(c1);
-        //                }
-        //            });
-        //        this->foreach_cell(
-        //            [this, &cs](const auto& c1)
-        //            {
-        //                if (c1 != strg->dependent_cell)
-        //                {
-        //                    strg->cell_charge_wo_dependent.push_back(cs);
-        //                }
-        //            });
-        // this->gray_code_sequence();
     };
 
-    void gray_code_sequence() noexcept
-    {
-
-        strg->gray_code.push_back(0);
-        for (int i = 0; i < strg->max_charge_index; i++)
-        {
-            int size = strg->gray_code.size();
-            int mask = 1 << i;
-            for (int j = size - 1; j >= 0; j--)
-            {
-                strg->gray_code.push_back(strg->gray_code[j] | mask);
-            }
-        }
-    }
     /**
      * Initializes the distance matrix between all the cells of the layout.
      */
