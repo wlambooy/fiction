@@ -15,8 +15,8 @@ using namespace fiction;
 
 int main()
 {
-    using cell_level_layout = cell_level_layout<sidb_technology, clocked_layout<cartesian_layout<offset::ucoord_t>>>;
-    std::string           folder_name = "random_layouts/";
+    using cell_level_layout = cell_level_layout<sidb_technology, clocked_layout<cartesian_layout<cube::coord_t>>>;
+    std::string           folder_name = "random_layouts_bug_detection/";
     std::filesystem::path folder_path(EXPERIMENTS_PATH);
     folder_path /= folder_name;
 
@@ -30,11 +30,13 @@ int main()
         std::cout << "Failed to create folder" << std::endl;
     }
 
-    for (uint64_t num_sidbs = 36; num_sidbs < 39; num_sidbs++)
+    for (uint64_t num_sidbs = 8; num_sidbs < 9; num_sidbs++)
     {
-        std::filesystem::path dir_path     = folder_name + "number_sidbs_" + std::to_string(num_sidbs);
-        std::filesystem::path dir_path_sqd = folder_name + "number_sidbs_" + std::to_string(num_sidbs) + "/sqd";
-        std::filesystem::path dir_path_loc = folder_name + "number_sidbs_" + std::to_string(num_sidbs) + "/loc";
+        std::filesystem::path dir_path = folder_path.string() + "number_sidbs_" + std::to_string(num_sidbs);
+        std::filesystem::path dir_path_sqd =
+            folder_path.string() + "number_sidbs_" + std::to_string(num_sidbs) + "/sqd";
+        std::filesystem::path dir_path_loc =
+            folder_path.string() + "number_sidbs_" + std::to_string(num_sidbs) + "/loc";
         if (!std::filesystem::exists(dir_path))
         {
             std::filesystem::create_directory(dir_path);
@@ -47,10 +49,10 @@ int main()
             std::cout << "Folder already exists." << std::endl;
         }
 
-        for (uint64_t i = 0; i < 50; i++)
+        for (uint64_t i = 0; i < 5000; i++)
         {
-            generate_random_layouts<cell_level_layout>({40, 40}, num_sidbs, "layout_" + std::to_string(i) + ".sqd",
-                                                       dir_path_sqd.string() + "/");
+            generate_random_layouts<cell_level_layout>({10, 10}, num_sidbs, "layout_" + std::to_string(i) + ".sqd",
+                                                       dir_path_sqd.string() + "/", 10E6, false);
         }
     }
 }
