@@ -190,12 +190,10 @@ class composim_impl
     {
         size_t operator() (const group& grp) const
         {
-
-            std::vector<uint64_t> indices;
-            transform(grp.first.cbegin(), grp.first.cend(), std::back_inserter(indices),
+            std::set<uint64_t> indices;
+            transform(grp.first.cbegin(), grp.first.cend(), std::inserter(indices, indices.end()),
                       [](const db& p) { return p.second; });
-            std::sort(indices.begin(), indices.end());
-            return boost::hash_range(indices.cbegin(), indices.cend());
+            return std::hash<std::set<uint64_t>>()(indices);
         }
     };
 
@@ -311,7 +309,7 @@ class composim_impl
                 }
 
                 // update closest neighbor if one is found with a distance less than the closest neighbor thus far
-                double dist = fst_cds.get_distance_by_indices(i, j);
+                double dist = fst_cds.get_nm_distance_by_indices(i, j);
                 if (dist < closest_neighbor.first)
                 {
                     closest_neighbor = {dist, j};
@@ -338,8 +336,8 @@ class composim_impl
                 // insert into the set of groups
                 groups.insert(std::make_pair(std::set<db>({std::make_pair(flag, i),
                                                            std::make_pair(!flag, j)}),
-                                             compute_midpoint(fst_cds.get_all_sidb_location_in_nm()[i],
-                                                              fst_cds.get_all_sidb_location_in_nm()[j])));
+                                             compute_midpoint(fst_cds.get_all_sidb_locations_in_nm()[i],
+                                                              fst_cds.get_all_sidb_locations_in_nm()[j])));
             }
 
             // add DB j to the vector of considered DBs
