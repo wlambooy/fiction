@@ -14,11 +14,11 @@ interpreter, bin_path, command
 -->
 
 <physeng>
-    <name>FuzzSim</name>
+    <name>CompoSim</name>
     <version>0.1</version>
     <description></description>
     <services>ElectronGroundState</services>
-    <bin_path>fuzzsim</bin_path>
+    <bin_path>composim</bin_path>
     <commands>
         <!-- Default command. -->
         <command label="Default">

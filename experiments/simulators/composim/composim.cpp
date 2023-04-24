@@ -2,7 +2,7 @@
 // Created by Jan Drewniok on 31.01.23.
 //
 
-#include "simulators/fuzzsim/interface.hpp"
+#include "simulators/composim/interface.hpp"
 #include "simulators/logger.hpp"
 #include "simulators/timer.hpp"
 
@@ -56,11 +56,11 @@ int main(int argc, char* argv[])
     log.echo() << "In File: " << if_name << std::endl;
     log.echo() << "Out File: " << of_name << std::endl;
 
-    log.echo() << "\n*** Initiate FuzzSim interface ***" << std::endl;
+    log.echo() << "\n*** Initiate CompoSim interface ***" << std::endl;
     log.echo() << "\n*** Read Simulation parameters ***" << std::endl;
-    fuzzsim_interface fuzzsim_interface{if_name, of_name, verbose};
+    composim_interface composim_interface{if_name, of_name, verbose};
 
-    if (fuzzsim_interface.get_auto_fail() < fuzzsim_interface.get_cell_num())
+    if (composim_interface.get_auto_fail() < composim_interface.get_cell_num())
     {
         log.warning() << "Problem size > autofail threshold, exiting." << std::endl;
         return EXIT_FAILURE;
@@ -68,13 +68,13 @@ int main(int argc, char* argv[])
 
     log.echo() << "\n*** Invoke simulation ***" << std::endl;
     stopwatch.start();
-    fuzzsim_interface.run_simulation();
+    composim_interface.run_simulation();
     stopwatch.end();
 
     log.echo() << "\n*** Write simulation results ***" << std::endl;
-    fuzzsim_interface.write_sim_results();
+    composim_interface.write_sim_results();
 
-    log.echo() << "\n*** FuzzSim Complete ***" << std::endl;
+    log.echo() << "\n*** CompoSim Complete ***" << std::endl;
 
     stopwatch.print_stopwatch(log_level);
 

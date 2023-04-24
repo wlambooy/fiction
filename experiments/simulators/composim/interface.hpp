@@ -5,16 +5,15 @@
 #ifndef FUZZSIM_SIQAD_PLUGIN_INTERFACE_HPP
 #define FUZZSIM_SIQAD_PLUGIN_INTERFACE_HPP
 
-#include "simulators/logger.hpp"
-#include "simulators/siqadconn.cc"
-#include "simulators/siqadconn.h"
-
-#include "fiction/algorithms/simulation/sidb/fuzzsim.hpp"
+#include "fiction/algorithms/simulation/sidb/composim.hpp"
 #include "fiction/algorithms/simulation/sidb/sidb_simulation_parameters.hpp"
 #include "fiction/layouts/cell_level_layout.hpp"
 #include "fiction/technology/charge_distribution_surface.hpp"
 #include "fiction/traits.hpp"
 #include "fiction/types.hpp"
+#include "simulators/logger.hpp"
+#include "simulators/siqadconn.cc"
+#include "simulators/siqadconn.h"
 
 #include <fmt/format.h>
 
@@ -26,17 +25,17 @@
 #include <string_view>
 #include <utility>
 
-class fuzzsim_interface
+class composim_interface
 {
   public:
     //! Constructor for QuickSimInterface
-    fuzzsim_interface(const std::string_view& t_in_path, const std::string_view& t_out_path, const bool verbose = true,
+    composim_interface(const std::string_view& t_in_path, const std::string_view& t_out_path, const bool verbose = true,
                       const int log_l = logger::MSG) :
             log_level{log_l},
             in_path{t_in_path},
             out_path{t_out_path}
     {
-        sqconn = std::make_unique<SiQADConnector>("FuzzSim", static_cast<std::string>(in_path),
+        sqconn = std::make_unique<SiQADConnector>("CompoSim", static_cast<std::string>(in_path),
                                                   static_cast<std::string>(out_path), verbose);
         initialize_fiction_layout();
     }
@@ -45,7 +44,7 @@ class fuzzsim_interface
     {
         while (sim_results.valid_lyts.empty())
         {
-            fiction::fuzzsim<fiction::sidb_cell_clk_lyt_siqad>(layout, sim_par, &sim_results);
+            fiction::composim<fiction::sidb_cell_clk_lyt_siqad>(layout, sim_par, &sim_results);
         }
 
         return EXIT_SUCCESS;
@@ -87,12 +86,12 @@ class fuzzsim_interface
         sqconn->writeResultsXml();
     }
 
-    [[nodiscard]] fiction::fuzzsim_params& get_fuzzsim_params() noexcept
+    [[nodiscard]] fiction::composim_params& get_composim_params() noexcept
     {
         return sim_par;
     }
 
-    [[nodiscard]] fiction::fuzzsim_stats<fiction::sidb_cell_clk_lyt_siqad> get_simulation_results() const noexcept
+    [[nodiscard]] fiction::composim_stats<fiction::sidb_cell_clk_lyt_siqad> get_simulation_results() const noexcept
     {
         return sim_results;
     }
@@ -146,12 +145,12 @@ class fuzzsim_interface
             const auto iteration_steps = static_cast<uint64_t>(std::stoi(sqconn->getParameter("iteration_steps")));
             const auto alpha           = std::stod(sqconn->getParameter("alpha"));
 
-            // variables: FuzzSim
+            // variables: CompoSim
             const auto trials = static_cast<uint64_t>(std::stoi(sqconn->getParameter("quicksim_trials")));
             const auto max_perm_log = static_cast<uint64_t>(std::stoi(sqconn->getParameter("maximum_permutations_logarithm")));
             const auto max_charge_layouts = static_cast<uint64_t>(std::stoi(sqconn->getParameter("maximum_charge_layouts")));
 
-            sim_par = fiction::fuzzsim_params{fiction::quicksim_params{params, iteration_steps, alpha},
+            sim_par = fiction::composim_params{fiction::quicksim_params{params, iteration_steps, alpha},
                                               trials, max_perm_log, max_charge_layouts};
 
             // prevent number of threads to be negative
@@ -180,8 +179,8 @@ class fuzzsim_interface
     const std::string_view                                    in_path;
     const std::string_view                                    out_path;
     fiction::sidb_cell_clk_lyt_siqad                          layout{};
-    fiction::fuzzsim_params                                   sim_par{};
-    fiction::fuzzsim_stats<fiction::sidb_cell_clk_lyt_siqad> sim_results{};
+    fiction::composim_params                                  sim_par{};
+    fiction::composim_stats<fiction::sidb_cell_clk_lyt_siqad> sim_results{};
 };
 
 #endif  // FUZZSIM_SIQAD_PLUGIN_INTERFACE_HPP

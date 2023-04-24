@@ -2,12 +2,13 @@
 // Created by Willem Lambooy on 06/04/2023.
 //
 
-#ifndef FICTION_FUZZSIM_HPP
-#define FICTION_FUZZSIM_HPP
+#ifndef FICTION_COMPOSIM_HPP
+#define FICTION_COMPOSIM_HPP
 
 #include "fiction/algorithms/simulation/sidb/quicksim.hpp"
 #include "fiction/technology/charge_distribution_surface.hpp"
 #include "fiction/traits.hpp"
+#include "fiction/utils/hash.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -18,7 +19,6 @@
 #include <boost/multi_index/global_fun.hpp>
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/ordered_index.hpp>
-
 
 namespace fiction
 {
@@ -62,7 +62,7 @@ using charge_layout_set = boost::multi_index::multi_index_container<
 
 }  // namespace detail
 
-struct fuzzsim_params
+struct composim_params
 {
     quicksim_params qs_params{};
     uint64_t        trials{20};
@@ -71,7 +71,7 @@ struct fuzzsim_params
 };
 
 template <typename Lyt>
-struct fuzzsim_stats
+struct composim_stats
 {
     mockturtle::stopwatch<>::duration time_total{0};
 
@@ -136,10 +136,10 @@ namespace detail
 {
 
 template <typename Lyt>
-class fuzzsim_impl
+class composim_impl
 {
   public:
-    fuzzsim_impl(const Lyt& lyt, const fuzzsim_params& p, fuzzsim_stats<Lyt>* pst) :
+    composim_impl(const Lyt& lyt, const composim_params& p, composim_stats<Lyt>* pst) :
             layout{lyt},
             ps{p},
             stats_pointer{pst}
@@ -153,7 +153,7 @@ class fuzzsim_impl
             return;
         }
 
-        // run FuzzSim and track time
+        // run CompoSim and track time
         {
             mockturtle::stopwatch stop{st.time_total};
             collect_ground_states();
@@ -169,11 +169,11 @@ class fuzzsim_impl
   private:
     const Lyt& layout;
 
-    const fuzzsim_params& ps;
+    const composim_params& ps;
 
-    fuzzsim_stats<Lyt>* stats_pointer;
+    composim_stats<Lyt>* stats_pointer;
 
-    fuzzsim_stats<Lyt> st{};
+    composim_stats<Lyt> st{};
 
     using db = std::pair<bool, uint64_t>;
 
@@ -190,6 +190,7 @@ class fuzzsim_impl
     {
         size_t operator() (const group& grp) const
         {
+
             std::vector<uint64_t> indices;
             transform(grp.first.cbegin(), grp.first.cend(), std::back_inserter(indices),
                       [](const db& p) { return p.second; });
@@ -246,7 +247,7 @@ class fuzzsim_impl
                                                              "DISTINCT QUICKSIM CHARGE LAYOUTS") << std::endl;
         st.report(std::cout, ps.trials);
 
-        // only execute the FuzzSim algorithm if multiple distinct charge layouts have been obtained
+        // only execute the CompoSim algorithm if multiple distinct charge layouts have been obtained
         if (st.valid_lyts.size() == 1)
         {
             return;
@@ -613,14 +614,14 @@ class fuzzsim_impl
 }  // namespace detail
 
 template <typename Lyt>
-void fuzzsim(const Lyt& lyt, const fuzzsim_params& ps = fuzzsim_params{}, fuzzsim_stats<Lyt>* pst = nullptr)
+void composim(const Lyt& lyt, const composim_params& ps = composim_params{}, composim_stats<Lyt>* pst = nullptr)
 {
     static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout");
     static_assert(has_sidb_technology_v<Lyt>, "Lyt must be an SiDB layout");
 
-    detail::fuzzsim_impl<Lyt>{lyt, ps, pst}.run();
+    detail::composim_impl<Lyt>{lyt, ps, pst}.run();
 }
 
 }  // namespace fiction
 
-#endif  // FICTION_FUZZSIM_HPP
+#endif  // FICTION_COMPOSIM_HPP
