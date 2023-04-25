@@ -14,7 +14,6 @@
 #include <cmath>
 
 // TODO: remove boost dependency
-#include <boost/functional/hash.hpp>
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/global_fun.hpp>
 #include <boost/multi_index/hashed_index.hpp>
