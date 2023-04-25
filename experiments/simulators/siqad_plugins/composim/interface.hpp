@@ -1,5 +1,5 @@
 //
-// Created by Jan Drewniok on 31.01.23.
+// Created by Willem Lambooy on 04/04/23.
 //
 
 #ifndef FUZZSIM_SIQAD_PLUGIN_INTERFACE_HPP
@@ -11,9 +11,9 @@
 #include "fiction/technology/charge_distribution_surface.hpp"
 #include "fiction/traits.hpp"
 #include "fiction/types.hpp"
-#include "simulators/logger.hpp"
-#include "simulators/siqadconn.cc"
-#include "simulators/siqadconn.h"
+#include "simulators/siqad_plugins/logger.hpp"
+#include "simulators/siqad_plugins/siqadconn.cc"
+#include "simulators/siqad_plugins/siqadconn.h"
 
 #include <fmt/format.h>
 
@@ -55,7 +55,7 @@ class composim_interface
         sim_results.report();
 
         // create the vector of strings for the db locations
-        const auto data = sim_results.valid_lyts.cbegin()->get_all_sidb_location_in_nm();
+        const auto data = sim_results.valid_lyts.cbegin()->get_all_sidb_locations_in_nm();
 
         std::vector<std::pair<std::string, std::string>> dbl_data{};
         dbl_data.reserve(data.size());

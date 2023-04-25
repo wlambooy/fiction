@@ -1,10 +1,10 @@
 //
-// Created by Jan Drewniok on 31.01.23.
+// Created by Willem Lambooy on 04/04/23.
 //
 
-#include "simulators/composim/interface.hpp"
-#include "simulators/logger.hpp"
-#include "simulators/timer.hpp"
+#include "interface.hpp"
+#include "simulators/siqad_plugins/logger.hpp"
+#include "simulators/siqad_plugins/timer.hpp"
 
 #include <fmt/format.h>
 
