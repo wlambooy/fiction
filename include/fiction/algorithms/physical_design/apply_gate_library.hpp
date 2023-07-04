@@ -13,6 +13,7 @@
 
 #include <mockturtle/traits.hpp>
 
+#include <algorithm>
 #include <type_traits>
 
 #if (PROGRESS_BARS)
@@ -36,9 +37,8 @@ class apply_gate_library_impl
   public:
     explicit apply_gate_library_impl(const GateLyt& lyt) :
             gate_lyt{lyt},
-            cell_lyt{aspect_ratio<CellLyt>{((gate_lyt.x() + 1) * GateLibrary::gate_x_size()) - 1,
-                                           ((gate_lyt.y() + 1) * GateLibrary::gate_y_size()) - 1, gate_lyt.z()},
-                     gate_lyt.get_clocking_scheme(), "", GateLibrary::gate_x_size(), GateLibrary::gate_y_size()}
+            cell_lyt{compute_aspect_ratio(gate_lyt), gate_lyt.get_clocking_scheme(), "", GateLibrary::gate_x_size(),
+                     GateLibrary::gate_y_size()}
     {}
 
     CellLyt run()
@@ -111,6 +111,41 @@ class apply_gate_library_impl
                 }
             }
         }
+    }
+
+    static inline constexpr aspect_ratio<CellLyt> compute_aspect_ratio(const GateLyt& gate_lyt)
+    {
+        if constexpr (!is_hexagonal_layout_v<GateLyt>)
+        {
+            return aspect_ratio<CellLyt>{((gate_lyt.x() + 1) * GateLibrary::gate_x_size()) - 1,
+                                         ((gate_lyt.y() + 1) * GateLibrary::gate_y_size()) - 1, gate_lyt.z()};
+        }
+
+        // for each planar dimension,
+        return aspect_ratio<CellLyt>{
+            std::max(
+                static_cast<uint64_t>(relative_to_absolute_cell_position<GateLibrary::gate_x_size(),
+                                                                         GateLibrary::gate_y_size(), GateLyt, CellLyt>(
+                                          gate_lyt, tile<GateLyt>{gate_lyt.x(), gate_lyt.y()},
+                                          cell<CellLyt>{GateLibrary::gate_x_size() - 1, GateLibrary::gate_y_size() - 1})
+                                          .x),
+                static_cast<uint64_t>(relative_to_absolute_cell_position<GateLibrary::gate_x_size(),
+                                                                         GateLibrary::gate_y_size(), GateLyt, CellLyt>(
+                                          gate_lyt, tile<GateLyt>{gate_lyt.x(), gate_lyt.y() + 1},
+                                          cell<CellLyt>{GateLibrary::gate_x_size() - 1, GateLibrary::gate_y_size() - 1})
+                                          .x)),
+            std::max(
+                static_cast<uint64_t>(relative_to_absolute_cell_position<GateLibrary::gate_x_size(),
+                                                                         GateLibrary::gate_y_size(), GateLyt, CellLyt>(
+                                          gate_lyt, tile<GateLyt>{gate_lyt.x(), gate_lyt.y()},
+                                          cell<CellLyt>{GateLibrary::gate_x_size() - 1, GateLibrary::gate_y_size() - 1})
+                                          .y),
+                static_cast<uint64_t>(relative_to_absolute_cell_position<GateLibrary::gate_x_size(),
+                                                                         GateLibrary::gate_y_size(), GateLyt, CellLyt>(
+                                          gate_lyt, tile<GateLyt>{gate_lyt.x() + 1, gate_lyt.y()},
+                                          cell<CellLyt>{GateLibrary::gate_x_size() - 1, GateLibrary::gate_y_size() - 1})
+                                          .y)),
+            gate_lyt.z()};
     }
 };
 
