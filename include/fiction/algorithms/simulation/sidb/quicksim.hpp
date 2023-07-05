@@ -45,6 +45,10 @@ struct quicksim_params
      */
     double alpha{0.7};
     /**
+     * Global external electrostatic potential. Value is applied on each cell in the layout.
+     */
+    double global_potential = 0;
+    /**
      * Number of threads to spawn. By default the number of threads is set to the number of available hardware threads.
      */
     uint64_t number_threads{std::thread::hardware_concurrency()};
@@ -72,6 +76,7 @@ sidb_simulation_result<Lyt> quicksim(const Lyt& lyt, const quicksim_params& ps =
     st.algorithm_name = "QuickSim";
     st.additional_simulation_parameters.emplace_back("iteration_steps", ps.interation_steps);
     st.additional_simulation_parameters.emplace_back("alpha", ps.alpha);
+    st.additional_simulation_parameters.emplace_back("global_potential", ps.global_potential);
     st.physical_parameters = ps.phys_params;
     st.charge_distributions.reserve(ps.interation_steps);
 
@@ -82,6 +87,7 @@ sidb_simulation_result<Lyt> quicksim(const Lyt& lyt, const quicksim_params& ps =
         const mockturtle::stopwatch stop{time_counter};
 
         charge_distribution_surface charge_lyt{lyt};
+        charge_lyt.assign_global_external_potential(ps.global_potential);
 
         // set the given physical parameters
         charge_lyt.assign_physical_parameters(ps.phys_params);
