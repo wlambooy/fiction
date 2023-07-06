@@ -2,8 +2,8 @@
 // Created by Willem Lambooy on 15/05/2023.
 //
 
-#ifndef FICTION_EXPECTED_GROUND_STATE_SIMULATION_HPP
-#define FICTION_EXPECTED_GROUND_STATE_SIMULATION_HPP
+#ifndef FICTION_KINK_FINDER_HPP
+#define FICTION_KINK_FINDER_HPP
 
 #include "fiction/algorithms/physical_design/apply_gate_library.hpp"
 #include "fiction/algorithms/simulation/sidb/composim.hpp"
@@ -33,6 +33,7 @@
 #include <iostream>
 #include <map>
 #include <mutex>
+#include <set>
 #include <thread>
 #include <unordered_map>
 #include <utility>
@@ -76,10 +77,56 @@ struct expected_gs_params
 
     int64_t exact_sim_max_db{27};
 
+    std::vector<double> global_potentials{-0.05};
+
     std::optional<std::ostream*> kinked_layout_ostream{&std::cout};
 
     uint64_t number_threads{std::thread::hardware_concurrency()};
 };
+
+namespace kinkfinder
+{
+
+struct key
+{
+    kitty::dynamic_truth_table                                      tt{};
+    std::pair<port_list<port_direction>, port_list<port_direction>> pl{};
+    std::map<port_direction::cardinal, bool>                        in{};
+    double                                                          gp{};
+
+    std::size_t operator()(const key& key) const noexcept
+    {
+        std::size_t h = 0;
+
+        for (const auto& p : key.in)
+        {
+            hash_combine(h, p);
+        }
+
+        hash_combine(h, key.pl);
+        hash_combine(h, key.gp);
+        kitty::hash_combine(h, kitty::hash<kitty::dynamic_truth_table>()(key.tt));
+
+        return h;
+    }
+
+    bool operator==(const key& other) const noexcept
+    {
+        return tt == other.tt && pl == other.pl && in == other.in && gp == other.gp;
+    }
+};
+
+struct charge_map_container
+{
+    std::map<offset::ucoord_t, sidb_charge_state> charge_map{};
+    std::map<port_direction::cardinal, bool>      output{};
+};
+
+using store = std::unordered_map<key, charge_map_container, key>;
+
+store INIT = store{};
+
+}  // namespace kinkfinder
 
 namespace detail
 {
@@ -140,18 +187,21 @@ constexpr const char* BIG_TEXT_KINKED =
     " |______|\n";
 
 template <typename GateLibrary, typename GateLyt>
-class expected_ground_state_simulation_impl
+class kink_finder_impl
 {
   public:
-    expected_ground_state_simulation_impl(const GateLyt& gate_level_layout, const expected_gs_params& parameter) :
+    kink_finder_impl(const GateLyt& gate_level_layout, const expected_gs_params& parameter,
+                     kinkfinder::store& simulation_store, std::mutex& mutex) :
             gate_lyt{gate_level_layout},
-            params{parameter}
+            params{parameter},
+            ss{simulation_store},
+            mutex{mutex}
     {}
 
     sidb_simulation_result<sidb_cell_clk_lyt_siqad> run()
     {
         sidb_simulation_result<sqd_lyt> simulation_result{};
-        simulation_result.algorithm_name      = "expected_ground_state_simulation";
+        simulation_result.algorithm_name      = "kink_finder";
         simulation_result.physical_parameters = params.physical_parameters;
 
         mockturtle::stopwatch<>::duration time_counter{};
@@ -161,10 +211,11 @@ class expected_ground_state_simulation_impl
             const auto     num_bitstrings = 1ul << gate_lyt.num_pis();
             const uint64_t num_threads    = std::min(std::max(params.number_threads, 1ul), num_bitstrings);
 
-            max_subsim_threads = std::max(1ul, num_threads - num_bitstrings);
+            max_subsim_threads = static_cast<uint64_t>(
+                std::max(1l, static_cast<int64_t>(num_threads) - static_cast<int64_t>(num_bitstrings)));
 
             // define the bit string ranges per thread
-            std::vector<std::pair<uint64_t, uint64_t>> ranges;
+            std::vector<std::pair<uint64_t, uint64_t>> ranges{};
             const uint64_t                             chunk_size = std::max(num_bitstrings / num_threads, 1ul);
             uint64_t                                   start      = 0;
             uint64_t                                   end        = chunk_size - 1;
@@ -191,7 +242,7 @@ class expected_ground_state_simulation_impl
                                 return;
                             }
 
-                            std::map<typename GateLyt::node, double> empty_global_potential_map{};
+                            std::map<tile<GateLyt>, double> empty_global_potential_map{};
 
                             const std::map<ucoord_t, charge_map_t>& expected_charge_maps =
                                 this->get_charge_maps(pi_input, empty_global_potential_map);
@@ -216,56 +267,61 @@ class expected_ground_state_simulation_impl
 
                             const uint64_t num_non_const_nodes{gate_lyt.num_gates() + gate_lyt.num_wires()};
 
-                            for (uint64_t kinked_node_index = 0; kinked_node_index < num_non_const_nodes;
-                                 ++kinked_node_index)
+                            for (const auto g_pot : params.global_potentials)
                             {
-                                if (this->found_solution())
+
+                                for (uint64_t kinked_node_index = 0; kinked_node_index < num_non_const_nodes;
+                                     ++kinked_node_index)
                                 {
-                                    return;
-                                }
-
-                                uint64_t count{0};
-
-                                std::map<typename GateLyt::node, double> global_potential_map{};
-
-                                gate_lyt.foreach_node(
-                                    [this, &kinked_node_index, &count, &global_potential_map](const auto& n)
+                                    if (this->found_solution())
                                     {
-                                        if (!gate_lyt.is_constant(n))
+                                        return;
+                                    }
+
+                                    uint64_t count{0};
+
+                                    std::map<tile<GateLyt>, double> global_potential_map{};
+
+                                    gate_lyt.foreach_node(
+                                        [this, &kinked_node_index, &count, &global_potential_map, &g_pot](const auto& n)
                                         {
-                                            if (count == kinked_node_index)
+                                            if (!gate_lyt.is_constant(n))
                                             {
-                                                global_potential_map[n] = -0.05;
+                                                if (count == kinked_node_index)
+                                                {
+                                                    global_potential_map[gate_lyt.get_tile(n)] = g_pot;
+                                                }
+
+                                                count++;
                                             }
+                                        });
 
-                                            count++;
-                                        }
-                                    });
-
-                                const auto& kinked_charge_maps = this->get_charge_maps(pi_input, global_potential_map);
-
-                                if (this->found_solution())
-                                {
-                                    return;
-                                }
-
-                                const auto& charge_lyt = this->apply_charge_maps(pi_input, kinked_charge_maps);
-
-                                if (charge_lyt.is_physically_valid() &&
-                                    charge_lyt.get_system_energy() < expected_charge_lyt.get_system_energy())
-                                {
-                                    const std::lock_guard lock{mutex};
+                                    const auto& kinked_charge_maps =
+                                        this->get_charge_maps(pi_input, global_potential_map);
 
                                     if (this->found_solution())
                                     {
                                         return;
                                     }
 
-                                    simulation_result.charge_distributions.emplace_back(charge_lyt);
+                                    const auto& charge_lyt = this->apply_charge_maps(pi_input, kinked_charge_maps);
 
-                                    kinked_gs_energy.emplace(expected_charge_lyt.get_system_energy());
+                                    if (charge_lyt.is_physically_valid() &&
+                                        charge_lyt.get_system_energy() < expected_charge_lyt.get_system_energy())
+                                    {
+                                        const std::lock_guard lock{mutex};
 
-                                    return;
+                                        if (this->found_solution())
+                                        {
+                                            return;
+                                        }
+
+                                        simulation_result.charge_distributions.emplace_back(charge_lyt);
+
+                                        kinked_gs_energy.emplace(expected_charge_lyt.get_system_energy());
+
+                                        return;
+                                    }
                                 }
                             }
                         }
@@ -286,7 +342,6 @@ class expected_ground_state_simulation_impl
 
             if (params.kinked_layout_ostream.has_value())
             {
-
                 *params.kinked_layout_ostream.value()
                     << (expected_gs_fail ? BIG_TEXT_EXPECTED : BIG_TEXT_KINKED) << std::endl;
 
@@ -312,10 +367,11 @@ class expected_ground_state_simulation_impl
                          "\nTOTAL RUNTIME: {}ms\nINTERNAL RUNTIME: {}ms\n",
                          std::chrono::duration_cast<std::chrono::milliseconds>(time_counter).count(),
                          std::chrono::duration_cast<std::chrono::milliseconds>(time_counter).count() -
-                             static_cast<long>(
+                             static_cast<int64_t>(
                                  static_cast<double>(
                                      std::chrono::duration_cast<std::chrono::milliseconds>(subsim_time).count()) /
-                                 static_cast<double>(params.number_threads - (max_subsim_threads == 1 ? 0 : max_subsim_threads))))
+                                 static_cast<double>(params.number_threads -
+                                                     (max_subsim_threads == 1 ? 0 : max_subsim_threads))))
                   << std::endl;
 
         simulation_result.simulation_runtime = time_counter;
@@ -327,11 +383,12 @@ class expected_ground_state_simulation_impl
     using sidb_lyt = sidb_cell_clk_lyt;
     using sqd_lyt  = sidb_cell_clk_lyt_siqad;
 
-    using ucoord_t     = coordinate<sidb_lyt>;
+    using ucoord_t = coordinate<sidb_lyt>;
+
     using charge_map_t = std::map<ucoord_t, sidb_charge_state>;
     using io_t         = std::map<port_direction::cardinal, bool>;
 
-    std::mutex            mutex{};
+    std::mutex&           mutex;
     bool                  expected_gs_fail{false};
     std::optional<double> kinked_gs_energy{};
 
@@ -347,52 +404,18 @@ class expected_ground_state_simulation_impl
      */
     std::chrono::duration<double> subsim_time{};
 
-    struct simulation_store_key
-    {
-        kitty::dynamic_truth_table tt{};
-        port_list<port_direction>  pl{};
-        io_t                       in{};
-        double                     gp{};
+    using input_queue_t = std::vector<std::pair<tile<GateLyt>, kinkfinder::key>>;
+    using new_input_t   = std::vector<std::pair<tile<GateLyt>, std::pair<port_direction::cardinal, bool>>>;
 
-        std::size_t operator()(const simulation_store_key& key) const noexcept
-        {
-            std::size_t h = 0;
+    kinkfinder::store& ss;
 
-            for (const auto& p : key.in)
-            {
-                hash_combine(h, p);
-            }
-
-            hash_combine(h, key.pl);
-            hash_combine(h, key.gp);
-            kitty::hash_combine(h, kitty::hash<kitty::dynamic_truth_table>()(key.tt));
-
-            return h;
-        }
-
-        bool operator==(const simulation_store_key& other) const noexcept
-        {
-            return tt == other.tt && pl == other.pl && in == other.in;
-        }
-    };
-
-    struct charge_map_container
-    {
-        charge_map_t charge_map{};
-        io_t         output{};
-    };
-
-    using simulation_store = std::unordered_map<simulation_store_key, charge_map_container, simulation_store_key>;
-
-    simulation_store ss{};
-
-    inline constexpr bool found_solution()
+    [[nodiscard]] inline constexpr bool found_solution() const noexcept
     {
         return expected_gs_fail || kinked_gs_energy.has_value();
     }
 
-    static inline constexpr void propagate(const GateLyt& gate_lyt, const tile<GateLyt>& t, const port_direction& pd,
-                                           const bool& value, std::map<tile<GateLyt>, io_t>& input_map)
+    inline constexpr void propagate(const tile<GateLyt>& t, const port_direction pd, const bool& value,
+                                    new_input_t& new_i) const
     {
         if (pd.po)
         {
@@ -402,44 +425,43 @@ class expected_ground_state_simulation_impl
         switch (pd.dir)
         {
             case port_direction::cardinal::NORTH:
-                input_map[gate_lyt.north(t)][port_direction::cardinal::SOUTH] = value;
+                new_i.emplace_back(gate_lyt.north(t), std::make_pair(port_direction::cardinal::SOUTH, value));
                 break;
             case port_direction::cardinal::NORTH_EAST:
-                input_map[gate_lyt.north_east(t)][port_direction::cardinal::SOUTH_WEST] = value;
+                new_i.emplace_back(gate_lyt.north_east(t), std::make_pair(port_direction::cardinal::SOUTH_WEST, value));
                 break;
             case port_direction::cardinal::EAST:
-                input_map[gate_lyt.east(t)][port_direction::cardinal::WEST] = value;
+                new_i.emplace_back(gate_lyt.east(t), std::make_pair(port_direction::cardinal::WEST, value));
                 break;
             case port_direction::cardinal::SOUTH_EAST:
-                input_map[gate_lyt.south_east(t)][port_direction::cardinal::NORTH_WEST] = value;
+                new_i.emplace_back(gate_lyt.south_east(t), std::make_pair(port_direction::cardinal::NORTH_WEST, value));
                 break;
             case port_direction::cardinal::SOUTH:
-                input_map[gate_lyt.south(t)][port_direction::cardinal::NORTH] = value;
+                new_i.emplace_back(gate_lyt.south(t), std::make_pair(port_direction::cardinal::NORTH, value));
                 break;
             case port_direction::cardinal::SOUTH_WEST:
-                input_map[gate_lyt.south_west(t)][port_direction::cardinal::NORTH_EAST] = value;
+                new_i.emplace_back(gate_lyt.south_west(t), std::make_pair(port_direction::cardinal::NORTH_EAST, value));
                 break;
             case port_direction::cardinal::WEST:
-                input_map[gate_lyt.west(t)][port_direction::cardinal::EAST] = value;
+                new_i.emplace_back(gate_lyt.west(t), std::make_pair(port_direction::cardinal::EAST, value));
                 break;
             case port_direction::cardinal::NORTH_WEST:
-                input_map[gate_lyt.north_west(t)][port_direction::cardinal::SOUTH_EAST] = value;
+                new_i.emplace_back(gate_lyt.north_west(t), std::make_pair(port_direction::cardinal::SOUTH_EAST, value));
                 break;
         }
     }
 
-    bool check_key_exists(const simulation_store_key& key, const tile<GateLyt>& t, const port_list<port_direction>& pl,
-                          const ucoord_t offset, std::map<ucoord_t, charge_map_t>& cms,
-                          std::map<tile<GateLyt>, io_t>& im)
+    inline bool check_key_exists(const kinkfinder::key& key, const tile<GateLyt>& t, const ucoord_t& offset,
+                                 std::map<ucoord_t, charge_map_t>& cms, new_input_t& new_in) const
     {
         if (ss.count(key))
         {
-            for (const auto& out_pd : pl.out)
+            for (const auto& out_pd : key.pl.first.out)
             {
-                propagate(gate_lyt, t, out_pd, ss[key].output[static_cast<port_direction::cardinal>(out_pd.dir)], im);
+                propagate(t, out_pd, ss.at(key).output.at(static_cast<port_direction::cardinal>(out_pd.dir)), new_in);
             }
 
-            cms[offset] = ss[key].charge_map;
+            cms[offset] = ss.at(key).charge_map;
 
             return true;
         }
@@ -447,42 +469,9 @@ class expected_ground_state_simulation_impl
         return false;
     }
 
-    void handle_node(const typename GateLyt::node& n, std::map<tile<GateLyt>, io_t>& input_map,
-                     std::map<ucoord_t, charge_map_t>& charge_maps, const double& global_potential,
-                     const std::optional<bool>& pi_input = std::nullopt)
+    sidb_simulation_result<sqd_lyt> simulate_gate(const tile<GateLyt>& t, const kinkfinder::key& key) const
     {
-        if (gate_lyt.is_constant(n))
-        {
-            return;
-        }
-
-        const auto& t = gate_lyt.get_tile(n);
-
-        if (static_cast<ucoord_t>(t).z == 1)
-        {
-            return;
-        }
-
-        const auto offset =
-            relative_to_absolute_cell_position<GateLibrary::library::gate_x_size(), GateLibrary::library::gate_y_size(),
-                                               GateLyt, sidb_lyt>(gate_lyt, t, cell<sidb_lyt>{0, 0});
-
-        const auto& pl = determine_port_routing(gate_lyt, t);
-
-        const auto& inp = pi_input.has_value() ?
-                              io_t{{pl.inp.empty() ? GateLibrary::INPUT_PERTURBERS[0].first :
-                                                     static_cast<port_direction::cardinal>(pl.inp.cbegin()->dir),
-                                    pi_input.value()}} :
-                              input_map[t];
-
-        const auto key = simulation_store_key{gate_lyt.node_function(n), pl, inp, global_potential};
-
-        if (check_key_exists(key, t, pl, offset, charge_maps, input_map))
-        {
-            return;
-        }
-
-        sidb_lyt single_gate_cell_lyt{{GateLibrary::library::gate_x_size(), GateLibrary::library::gate_y_size()}};
+        sidb_lyt lyt{{GateLibrary::library::gate_x_size(), GateLibrary::library::gate_y_size()}};
 
         // physical design
         const auto& g = GateLibrary::library::set_up_gate(gate_lyt, t);
@@ -495,50 +484,89 @@ class expected_ground_state_simulation_impl
 
                 if (!technology<sidb_lyt>::is_empty_cell(type))
                 {
-                    single_gate_cell_lyt.assign_cell_type(cell<sidb_lyt>{x, y}, type);
+                    lyt.assign_cell_type(cell<sidb_lyt>{x, y}, type);
                 }
             }
         }
 
         // input perturbators
-        for (const auto& [dir, b] : inp)
+        for (const auto& [dir, b] : key.in)
         {
             for (auto ix = static_cast<uint64_t>(b); ix < GateLibrary::INPUT_PERTURBERS.size(); ix += 2)
             {
                 if (GateLibrary::INPUT_PERTURBERS[ix].first == dir)
                 {
-                    single_gate_cell_lyt.assign_cell_type(GateLibrary::INPUT_PERTURBERS[ix].second,
-                                                          sidb_lyt::cell_type::NORMAL);
+                    lyt.assign_cell_type(GateLibrary::INPUT_PERTURBERS[ix].second, sidb_lyt::cell_type::NORMAL);
                     break;
                 }
             }
         }
 
         // output perturbators
-        for (const auto& out_pd : pl.out)
+        for (const auto& out_pd : key.pl.first.out)
         {
             for (const auto& [dir, coord] : GateLibrary::OUTPUT_PERTURBERS)
             {
                 if (dir == out_pd.dir)
                 {
-                    single_gate_cell_lyt.assign_cell_type(coord, sidb_lyt::cell_type::NORMAL);
+                    lyt.assign_cell_type(coord, sidb_lyt::cell_type::NORMAL);
                     break;
                 }
             }
         }
 
-        // simulate
-        sqd_lyt conv_lyt = convert_to_siqad_coordinates(single_gate_cell_lyt);
+        sqd_lyt conv_lyt = convert_to_siqad_coordinates(lyt);
 
-        const auto& single_gate_simulation =
-            params.exact_sim_max_db < 0 || conv_lyt.num_cells() <= params.exact_sim_max_db ?
-                quickexact<sqd_lyt>(conv_lyt, quickexact_params<sqd_lyt>{params.physical_parameters,
-                                                                         automatic_base_number_detection::ON,
-                                                                         {},
-                                                                         global_potential}) :
-                composim<sqd_lyt>(conv_lyt, composim_params{quicksim_params{params.physical_parameters, 10, 0.8,
-                                                                            global_potential, max_subsim_threads},
-                                                            20, 1});
+        // simulate
+        return params.exact_sim_max_db < 0 || conv_lyt.num_cells() <= params.exact_sim_max_db ?
+                   quickexact<sqd_lyt>(conv_lyt, quickexact_params<sqd_lyt>{params.physical_parameters,
+                                                                            automatic_base_number_detection::ON,
+                                                                            {},
+                                                                            key.gp}) :
+                   composim<sqd_lyt>(conv_lyt, composim_params{quicksim_params{params.physical_parameters, 7, 0.8,
+                                                                               key.gp, max_subsim_threads},
+                                                               10, 1});
+    }
+
+    static std::map<double, std::unordered_map<uint64_t, const charge_distribution_surface<sqd_lyt>*>>
+    get_charge_occurrences(const std::vector<charge_distribution_surface<sqd_lyt>>& cds_vec)
+    {
+        std::map<double, std::unordered_map<uint64_t, const charge_distribution_surface<sqd_lyt>*>>
+            charge_occurrences{};
+
+        for (const auto& lyt : cds_vec)
+        {
+            charge_occurrences[lyt.get_system_energy()][lyt.get_charge_index().first] = &lyt;
+        }
+
+        return charge_occurrences;
+    }
+
+    void handle_tile(const tile<GateLyt>& t, const kinkfinder::key& key, std::map<ucoord_t, charge_map_t>& charge_maps,
+                     new_input_t& new_inputs)
+    {
+        const auto& n = gate_lyt.get_node(t);
+
+        if (gate_lyt.is_constant(n) || found_solution())
+        {
+            return;
+        }
+
+        if (static_cast<ucoord_t>(t).z == 1)
+        {
+            return;
+        }
+
+        const auto offset =
+            relative_to_absolute_cell_position<GateLibrary::library::gate_x_size(), GateLibrary::library::gate_y_size(),
+                                               GateLyt, sidb_lyt>(gate_lyt, t, cell<sidb_lyt>{0, 0});
+
+        if (check_key_exists(key, t, offset, charge_maps, new_inputs))
+        {
+            return;
+        }
+
+        const auto& single_gate_simulation = simulate_gate(t, key);
 
         {
             const std::lock_guard lock{mutex};
@@ -546,43 +574,68 @@ class expected_ground_state_simulation_impl
             subsim_time += single_gate_simulation.simulation_runtime;
         }
 
-        if (check_key_exists(key, t, pl, offset, charge_maps, input_map))
+        if (single_gate_simulation.charge_distributions.empty())
+        {
+            const std::lock_guard lock{mutex};
+
+            std::cout << "ERROR: no ground state found" << std::endl;
+
+            return;
+        }
+
+        if (found_solution() || check_key_exists(key, t, offset, charge_maps, new_inputs))
         {
             return;
         }
-// global potential -> check how many should be kept      |     apply charge maps checks for phys validity
+
+        const auto& charge_occurrences = get_charge_occurrences(single_gate_simulation.charge_distributions);
+
+        if (charge_occurrences.cbegin()->second.size() != 1)
+        {
+            const std::lock_guard lock{mutex};
+
+            std::cout << "WARNING: degenerate ground states:\n" << std::endl;
+
+            for (const auto& [_, lyt_p] : charge_occurrences.cbegin()->second)
+            {
+                print_layout(*lyt_p);
+            }
+
+            std::cout << std::endl;
+        }
 
         // get ground state
-        const auto gs = std::min_element(
-            single_gate_simulation.charge_distributions.cbegin(), single_gate_simulation.charge_distributions.cend(),
-            [](const auto& cd1, const auto& cd2) { return cd1.get_system_energy() < cd2.get_system_energy(); });
+        const auto* gs = charge_occurrences.cbegin()->second.cbegin()->second;
 
-        if (gs == single_gate_simulation.charge_distributions.cend())
-        {
-            std::cout << "ERROR: no ground state found" << std::endl;
-            return;
-        }
-
-        if (check_key_exists(key, t, pl, offset, charge_maps, input_map))
+        if (found_solution() || check_key_exists(key, t, offset, charge_maps, new_inputs))
         {
             return;
         }
 
-//        if (params.exact_sim_max_db >= 0 && conv_lyt.num_cells() > params.exact_sim_max_db)
-//        {
-//            const std::lock_guard lock{mutex};
-//            std::cout << fmt::format(
-//                             "\n\nPORTS: {}\nGLOBAL POTENTIAL: {}\nCS RUNTIME: {}\nCHARGE LAYOUTS: {}\nENERGY:{}\n", pl,
-//                             global_potential, single_gate_simulation.simulation_runtime.count(),
-//                             single_gate_simulation.charge_distributions.size(), gs->get_system_energy())
-//                      << std::endl;
-//            print_layout(*gs);
-//        }
+        //        if (params.exact_sim_max_db >= 0 && gs->num_cells() > params.exact_sim_max_db)
+        //        {
+        //            const std::lock_guard lock{mutex};
+        //
+        //            std::cout << "\n\nINPUT:\n";
+        //            for (const auto& [dir, b] : key.in)
+        //            {
+        //                std::cout << fmt::format("{} -> {}\n", port_direction{dir}, b);
+        //            }
+        //
+        //            std::cout
+        //                << fmt::format(
+        //                       "\nNUM DBS: {}\nPORTS: {}\nGROUND PORTS: {}\nGLOBAL POTENTIAL: {}\nSUBSIM RUNTIME:
+        //                       {}\nCHARGE " "LAYOUTS: {}\nENERGY:{}\n", gs->num_cells(), key.pl.first, key.pl.second,
+        //                       key.gp, single_gate_simulation.simulation_runtime.count(),
+        //                       single_gate_simulation.charge_distributions.size(), gs->get_system_energy())
+        //                << std::endl;
+        //            print_layout(*gs);
+        //        }
 
-        charge_map_container cmc{};
+        kinkfinder::charge_map_container cmc{};
 
         // propagate outputs
-        for (const auto& out_pd : pl.out)
+        for (const auto& out_pd : key.pl.first.out)
         {
             for (const auto& [dir, coord] : GateLibrary::OUTPUTS)
             {
@@ -590,14 +643,14 @@ class expected_ground_state_simulation_impl
                 {
                     cmc.output[dir] = gs->get_charge_state(siqad::to_siqad_coord(coord)) == sidb_charge_state::NEGATIVE;
 
-                    propagate(gate_lyt, t, out_pd, cmc.output[dir], input_map);
+                    propagate(t, out_pd, cmc.output[dir], new_inputs);
 
                     break;
                 }
             }
         }
 
-        if (check_key_exists(key, t, pl, offset, charge_maps, input_map))
+        if (found_solution() || check_key_exists(key, t, offset, charge_maps, new_inputs))
         {
             return;
         }
@@ -615,16 +668,8 @@ class expected_ground_state_simulation_impl
         {
             const std::lock_guard lock{mutex};
 
-            if (ss.count(key))
+            if (check_key_exists(key, t, offset, charge_maps, new_inputs))
             {
-                for (const auto& out_pd : pl.out)
-                {
-                    propagate(gate_lyt, t, out_pd, ss[key].output[static_cast<port_direction::cardinal>(out_pd.dir)],
-                              input_map);
-                }
-
-                charge_maps[offset] = ss[key].charge_map;
-
                 return;
             }
 
@@ -634,34 +679,95 @@ class expected_ground_state_simulation_impl
         charge_maps[offset] = cmc.charge_map;
     }
 
-    std::map<ucoord_t, charge_map_t> get_charge_maps(uint64_t                                  pi_input,
-                                                     std::map<typename GateLyt::node, double>& global_potential_map)
+    void merge_into_input_queue(input_queue_t& input_queue, const new_input_t& new_inputs,
+                                std::map<tile<GateLyt>, double>& global_potential_map) const
     {
-        std::map<tile<GateLyt>, io_t>    input_map{};
+        for (const auto& p : new_inputs)
+        {
+            auto it = std::find_if(input_queue.begin(), input_queue.end(),
+                                   [&t = p.first](const auto& p) { return p.first == t; });
+            if (it == input_queue.end())
+            {
+                input_queue.emplace_back(p.first, kinkfinder::key{gate_lyt.node_function(gate_lyt.get_node(p.first)),
+                                                                  determine_port_routing(gate_lyt, p.first),
+                                                                  io_t{p.second}, global_potential_map[p.first]});
+            }
+            else
+            {
+                it->second.in[p.second.first] = p.second.second;
+            }
+        }
+    }
+
+    std::map<ucoord_t, charge_map_t> get_charge_maps(uint64_t                         pi_input,
+                                                     std::map<tile<GateLyt>, double>& global_potential_map)
+    {
+        input_queue_t                    input_queue{};
         std::map<ucoord_t, charge_map_t> charge_maps{};
 
         gate_lyt.foreach_pi(
-            [this, &input_map, &charge_maps, &global_potential_map, &pi_input](const typename GateLyt::node& n,
-                                                                               const uint64_t                i)
+            [this, &input_queue, &charge_maps, &global_potential_map, &pi_input](const typename GateLyt::node& n,
+                                                                                 const uint64_t                i)
             {
-                this->handle_node(n, input_map, charge_maps, global_potential_map[n],
-                                  std::optional{static_cast<bool>((1ul << i) & pi_input)});
+                const auto& t  = gate_lyt.get_tile(n);
+                const auto& pl = determine_port_routing(gate_lyt, t);
+
+                new_input_t new_inputs{};
+
+                this->handle_tile(t,
+                                  kinkfinder::key{gate_lyt.node_function(n), pl,
+                                                  io_t{{pl.first.inp.empty() ? GateLibrary::INPUT_PERTURBERS[0].first :
+                                                                               static_cast<port_direction::cardinal>(
+                                                                                   pl.first.inp.cbegin()->dir),
+                                                        static_cast<bool>((1ul << i) & pi_input)}},
+                                                  global_potential_map[t]},
+                                  charge_maps, new_inputs);
+
+                merge_into_input_queue(input_queue, new_inputs, global_potential_map);
             });
 
-        gate_lyt.foreach_node(
-            [this, &input_map, &charge_maps, &global_potential_map](const typename GateLyt::node& n)
+        while (!input_queue.empty())
+        {
+            std::optional<std::pair<uint64_t, new_input_t>> input_queue_mod{};
+
+            for (auto i = 0; i < input_queue.size(); ++i)
             {
-                if (!gate_lyt.is_pi(n))
+                if (input_queue[i].second.pl.first.inp.size() == input_queue[i].second.in.size())
                 {
-                    this->handle_node(n, input_map, charge_maps, global_potential_map[n]);
+                    new_input_t new_inputs{};
+
+                    handle_tile(input_queue[i].first, input_queue[i].second, charge_maps, new_inputs);
+
+                    if (found_solution())
+                    {
+                        return charge_maps;
+                    }
+
+                    input_queue_mod = std::make_pair(i, new_inputs);
+
+                    break;
                 }
-            });
+            }
+
+            if (!input_queue_mod.has_value())
+            {
+                const std::lock_guard lock{mutex};
+
+                std::cout << "ERROR: a set of inputs could not be saturated" << std::endl;
+
+                return charge_maps;
+            }
+
+            input_queue.erase(std::next(input_queue.cbegin(), input_queue_mod.value().first));
+
+            merge_into_input_queue(input_queue, input_queue_mod.value().second, global_potential_map);
+        }
 
         return charge_maps;
     }
 
-    charge_distribution_surface<sqd_lyt> apply_charge_maps(uint64_t                                pi_input,
-                                                           const std::map<ucoord_t, charge_map_t>& charge_maps)
+    [[nodiscard]] charge_distribution_surface<sqd_lyt>
+    apply_charge_maps(uint64_t pi_input, const std::map<ucoord_t, charge_map_t>& charge_maps) const
     {
         charge_distribution_surface<sqd_lyt> charge_lyt{
             convert_to_siqad_coordinates(get_cell_level_layout(gate_lyt, pi_input)), params.physical_parameters,
@@ -682,66 +788,62 @@ class expected_ground_state_simulation_impl
     }
 
     template <typename Lyt>
-    [[nodiscard]] static port_list<port_direction> determine_port_routing(const Lyt& lyt, const tile<Lyt>& t) noexcept
+    [[nodiscard]] static std::pair<port_list<port_direction>, port_list<port_direction>>
+    determine_port_routing(const Lyt& lyt, const tile<Lyt>& t) noexcept
     {
-        port_list<port_direction> p{};
+        port_list<port_direction> p_combined{};
+        port_list<port_direction> p_ground{};
+
+        const auto& n = lyt.get_node(t);
+
+        const bool is_pi = lyt.is_pi(n);
+        const bool is_po = lyt.is_po(n);
 
         for (const auto& ti : lyt.z() == 0 || lyt.is_constant(lyt.get_node(lyt.above(t))) ?
                                   std::vector{t} :
                                   std::vector{t, lyt.above(t)})
         {
-            // determine incoming connector ports
-            if (lyt.has_north_eastern_incoming_signal(ti))
+            for (auto* p : ti == t ? std::vector{&p_combined, &p_ground} : std::vector{&p_combined})
             {
-                p.inp.emplace(port_direction::cardinal::NORTH_EAST);
-            }
-            if (lyt.has_north_western_incoming_signal(ti))
-            {
-                p.inp.emplace(port_direction::cardinal::NORTH_WEST);
-            }
-
-            // determine outgoing connector ports
-            if (lyt.has_south_eastern_outgoing_signal(ti))
-            {
-                p.out.emplace(port_direction::cardinal::SOUTH_EAST);
-            }
-            if (lyt.has_south_western_outgoing_signal(ti))
-            {
-                p.out.emplace(port_direction::cardinal::SOUTH_WEST);
-            }
-
-            // gates without connector ports
-
-            // 1-input functions
-            if (const auto n = lyt.get_node(ti); lyt.is_pi(n) || lyt.is_po(n) || lyt.is_buf(n) || lyt.is_inv(n))
-            {
-                if (lyt.has_no_incoming_signal(ti))
+                // determine incoming connector ports
+                if (lyt.has_north_eastern_incoming_signal(ti))
                 {
-                    p.inp.emplace(port_direction::cardinal::NORTH_WEST);
+                    p->inp.emplace(port_direction::cardinal::NORTH_EAST, is_pi, is_po);
                 }
-                if (lyt.has_no_outgoing_signal(ti))
+                if (lyt.has_north_western_incoming_signal(ti))
                 {
-                    p.out.emplace(port_direction::cardinal::SOUTH_EAST);
+                    p->inp.emplace(port_direction::cardinal::NORTH_WEST, is_pi, is_po);
                 }
-            }
-            else  // 2-input functions
-            {
-                if (lyt.has_no_incoming_signal(ti))
+
+                // determine outgoing connector ports
+                if (lyt.has_south_eastern_outgoing_signal(ti))
                 {
-                    p.inp.emplace(port_direction::cardinal::NORTH_WEST);
-                    p.inp.emplace(port_direction::cardinal::NORTH_EAST);
+                    p->out.emplace(port_direction::cardinal::SOUTH_EAST, is_pi, is_po);
                 }
-                if (lyt.has_no_outgoing_signal(ti))
+                if (lyt.has_south_western_outgoing_signal(ti))
                 {
-                    p.out.emplace(port_direction::cardinal::SOUTH_EAST);
+                    p->out.emplace(port_direction::cardinal::SOUTH_WEST, is_pi, is_po);
+                }
+
+                // default PI and PO port routing
+                if (is_pi || is_po)
+                {
+                    if (lyt.has_no_incoming_signal(t))
+                    {
+                        p->inp.emplace(port_direction::cardinal::NORTH_WEST, is_pi, is_po);
+                    }
+                    if (lyt.has_no_outgoing_signal(t))
+                    {
+                        p->out.emplace(port_direction::cardinal::SOUTH_EAST, is_pi, is_po);
+                    }
                 }
             }
         }
 
-        return p;
+        return std::make_pair(p_combined, p_ground);
     }
 
-    static sidb_lyt get_cell_level_layout(const GateLyt& gate_lyt, uint64_t pi_input)
+    [[nodiscard]] static sidb_lyt get_cell_level_layout(const GateLyt& gate_lyt, uint64_t pi_input)
     {
         sidb_lyt cell_lyt = apply_gate_library<sidb_lyt, typename GateLibrary::library>(gate_lyt);
 
@@ -751,7 +853,7 @@ class expected_ground_state_simulation_impl
             [&gate_lyt, &pi_input, &perturbers](const auto& n, const auto i)
             {
                 const tile<GateLyt>&            t       = gate_lyt.get_tile(n);
-                const std::set<port_direction>& inp_pds = determine_port_routing(gate_lyt, t).inp;
+                const std::set<port_direction>& inp_pds = determine_port_routing(gate_lyt, t).first.inp;
 
                 const auto value = static_cast<uint64_t>(static_cast<bool>((1ul << i) & pi_input));
 
@@ -777,7 +879,7 @@ class expected_ground_state_simulation_impl
             {
                 const tile<GateLyt>& t =
                     static_cast<tile<GateLyt>>(n);  // TODO: notify marcel; gate_lyt.get_tile(n) does not give the same
-                const std::set<port_direction>& out_pds = determine_port_routing(gate_lyt, t).out;
+                const std::set<port_direction>& out_pds = determine_port_routing(gate_lyt, t).first.out;
 
                 if (out_pds.empty())
                 {
@@ -812,13 +914,14 @@ class expected_ground_state_simulation_impl
 }  // namespace detail
 
 template <typename GateLibrary, typename GateLyt>
-sidb_simulation_result<sidb_cell_clk_lyt_siqad> expected_ground_state_simulation(const GateLyt& gate_level_layout,
-                                                                                 const expected_gs_params& params = {})
+sidb_simulation_result<sidb_cell_clk_lyt_siqad>
+kink_finder(const GateLyt& gate_level_layout, const expected_gs_params& params = {},
+            typename kinkfinder::store& ss    = kinkfinder::INIT,
+            std::unique_ptr<std::mutex> mutex = std::make_unique<std::mutex>())
 {
-    detail::expected_ground_state_simulation_impl<GateLibrary, GateLyt> p{gate_level_layout, params};
-    return p.run();
+    return detail::kink_finder_impl<GateLibrary, GateLyt>{gate_level_layout, params, ss, *mutex}.run();
 }
 
 }  // namespace fiction
 
-#endif  // FICTION_EXPECTED_GROUND_STATE_SIMULATION_HPP
+#endif  // FICTION_KINK_FINDER_HPP
