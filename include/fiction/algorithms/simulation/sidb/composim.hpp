@@ -40,7 +40,7 @@ struct composim_stats
     uint64_t quicksim_attempts{0};
 
     // TODO: use a variable size bit array to avoid collisions
-    std::unordered_map<uint64_t, charge_distribution_surface<Lyt>*> valid_lyts;
+    std::unordered_map<uint64_t, const charge_distribution_surface<Lyt>*> valid_lyts;
 
     bool failed{false};
 
@@ -173,7 +173,7 @@ class composim_impl
 
     using midpoint = std::pair<double, double>;
 
-    static midpoint compute_midpoint(const midpoint& x, const midpoint& y) noexcept
+    static inline constexpr midpoint compute_midpoint(const midpoint& x, const midpoint& y) noexcept
     {
         return std::make_pair((x.first + y.first) / 2, (x.second + y.second) / 2);
     }
@@ -261,7 +261,7 @@ class composim_impl
         }
 
         // use first charge layout for accessing constant properties of the layout
-        const auto& fst_cds = *(st.valid_lyts.cbegin()->second);
+        const auto& fst_cds = *st.valid_lyts.cbegin()->second;
 
         // initialise vectors that hold indices of DBs that have the same charge state assignment in all layouts
         std::vector<db> const_dbs{};
@@ -276,7 +276,7 @@ class composim_impl
             if (std::all_of(++st.valid_lyts.cbegin(), st.valid_lyts.cend(),
                             [&i, &cs](const auto& p) { return p.second->get_charge_state_by_index(i) == cs; }))
             {
-                const_dbs.push_back(std::make_pair(cs == sidb_charge_state::NEGATIVE, i));
+                const_dbs.emplace_back(cs == sidb_charge_state::NEGATIVE, i);
                 // (assuming QuickSim does not produce charge layouts with positive charges)
             }
         }
@@ -352,7 +352,7 @@ class composim_impl
             }
 
             // add DB j to the vector of considered DBs
-            considered.push_back(j);
+            considered.emplace_back(j);
         }
 
         if (ps.debug)
@@ -381,13 +381,13 @@ class composim_impl
 
     // TODO: documentation
 
-    bool is_const_db(const std::vector<db>& const_dbs, const uint64_t& i)
+    static inline constexpr bool is_const_db(const std::vector<db>& const_dbs, const uint64_t& i)
     {
         return std::binary_search(const_dbs.cbegin(), const_dbs.cend(), std::make_pair(false, i),
                                   [](const db& db_i, const db& db_j) { return db_i.second < db_j.second; });
     }
 
-    group merge_groups(const group& g1, const group& g2)
+    group merge_groups(const group& g1, const group& g2) const
     {
         std::set<db> merged;
         std::set_union(g1.first.cbegin(), g1.first.cend(), g2.first.cbegin(), g2.first.cend(),
@@ -395,7 +395,7 @@ class composim_impl
         return std::make_pair(merged, compute_midpoint(g1.second, g2.second));
     }
 
-    void reduce_groups(groupset& groups)
+    void reduce_groups(groupset& groups) const
     {
         auto groups_size = groups.size() + 1;
 
@@ -447,12 +447,12 @@ class composim_impl
                                 }))
                 {
                     merged_groups.emplace(merge_groups(*it1, *closest_group.second));
-                    considered.push_back(std::make_pair(closest_group.second, true));
+                    considered.emplace_back(closest_group.second, true);
                 }
                 else
                 {
                     merged_groups.emplace(*it1);
-                    considered.push_back(std::make_pair(closest_group.second, false));
+                    considered.emplace_back(closest_group.second, false);
                 }
             }
 
@@ -462,7 +462,7 @@ class composim_impl
         }
     }
 
-    std::set<db> get_grouped_dbs(const groupset& groups)
+    static std::set<db> get_grouped_dbs(const groupset& groups)
     {
         std::set<db> indices;
         for (const auto& g : groups)
@@ -544,8 +544,8 @@ class composim_impl
         uint64_t valid_lyt_count = 1;
 
         std::map<double, uint64_t, std::greater<>> energy_map{
-            {std::make_pair(st.valid_lyts.cbegin()->second->get_system_energy(),
-                            st.valid_lyts.cbegin()->second->get_charge_index().first)}};
+            {st.valid_lyts.cbegin()->second->get_system_energy(),
+                            st.valid_lyts.cbegin()->second->get_charge_index().first}};
 
         const auto max_charge_lyts = std::max(ps.max_charge_layouts, 1ul);
 
@@ -555,7 +555,7 @@ class composim_impl
                 [this, &mutex, &range, &n, &groups, &const_dbs, &other, &valid_lyt_count, &energy_map, &max_charge_lyts]
                 {
                     // create new charge distribution surface with all charges states set to NEGATIVE
-                    charge_distribution_surface cds{*st.valid_lyts.cbegin()->second};
+                    charge_distribution_surface<Lyt> cds{*st.valid_lyts.cbegin()->second};
 
                     // change charge state for the constant neutral DBs
                     for (const auto& [negative, ix] : const_dbs)
@@ -625,13 +625,13 @@ class composim_impl
                                     energy_map.erase(energy_map.cbegin());
 
                                     st.valid_lyts[charge_index] = new charge_distribution_surface<Lyt>{cds};
-                                    energy_map.emplace(std::make_pair(energy, charge_index));
+                                    energy_map.emplace(energy, charge_index);
                                 }
                             }
                             else
                             {
                                 st.valid_lyts[cds.get_charge_index().first] = new charge_distribution_surface<Lyt>{cds};
-                                energy_map.emplace(std::make_pair(energy, charge_index));
+                                energy_map.emplace(energy, charge_index);
                             }
                         }
                     }

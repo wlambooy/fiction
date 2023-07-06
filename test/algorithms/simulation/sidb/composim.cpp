@@ -498,8 +498,8 @@ TEMPLATE_TEST_CASE("CompoSim simulation of an SiDB BDL pair with varying thread 
     }
 }
 
-TEMPLATE_TEST_CASE("CompoSim simulation of an SiDB BDL pair with global potential with varying thread counts", "[composim]",
-                   (cell_level_layout<sidb_technology, clocked_layout<cartesian_layout<siqad::coord_t>>>))
+TEMPLATE_TEST_CASE("CompoSim simulation of an SiDB BDL pair with global potential with varying thread counts",
+                   "[composim]", (cell_level_layout<sidb_technology, clocked_layout<cartesian_layout<siqad::coord_t>>>))
 {
     TestType lyt{{20, 10}};
 
