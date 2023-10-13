@@ -13,6 +13,26 @@
 namespace fiction
 {
 
+struct ef_parameters
+{
+    /*
+     * Global theta. It controls the distance threshold before making approximations.
+     */
+    double global_theta{0.7};
+    /*
+     * Local theta. It controls the distance threshold before making approximations using local potential of clusters.
+     */
+    double local_theta{0.7};
+    /*
+     * Population stability test error.
+     */
+    double error{7.0e-2};
+    /*
+     * Ground state energy comparison error.
+     */
+    double energy_error{1.0e-1};
+};
+
 /**
  * This struct collects all physical parameters for physical SiDB simulations. It can be useful to adjust them,
  * especially when experiments create new insights. However, the default values are commonly used.
@@ -35,15 +55,15 @@ struct sidb_simulation_parameters
     constexpr explicit sidb_simulation_parameters(const uint8_t base_number = 3, const double mu = -0.32,
                                                   const double relative_permittivity = 5.6,
                                                   const double screening_distance = 5.0, const double a = 3.84,
-                                                  const double b = 7.68, const double c = 2.25) :
+                                                  const double b = 7.68, const double c = 2.25, const ef_parameters ef_ps = ef_parameters{}) :
             lat_a{a},
             lat_b{b},
             lat_c{c},
             epsilon_r{relative_permittivity},
             lambda_tf{screening_distance},
             mu_minus{mu},
-            base{base_number}
-
+            base{base_number},
+            ef_params{ef_ps}
     {
         assert((base == 2 || base == 3) && "base must be 2 or 3");
     }
@@ -81,17 +101,21 @@ struct sidb_simulation_parameters
      * k is the Coulomb constant K_E divided by epsilon_r (unit: \f$ N \cdot m^{2}
      * \cdot C^{-2} \f$).
      */
-    [[nodiscard]] double k() const noexcept
+    [[nodiscard]] constexpr inline double k() const noexcept
     {
         return physical_constants::K_E / epsilon_r;
     }
     /**
      * mu_plus (µ+) is the energy transition level (+/0) (unit: eV).
      */
-    [[nodiscard]] double mu_plus() const noexcept
+    [[nodiscard]] constexpr inline double mu_plus() const noexcept
     {
         return mu_minus - 0.59;
     };
+    /*
+     * Parameters used by the energy forest extension to `charge_distribution_surface`.
+     */
+    ef_parameters ef_params;
 };
 
 }  // namespace fiction

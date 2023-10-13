@@ -8,6 +8,8 @@
 #include "fiction/algorithms/path_finding/distance.hpp"
 #include "fiction/algorithms/simulation/sidb/sidb_simulation_engine.hpp"
 #include "fiction/algorithms/simulation/sidb/sidb_simulation_parameters.hpp"
+#include "fiction/layouts/bounding_box.hpp"
+#include "fiction/technology/energy_forest.hpp"
 #include "fiction/layouts/cell_level_layout.hpp"
 #include "fiction/technology/physical_constants.hpp"
 #include "fiction/technology/sidb_charge_state.hpp"
@@ -87,20 +89,20 @@ enum class charge_distribution_history
  * @tparam has_sidb_charge_distribution Automatically determines whether a charge distribution interface is already
  * present.
  */
-template <typename Lyt, bool has_charge_distribution_interface =
+template <typename Lyt, bool use_ffm = false, bool has_charge_distribution_interface =
                             std::conjunction_v<has_assign_charge_state<Lyt>, has_get_charge_state<Lyt>>>
 class charge_distribution_surface : public Lyt
 {};
 
-template <typename Lyt>
-class charge_distribution_surface<Lyt, true> : public Lyt
+template <typename Lyt, bool use_ffm>
+class charge_distribution_surface<Lyt, use_ffm, true> : public Lyt
 {
   public:
     explicit charge_distribution_surface(const Lyt& lyt) : Lyt(lyt) {}
 };
 
-template <typename Lyt>
-class charge_distribution_surface<Lyt, false> : public Lyt
+template <typename Lyt, bool use_ffm>
+class charge_distribution_surface<Lyt, use_ffm, false> : public Lyt
 {
   public:
     using charge_index_base = typename std::pair<uint64_t, uint8_t>;
@@ -227,6 +229,11 @@ class charge_distribution_surface<Lyt, false> : public Lyt
          * True indicates that the dependent SiDB is in the sublayout.
          */
         bool dependent_cell_in_sub_layout{};
+
+        std::shared_ptr<energy_forest<Lyt>> energy_forest{};
+        uint64_t                            worker{};
+        uint64_t                            exact_validity_checks{};
+        uint64_t                            exact_system_energy_computations{};
     };
 
     using storage = std::shared_ptr<charge_distribution_storage>;
@@ -270,14 +277,35 @@ class charge_distribution_surface<Lyt, false> : public Lyt
 
         initialize(cs);
     };
+    /*
+     * Copies a `charge_distribution_surface` object and adds a worker to the energy forest if a mutex is passed.
+     */
+    static std::shared_ptr<charge_distribution_storage>
+    copy_strg(const charge_distribution_storage&                other_strg,
+              std::optional<std::reference_wrapper<std::mutex>> mutex = std::nullopt) noexcept
+    {
+        std::shared_ptr<charge_distribution_storage> strg_copy =
+            std::make_shared<charge_distribution_storage>(other_strg);
+
+        if constexpr (use_ffm)
+        {
+            if (mutex.has_value())
+            {
+                strg_copy->worker = strg_copy->energy_forest->add_worker(mutex.value());
+            }
+        }
+
+        return strg_copy;
+    }
     /**
      * Copy constructor.
      *
      * @param lyt charge_distribution_surface
      */
-    explicit charge_distribution_surface(const charge_distribution_surface<Lyt>& lyt) :
+    explicit charge_distribution_surface(const charge_distribution_surface<Lyt, use_ffm>& lyt,
+                                         std::optional<std::reference_wrapper<std::mutex>> mutex = std::nullopt) :
             Lyt(lyt),
-            strg{std::make_shared<charge_distribution_storage>(*lyt.strg)}
+            strg{copy_strg(*lyt.strg, mutex)}
     {}
     /**
      * Copy assignment operator.
@@ -288,7 +316,7 @@ class charge_distribution_surface<Lyt, false> : public Lyt
     {
         if (this != &other)
         {
-            strg = std::make_shared<charge_distribution_storage>(*other.strg);
+            strg = copy_strg(*other.strg);
         }
 
         return *this;
@@ -349,7 +377,18 @@ class charge_distribution_surface<Lyt, false> : public Lyt
             strg->max_charge_index = static_cast<uint64_t>(std::pow(strg->phys_params.base, this->num_cells())) - 1;
             this->update_local_potential();
             this->recompute_system_energy();
+
+            if constexpr (use_ffm)
+            {
+                this->initialize_energy_forest();
+            }
+
             this->validity_check();
+        }
+
+        if constexpr (use_ffm)
+        {
+            this->reset_energy_forest_ground_state();
         }
     }
     /**
@@ -400,6 +439,13 @@ class charge_distribution_surface<Lyt, false> : public Lyt
     {
         if (auto index = cell_to_index(c); index != -1)
         {
+            if constexpr (use_ffm)
+            {
+                strg->energy_forest->update(strg->worker, static_cast<uint64_t>(index),
+                                            charge_state_to_sign(cs) -
+                                                charge_state_to_sign(strg->cell_charge[static_cast<uint64_t>(index)]));
+            }
+
             strg->cell_charge[static_cast<uint64_t>(index)] = cs;
         }
         if (update_charge_index)
@@ -416,6 +462,12 @@ class charge_distribution_surface<Lyt, false> : public Lyt
      */
     void assign_charge_by_cell_index(const uint64_t index, const sidb_charge_state cs) const noexcept
     {
+        if constexpr (use_ffm)
+        {
+            strg->energy_forest->update(strg->worker, index,
+                                        charge_state_to_sign(cs) - charge_state_to_sign(strg->cell_charge[index]));
+        }
+
         strg->cell_charge[index] = cs;
         this->charge_distribution_to_index();
     }
@@ -428,6 +480,12 @@ class charge_distribution_surface<Lyt, false> : public Lyt
     {
         for (uint64_t i = 0u; i < strg->cell_charge.size(); ++i)
         {
+            if constexpr (use_ffm)
+            {
+                strg->energy_forest->update(strg->worker, i,
+                                            charge_state_to_sign(cs) - charge_state_to_sign(strg->cell_charge[i]));
+            }
+
             strg->cell_charge[i] = cs;
         }
         this->charge_distribution_to_index();
@@ -557,6 +615,12 @@ class charge_distribution_surface<Lyt, false> : public Lyt
     void assign_charge_state_by_cell_index(const uint64_t index, const sidb_charge_state cs,
                                            const bool update_charge_configuration = true) noexcept
     {
+        if constexpr (use_ffm)
+        {
+            strg->energy_forest->update(strg->worker, index,
+                                        charge_state_to_sign(cs) - charge_state_to_sign(strg->cell_charge[index]));
+        }
+
         strg->cell_charge[index] = cs;
 
         if (update_charge_configuration)
@@ -921,25 +985,60 @@ class charge_distribution_surface<Lyt, false> : public Lyt
     void update_after_charge_change(
         const dependent_cell_mode         dependent_cell          = dependent_cell_mode::FIXED,
         const energy_calculation          energy_calculation_mode = energy_calculation::UPDATE_ENERGY,
-        const charge_distribution_history history_mode            = charge_distribution_history::NEGLECT) noexcept
+        const charge_distribution_history history_mode            = charge_distribution_history::NEGLECT, std::optional<std::reference_wrapper<std::mutex>> mutex = std::nullopt) noexcept
     {
-        this->update_local_potential(history_mode);
-        if (dependent_cell == dependent_cell_mode::VARIABLE)
+        if constexpr (!use_ffm)
         {
-            this->update_charge_state_of_dependent_cell();
+            this->update_local_potential(history_mode);
+            if (dependent_cell == dependent_cell_mode::VARIABLE)
+            {
+                this->update_charge_state_of_dependent_cell();
+            }
         }
-        if (energy_calculation_mode == energy_calculation::UPDATE_ENERGY)
+
+        this->validity_check(mutex);
+
+        if constexpr (!use_ffm)
         {
-            this->recompute_system_energy();
+            if (energy_calculation_mode == energy_calculation::UPDATE_ENERGY)
+            {
+                this->recompute_system_energy();
+            }
         }
-        this->validity_check();
+    }
+    /*
+     * Obtain debug statistics for the energy_forest algorithm.
+     */
+    [[nodiscard]] inline std::pair<uint64_t, uint64_t> get_num_computations() const noexcept
+    {
+        return {strg->exact_validity_checks, strg->exact_system_energy_computations};
+    }
+    /*
+     * Reset the stored ground state energy of the energy_forest object.
+     */
+    inline void reset_energy_forest_ground_state() noexcept
+    {
+        strg->energy_forest->reset_ground_state_energy();
     }
     /**
      * The physically validity of the current charge distribution is evaluated and stored in the storage struct. A
      * charge distribution is valid if the *Population Stability* and the *Configuration Stability* is fulfilled.
      */
-    void validity_check() noexcept
+    void validity_check(std::optional<std::reference_wrapper<std::mutex>> mutex = std::nullopt) noexcept
     {
+        if constexpr (use_ffm)
+        {
+            if (!strg->energy_forest->check_population_stability(strg->worker))
+            {
+                strg->validity = false;
+                return;
+            }
+
+            strg->exact_validity_checks++;
+
+            this->update_local_potential();
+        }
+
         uint64_t   population_stability_not_fulfilled_counter = 0;
         uint64_t   for_loop_counter                           = 0;
         const auto mu_p                                       = strg->phys_params.mu_plus();
@@ -986,11 +1085,6 @@ class charge_distribution_surface<Lyt, false> : public Lyt
 
                 for (uint64_t j = 0u; j < strg->local_pot.size(); j++)
                 {
-                    if (hop_counter == 1)
-                    {
-                        break;
-                    }
-
                     if (const auto e_del = hop_del(i, j);
                         (charge_state_to_sign(strg->cell_charge[j]) > charge_state_to_sign(strg->cell_charge[i])) &&
                         (e_del < -physical_constants::POP_STABILITY_ERR))  // Checks if energetically favored
@@ -1001,11 +1095,37 @@ class charge_distribution_surface<Lyt, false> : public Lyt
                         break;
                     }
                 }
+
+                if (hop_counter == 1)
+                {
+                    break;
+                }
             }
 
             // If there is no jump that leads to a decrease in the potential energy of the system, the given charge
             // distribution satisfies metastability.
             strg->validity = hop_counter == 0;
+        }
+
+        if constexpr (use_ffm)
+        {
+
+            if (!strg->validity)
+            {
+                return;
+            }
+
+            this->recompute_system_energy();
+            strg->exact_system_energy_computations++;
+
+            if (mutex.has_value())
+            {
+                strg->energy_forest->challenge_ground_state_energy(strg->system_energy, mutex.value().get());
+                return;
+            }
+
+            std::mutex temp{};
+            strg->energy_forest->challenge_ground_state_energy(strg->system_energy, temp);
         }
     }
     /**
@@ -1260,6 +1380,12 @@ class charge_distribution_surface<Lyt, false> : public Lyt
             const auto                              random_element = index_vector[candidates[dist(generator)]];
             strg->cell_charge[random_element]                      = sidb_charge_state::NEGATIVE;
             negative_indices.push_back(random_element);
+
+            if constexpr (use_ffm)
+            {
+                strg->energy_forest->update(strg->worker, random_element, -1);
+                return;
+            }
 
             strg->system_energy += -(*this->get_local_potential_by_index(random_element));
 
@@ -1794,6 +1920,12 @@ class charge_distribution_surface<Lyt, false> : public Lyt
             static_cast<uint64_t>(std::pow(static_cast<double>(strg->phys_params.base), this->num_cells()) - 1);
         this->update_local_potential();
         this->recompute_system_energy();
+
+        if constexpr (use_ffm)
+        {
+            this->initialize_energy_forest();
+        }
+
         this->validity_check();
     };
     /**
@@ -1860,6 +1992,37 @@ class charge_distribution_surface<Lyt, false> : public Lyt
             {
                 strg->pot_mat[i][j] = calculate_chargeless_potential_between_sidbs_by_index(i, j);
             }
+        }
+    }
+
+    void initialize_energy_forest() const noexcept
+    {
+        const bounding_box_2d bb{convert_to_fiction_coordinates<
+            cell_level_layout<sidb_technology, clocked_layout<cartesian_layout<cube::coord_t>>>>(*this)};
+
+        std::pair<double, double> min = sidb_nm_position<Lyt>(strg->phys_params, siqad::to_siqad_coord(bb.get_min()));
+        std::pair<double, double> max = sidb_nm_position<Lyt>(strg->phys_params, siqad::to_siqad_coord(bb.get_max()));
+
+        if (bb.get_x_size() != bb.get_y_size())
+        {
+            const double padding = (max.first - min.first - max.second + min.second) / 2;
+            if (padding > 0)
+            {
+                min.second -= padding;
+                max.second += padding;
+            }
+            else
+            {
+                min.first += padding;
+                max.first -= padding;
+            }
+        }
+
+        strg->energy_forest = std::make_shared<energy_forest<Lyt>>(min, max, strg->sidb_order, strg->phys_params);
+
+        for (uint64_t i = 0; i < strg->sidb_order.size(); ++i)
+        {
+            strg->energy_forest->update(0, i, charge_state_to_sign(strg->cell_charge[i]));
         }
     }
 
