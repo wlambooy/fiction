@@ -12674,6 +12674,8 @@ static const char *__doc_fiction_sidb_simulation_parameters_mu_minus = R"doc(`mu
 
 static const char *__doc_fiction_sidb_simulation_parameters_mu_plus = R"doc(`mu_plus` (µ+) is the energy transition level (+/0) (unit: eV).)doc";
 
+static const char *__doc_fiction_sidb_simulation_parameters_ef_params = R"doc(`ef_params` are the parameters relevant to the energy forest extension to `charge_distribution_surface`.)doc";
+
 static const char *__doc_fiction_sidb_simulation_parameters_sidb_simulation_parameters =
 R"doc(Default constructor.
 
