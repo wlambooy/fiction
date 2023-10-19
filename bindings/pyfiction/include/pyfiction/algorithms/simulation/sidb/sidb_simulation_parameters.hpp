@@ -28,7 +28,7 @@ inline void sidb_simulation_parameters(pybind11::module& m)
         .def(py::init<>())
         .def_readwrite("global_theta", &fiction::energy_forest_parameters::global_theta)
         .def_readwrite("local_theta", &fiction::energy_forest_parameters::local_theta)
-        .def_readwrite("error", &fiction::energy_forest_parameters::error)
+        .def_readwrite("stability_error", &fiction::energy_forest_parameters::stability_error)
         .def_readwrite("energy_error", &fiction::energy_forest_parameters::energy_error);
 
     py::class_<fiction::sidb_simulation_parameters>(m, "sidb_simulation_parameters",
