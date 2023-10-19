@@ -849,7 +849,7 @@ class energy_forest_worker
             }
         }
 
-        for (const std::shared_ptr<local_pot_expr> lpe : unique_local_potential_expressions)
+        for (const std::shared_ptr<local_pot_expr>& lpe : unique_local_potential_expressions)
         {
             if (!lpe->check_stability(ef->mu_bounds_with_error))
             {

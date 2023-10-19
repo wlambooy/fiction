@@ -236,7 +236,7 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
          */
         bool dependent_cell_in_sub_layout{};
 
-        std::shared_ptr<energy_forest_worker<Lyt>> energy_forest_worker{};
+        std::shared_ptr<class energy_forest_worker<Lyt>> energy_forest_worker{};
 
         uint64_t exact_validity_checks{};
     };
