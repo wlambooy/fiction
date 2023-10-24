@@ -131,10 +131,16 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
          * Standard constructor for the charge_distribution_storage.
          *
          * @param params Physical parameters used for the simulation (µ_minus, base number, ...).
+         * @param external_potential Externally applied local electrostatic potential.
+         * @param variable_cell SiDB which charge state is variable (called dependent-cell).
          */
-        explicit charge_distribution_storage(const sidb_simulation_parameters& params = sidb_simulation_parameters{}) :
-                phys_params{params}
-        {}
+        explicit charge_distribution_storage(
+            const sidb_simulation_parameters&                     params             = sidb_simulation_parameters{},
+            const std::unordered_map<typename Lyt::cell, double>& external_potential = {},
+            const typename Lyt::cell&                             variable_cell      = {}) :
+                phys_params{params},
+                local_external_pot{external_potential},
+                dependent_cell{variable_cell} {};
         /**
          * Stores all physical parameters used for the simulation.
          */
@@ -233,7 +239,7 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
          */
         bool dependent_cell_in_sub_layout{};
 
-        std::shared_ptr<energy_forest_worker<Lyt>> energy_forest_worker{};
+        std::shared_ptr<class energy_forest_worker<Lyt>> energy_forest_worker{};
 
         uint64_t exact_validity_checks{};
     };
@@ -267,11 +273,12 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
      * @param variable_cells SiDB which charge state is variable (called dependent-cell).
      * @param external_potential Externally applied local electrostatic potential.
      */
-    explicit charge_distribution_surface(const Lyt&                        lyt,
-                                         const sidb_simulation_parameters& params = sidb_simulation_parameters{},
-                                         const sidb_charge_state           cs     = sidb_charge_state::NEGATIVE) :
+    explicit charge_distribution_surface(
+        const Lyt& lyt, const sidb_simulation_parameters& params = sidb_simulation_parameters{},
+        const sidb_charge_state cs = sidb_charge_state::NEGATIVE, const typename Lyt::cell& variable_cells = {},
+        const std::unordered_map<typename Lyt::cell, double>& external_potential = {}) :
             Lyt(lyt),
-            strg{std::make_shared<charge_distribution_storage>(params)}
+            strg{std::make_shared<charge_distribution_storage>(params, external_potential, variable_cells)}
     {
         static_assert(has_siqad_coord_v<Lyt>, "Lyt is not based on SiQAD coordinates");
         static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout");
@@ -284,7 +291,6 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
      *
      * @param lyt charge_distribution_surface
      */
-//    template <bool friend_use_energy_forest>
     explicit charge_distribution_surface(const charge_distribution_surface<Lyt, use_energy_forest>& lyt,
                                          const std::optional<energy_forest_action> ef_action = std::nullopt) :
             Lyt(lyt),
@@ -1883,17 +1889,15 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
      */
     void initialize(const sidb_charge_state cs = sidb_charge_state::NEGATIVE) noexcept
     {
-        strg->sidb_order  = {};
-        strg->cell_charge = {};
         strg->sidb_order.reserve(this->num_cells());
         strg->cell_charge.reserve(this->num_cells());
         this->foreach_cell([this](const auto& c1) { strg->sidb_order.push_back(c1); });
         std::sort(strg->sidb_order.begin(), strg->sidb_order.end());
         this->foreach_cell([this, &cs](const auto&) { strg->cell_charge.push_back(cs); });
 
-        //        assert((((this->num_cells() < 41) && (strg->phys_params.base == 3)) ||
-        //                ((strg->phys_params.base == 2) && (this->num_cells() < 64))) &&
-        //               "number of SiDBs is too large");
+//        assert((((this->num_cells() < 41) && (strg->phys_params.base == 3)) ||
+//                ((strg->phys_params.base == 2) && (this->num_cells() < 64))) &&
+//               "number of SiDBs is too large");
 
         this->charge_distribution_to_index();
         this->initialize_nm_distance_matrix();

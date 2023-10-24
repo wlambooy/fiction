@@ -35,8 +35,8 @@ namespace offset
 /**
  * Unsigned offset coordinates.
  *
- * The implementation is optimized for memory-efficiency and fits within 64 bits. Coordinates span from \f$ (0, 0, 0)
- * \f$ to \f$ (2^{31} - 1, 2^{31} - 1, 1) \f$. Each coordinate has a dead indicator `d` that can be used to represent
+ * The implementation is optimized for memory-efficiency and fits within 64 bits. Coordinates span from \f$(0, 0, 0)\f$
+ * to \f$(2^{31} - 1, 2^{31} - 1, 1)\f$. Each coordinate has a dead indicator `d` that can be used to represent
  * that it is not in use.
  */
 struct ucoord_t
@@ -550,7 +550,7 @@ namespace siqad
 /**
  * SiQAD coordinates.
  *
- * Coordinates span from \f$ (-2^{31}, -2^{31}, 0) \f$ to \f$ (2^{31} - 1 , 2^{31} - 1, 1) \f$. `x` is the SiDB's
+ * Coordinates span from \f$(-2^{31}, -2^{31}, 0)\f$ to \f$(2^{31} - 1 , 2^{31} - 1, 1)\f$. `x` is the SiDB's
  * x-coordinate, `y` is the dimer pair's row number, and `z` represents the two possible SiDB positions in one SiDB
  * dimer pair. Each coordinate has a dead indicator `d` that can be used to represent that it is not in use.
  */
