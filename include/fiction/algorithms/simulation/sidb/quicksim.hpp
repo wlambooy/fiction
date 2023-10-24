@@ -86,10 +86,10 @@ sidb_simulation_result<Lyt> quicksim(const Lyt& lyt, const quicksim_params& ps =
     {
         const mockturtle::stopwatch stop{time_counter};
 
-        charge_distribution_surface<Lyt> charge_lyt{lyt};
+        charge_distribution_surface<Lyt> charge_lyt{lyt, ps.phys_params};
 
         // set the given physical parameters
-        charge_lyt.assign_physical_parameters(ps.phys_params);
+//        charge_lyt.assign_physical_parameters(ps.phys_params);
         charge_lyt.assign_base_number(2);
         charge_lyt.assign_all_charge_states(sidb_charge_state::NEGATIVE);
         charge_lyt.update_after_charge_change(dependent_cell_mode::VARIABLE);
@@ -146,7 +146,7 @@ sidb_simulation_result<Lyt> quicksim(const Lyt& lyt, const quicksim_params& ps =
             threads.emplace_back(
                 [&]
                 {
-                    charge_distribution_surface<Lyt> charge_lyt_copy{charge_lyt};
+                    charge_distribution_surface<Lyt> charge_lyt_copy{charge_lyt, energy_forest_action::ADD_WORKER};
 
                     for (uint64_t l = 0ul; l < iter_per_thread; ++l)
                     {

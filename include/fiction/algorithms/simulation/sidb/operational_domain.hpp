@@ -73,7 +73,9 @@ struct operational_domain
         /**
          * The energy transition level.
          */
-        MU_MINUS
+        MU_MINUS,
+        LOCAL_THETA,
+        STABILITY_ERROR
     };
     /**
      * X dimension sweep parameter.
@@ -659,6 +661,16 @@ class operational_domain_impl
             case operational_domain::sweep_parameter::MU_MINUS:
             {
                 sim_parameters.mu_minus = val;
+                break;
+            }
+            case operational_domain::sweep_parameter::LOCAL_THETA:
+            {
+                sim_parameters.ef_params.local_theta = val;
+                break;
+            }
+            case operational_domain::sweep_parameter::STABILITY_ERROR:
+            {
+                sim_parameters.ef_params.stability_error = val;
                 break;
             }
             default:
