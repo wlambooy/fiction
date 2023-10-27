@@ -71,8 +71,6 @@ int main(int argc, char* argv[])
     qs_interface.run_simulation();
     stopwatch.end();
 
-    typedef unsigned __int128 uint128_t;
-
     log.echo() << "\n*** Write simulation results ***\n" << std::endl;
     for (const auto& [i, e] : qs_interface.write_simulation_results())
     {
