@@ -31,6 +31,8 @@
 class siqad_plugin_interface
 {
   public:
+    typedef unsigned __int128 uint128_t;
+
     //! Constructor for QuickSimInterface
     siqad_plugin_interface(const std::string_view& t_in_path, const std::string_view& t_out_path,
                            const bool verbose = true, const int log_l = logger::MSG,
@@ -66,7 +68,7 @@ class siqad_plugin_interface
     }
 
     // simulation results are written to xml
-    void write_simulation_results()
+    std::set<std::pair<uint128_t, double>> write_simulation_results()
     {
         // create the vector of strings for the db locations
         const auto data = simulation_results.charge_distributions.front().get_all_sidb_locations_in_nm();
@@ -84,14 +86,14 @@ class siqad_plugin_interface
         std::vector<std::vector<std::string>> db_dist_data{};
         db_dist_data.reserve(simulation_results.charge_distributions.size());
 
-        std::set<uint64_t> unique_index{};
+        std::set<std::pair<uint128_t, double>> unique_index{};
         for (const auto& lyt : simulation_results.charge_distributions)
         {
             lyt.charge_distribution_to_index_general();
-            unique_index.insert(lyt.get_charge_index_and_base().first);
+            unique_index.insert({lyt.get_charge_index_and_base().first, lyt.get_system_energy()});
         }
 
-        for (const auto& index : unique_index)
+        for (const auto& [index, _] : unique_index)
         {
             for (const auto& lyt : simulation_results.charge_distributions)
             {
@@ -113,6 +115,8 @@ class siqad_plugin_interface
         sqconn->setExport("db_charge", db_dist_data);
 
         sqconn->writeResultsXml();
+
+        return unique_index;
     }
     // get the physical parameters used for the simulation
     [[nodiscard]] fiction::sidb_simulation_parameters& get_physical_params() noexcept

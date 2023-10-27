@@ -18,15 +18,15 @@ struct energy_forest_parameters
     /*
      * Global theta. It controls the distance threshold before making approximations.
      */
-    double global_theta{0.7};//{2.474};//{7.0e-1};
+    double global_theta{8};//{2.474};//{7.0e-1};
     /*
      * Local theta. It controls the distance threshold before making approximations using local potential of clusters.
      */
-    double local_theta{0.7};//{0.726};//{7.0e-1};
+    double local_theta{8};//{0.726};//{7.0e-1};
     /*
      * Population stability test error.
      */
-    double stability_error{1e-4};//{0.0415};//{7.0e-2};
+    double stability_error{0.141};//{0.0415};//{7.0e-2};
     /*
      * Ground state energy comparison error.
      */

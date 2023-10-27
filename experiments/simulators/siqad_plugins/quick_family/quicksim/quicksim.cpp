@@ -2,8 +2,8 @@
 // Created by Jan Drewniok on 31.01.23.
 //
 
-#include "../siqad_plugin_interface.hpp"
 #include "../../timer.hpp"
+#include "../siqad_plugin_interface.hpp"
 
 #include <fmt/format.h>
 
@@ -71,8 +71,13 @@ int main(int argc, char* argv[])
     qs_interface.run_simulation();
     stopwatch.end();
 
-    log.echo() << "\n*** Write simulation results ***" << std::endl;
-    qs_interface.write_simulation_results();
+    log.echo() << "\n*** Write simulation results ***\n" << std::endl;
+    for (const auto& [i, e] : qs_interface.write_simulation_results())
+    {
+        log.echo() << "\nindex (high): " << static_cast<uint64_t>(i >> 64) << "\nindex (low):  "
+                   << static_cast<uint64_t>(i)
+                   << "\nenergy: " << e << std::endl;
+    }
 
     log.echo() << "\n*** QuickSim Complete ***" << std::endl;
 

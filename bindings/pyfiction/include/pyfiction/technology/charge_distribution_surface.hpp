@@ -216,6 +216,7 @@ inline void charge_distribution_surface(pybind11::module& m)
 
         .def("get_max_charge_index", &py_charge_distribution_surface::get_max_charge_index)
         .def("assign_charge_index", &py_charge_distribution_surface::assign_charge_index, "charge_index"_a)
+        .def("assign_two_part_charge_index", &py_charge_distribution_surface::assign_two_part_charge_index, "high"_a, "lo"_a)
         .def("adjacent_search", &py_charge_distribution_surface::adjacent_search, "alpha"_a, "negative_indices"_a)
         .def("assign_global_external_potential", &py_charge_distribution_surface::assign_global_external_potential,
              "potential_value"_a, "dependent_cell"_a = fiction::dependent_cell_mode::FIXED)

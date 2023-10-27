@@ -71,8 +71,16 @@ int main(int argc, char* argv[])
     qs_interface.run_simulation();
     stopwatch.end();
 
-    log.echo() << "\n*** Write simulation results ***" << std::endl;
-    qs_interface.write_simulation_results();
+    typedef unsigned __int128 uint128_t;
+
+    log.echo() << "\n*** Write simulation results ***\n" << std::endl;
+    for (const auto& [i, e] : qs_interface.write_simulation_results())
+    {
+        log.echo() << "\nindex (high): " << static_cast<uint64_t>(i >> 64) << "\nindex (low):  "
+                   << static_cast<uint64_t>(i)
+                   << "\nenergy: " << e << std::endl;
+    }
+
 
     log.echo() << "\n*** QuickSim-EF Complete ***" << std::endl;
 
