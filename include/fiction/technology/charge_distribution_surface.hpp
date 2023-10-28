@@ -88,7 +88,7 @@ enum class charge_distribution_history
  * @tparam has_sidb_charge_distribution Automatically determines whether a charge distribution interface is already
  * present.
  */
-template <typename Lyt, bool use_energy_forest = true,
+template <typename Lyt, bool use_energy_forest = false,
           bool has_charge_distribution_interface =
               std::conjunction_v<has_assign_charge_state<Lyt>, has_get_charge_state<Lyt>>>
 class charge_distribution_surface : public Lyt
@@ -485,14 +485,14 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
     {
         for (uint64_t i = 0u; i < strg->cell_charge.size(); ++i)
         {
-            if constexpr (use_energy_forest)
-            {
-                strg->energy_forest_worker->update(i, charge_state_to_sign(cs) -
-                                                          charge_state_to_sign(strg->cell_charge[i]));
-            }
-
             strg->cell_charge[i] = cs;
         }
+
+        if constexpr (use_energy_forest)
+        {
+            strg->energy_forest_worker->reset_energy_forest(strg->cell_charge);
+        }
+
         this->charge_distribution_to_index();
     }
     /**
@@ -1024,8 +1024,6 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
      */
     void validity_check() const noexcept
     {
-        strg->validity = true;
-
         if constexpr (use_energy_forest)
         {
             if (!strg->energy_forest_worker->check_population_stability())
@@ -1056,58 +1054,48 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
 
             strg->validity = false; // if at least one SiDB does not fulfill the population stability, the validity of
                                     // the given charge distribution is set to "false".
+            return;
         }
 
-        if (strg->validity)  // if population stability is fulfilled for all SiDBs, the "configuration stability" is checked.
+        // if population stability is fulfilled for all SiDBs, the "configuration stability" is checked.
+        const auto hop_del =
+            [this](const uint64_t c1, const uint64_t c2)  // energy change when charge hops between two SiDBs.
         {
-            const auto hop_del =
-                [this](const uint64_t c1, const uint64_t c2)  // energy change when charge hops between two SiDBs.
+            const int dn_i = (strg->cell_charge[c1] == sidb_charge_state::NEGATIVE) ? 1 : -1;
+            const int dn_j = -dn_i;
+
+            return strg->local_pot[c1] * dn_i + strg->local_pot[c2] * dn_j - strg->pot_mat[c1][c2] * 1;
+        };
+
+        for (uint64_t i = 0u; i < strg->local_pot.size(); ++i)
+        {
+            if (strg->cell_charge[i] == sidb_charge_state::POSITIVE)  // we do nothing with SiDB+
             {
-                const int dn_i = (strg->cell_charge[c1] == sidb_charge_state::NEGATIVE) ? 1 : -1;
-                const int dn_j = -dn_i;
+                continue;
+            }
 
-                return strg->local_pot[c1] * dn_i + strg->local_pot[c2] * dn_j - strg->pot_mat[c1][c2] * 1;
-            };
-
-            // If there is no jump that leads to a decrease in the potential energy of the system, the given charge
-            // distribution satisfies metastability.
-            for (uint64_t i = 0u; i < strg->local_pot.size(); ++i)
+            for (uint64_t j = 0u; j < strg->local_pot.size(); j++)
             {
-                if (strg->cell_charge[i] == sidb_charge_state::POSITIVE)  // we do nothing with SiDB+
+                if (const auto e_del = hop_del(i, j);
+                    (charge_state_to_sign(strg->cell_charge[j]) > charge_state_to_sign(strg->cell_charge[i])) &&
+                    (e_del < -physical_constants::POP_STABILITY_ERR))  // Checks if energetically favored
+                                                                       // hops exist between two SiDBs.
                 {
-                    continue;
-                }
-
-                for (uint64_t j = 0u; j < strg->local_pot.size(); j++)
-                {
-                    if (const auto e_del = hop_del(i, j);
-                        (charge_state_to_sign(strg->cell_charge[j]) > charge_state_to_sign(strg->cell_charge[i])) &&
-                        (e_del < -physical_constants::POP_STABILITY_ERR))  // Checks if energetically favored
-                                                                           // hops exist between two SiDBs.
-                    {
-                        strg->validity = false;
-                        break;
-                    }
-                }
-
-                if (!strg->validity)
-                {
-                    break;
+                    strg->validity = false;
+                    return;
                 }
             }
         }
+
+        // If there is no jump that leads to a decrease in the potential energy of the system, the given charge
+        // distribution satisfies metastability.
+        strg->validity = true;
 
         if constexpr (use_energy_forest)
         {
-
-            if (!strg->validity)
-            {
-                return;
-            }
-
             this->recompute_system_energy();
 
-            strg->energy_forest_worker->ef->challenge_ground_state_energy(strg->system_energy);
+//            strg->energy_forest_worker->ef->challenge_ground_state_energy(strg->system_energy);
         }
     }
     /**
@@ -1136,8 +1124,8 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
         for (uint8_t i = 0; i < this->num_cells(); ++i)
         {
             chargeindex +=
-                static_cast<uint128_t>(charge_state_to_sign(strg->cell_charge[i]) + int8_t{1}) *
-                uint128_t{1} << (this->num_cells() - 1u - i);
+                static_cast<uint128_t>(charge_state_to_sign(strg->cell_charge[i]) + 1) *
+                uint128_t{1} << (this->num_cells() - 1 - i);
         }
 
         strg->charge_index_and_base = {chargeindex, base};
@@ -1225,8 +1213,8 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
             {
                 for (uint8_t i = 0; i < this->num_cells(); ++i)
                 {
-                    chargeindex += static_cast<uint128_t>(charge_state_to_sign(strg->cell_charge[i]) + int8_t{1}) *
-                        uint128_t{1} << (this->num_cells() - 1u - i);
+                    chargeindex += static_cast<uint128_t>(charge_state_to_sign(strg->cell_charge[i]) + 1) *
+                        uint128_t{1} << (this->num_cells() - 1 - i);
                 }
             }
         }
@@ -1976,14 +1964,16 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
             }
         }
     }
-
+    /**
+     * Initializes the energy forest.
+     */
     void initialize_energy_forest() const noexcept
     {
+        std::cout << "Initializing energy forest ..." << std::endl;
         strg->energy_forest_worker =
             std::make_shared<energy_forest_worker<Lyt>>(*this, strg->sidb_order, strg->cell_charge, strg->phys_params);
         strg->energy_forest_worker->ef->set_primary_worker(strg->energy_forest_worker);
     }
-
     /**
      *  The stored unique index is converted to a charge distribution.
      *
@@ -2064,94 +2054,80 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
      */
     void index_to_charge_distribution() const noexcept
     {
-        auto       charge_quot          = strg->charge_index_and_base.first;
-        const auto base                 = strg->charge_index_and_base.second;
-        auto       counter              = this->num_cells() - 1;
-        const auto dependent_cell_index = cell_to_index(strg->dependent_cell);
-
         // A charge index of zero corresponds to a layout with all SiDBs set to negative.
-        if (charge_quot == 0)
+        if (strg->charge_index_and_base.first == 0)
         {
             this->assign_all_charge_states(sidb_charge_state::NEGATIVE);
             return;
         }
 
+        const auto dependent_cell_index = static_cast<int8_t>(cell_to_index(strg->dependent_cell));
+        const bool has_dependent_cell = dependent_cell_index >= 0;
+
+        const auto base = static_cast<uint128_t>(strg->charge_index_and_base.second);
+        uint128_t charge_quot = strg->charge_index_and_base.first;
+
+        auto counter = static_cast<int8_t>(this->num_cells() - 1);
+
         while (charge_quot > 0)
         {
-            const auto    charge_quot_int = static_cast<int128_t>(charge_quot);
-            const auto    base_int        = static_cast<int128_t>(base);
-            const int128_t quotient_int    = charge_quot_int / base_int;
-            const int128_t remainder_int   = charge_quot_int % base_int;
-            charge_quot                   = static_cast<uint128_t>(quotient_int);
+            const auto charge_state = sign_to_charge_state(static_cast<int8_t>(charge_quot % base) - 1);
+
             // Dependent-SiDB is skipped since its charge state is not changed based on the charge index.
 
-            if (dependent_cell_index >= 0)
+            // If the counter is at the dependent-cell location, it is reduced by one to get to the next
+            // cell position.
+            if (has_dependent_cell && counter == dependent_cell_index)
             {
-                if (counter != static_cast<uint8_t>(dependent_cell_index))
-                {
-                    const auto sign = sign_to_charge_state(static_cast<int8_t>(remainder_int - 1));
-                    this->assign_charge_state_by_cell_index(counter, sign, false);
-                    counter -= 1;
-                }
-                // If the counter is at the dependent-cell location, it is reduced by one to get to the next
-                // cell position.
-                else
-                {
-                    counter -= 1;
-                    const auto sign = sign_to_charge_state(static_cast<int8_t>(remainder_int - 1));
-                    // The charge state is only changed (i.e., the function assign_charge_state_by_cell_index is
-                    // called), if the nw charge state differs to the previous one. Only then will the cell be
-                    // added to the charge_distribution_history.
-                    this->assign_charge_state_by_cell_index(counter, sign, false);
-                    counter -= 1;
-                }
-            }
-            else
-            {
-                const auto sign = sign_to_charge_state(static_cast<int8_t>(remainder_int - 1));
-                this->assign_charge_state_by_cell_index(counter, sign, false);
+                // The charge state is only changed (i.e., the function assign_charge_state_by_cell_index is
+                // called), if the nw charge state differs to the previous one. Only then will the cell be
+                // added to the charge_distribution_history.
                 counter -= 1;
             }
+
+            this->assign_charge_state_by_cell_index(static_cast<uint64_t>(counter), charge_state, false);
+
+            charge_quot /= base;
+            counter -= 1;
         }
 
+        // If the counter is >= 0, then the first <counter> cells should be assigned a negative charge state.
         for (uint8_t i = 0; i <= counter; ++i)
         {
             this->assign_charge_state_by_cell_index(i, sidb_charge_state::NEGATIVE, false);
         }
     }
     /*
-* Copies a `charge_distribution_surface` object and adds a worker to the energy forest if the flag is set.
-  */
- //    template <bool friend_use_energy_forest>
+     * Copies a `charge_distribution_surface` object and adds a worker to the energy forest if the flag is set.
+     */
+    static std::shared_ptr<charge_distribution_storage> copy_strg(const charge_distribution_storage& other_strg,
+                                                                 const std::optional<energy_forest_action> action = std::nullopt) noexcept
+    {
+       std::shared_ptr<charge_distribution_storage> strg_copy =
+           std::make_shared<charge_distribution_storage>(other_strg);
 
-static std::shared_ptr<charge_distribution_storage> copy_strg(const charge_distribution_storage& other_strg,
-                                                             const std::optional<energy_forest_action> action = std::nullopt) noexcept
-{
-   std::shared_ptr<charge_distribution_storage> strg_copy =
-       std::make_shared<charge_distribution_storage>(other_strg);
-
-   if constexpr (use_energy_forest)
-   {
-       if (action.has_value())
+       if constexpr (use_energy_forest)
        {
-           if (action.value() == energy_forest_action::ADD_WORKER)
+           if (action.has_value())
            {
-               strg_copy->energy_forest_worker =
-                   strg_copy->energy_forest_worker->make_new_worker(strg_copy->cell_charge);
+               if (action.value() == energy_forest_action::ADD_WORKER)
+               {
+                   strg_copy->energy_forest_worker =
+                       strg_copy->energy_forest_worker->make_new_worker(strg_copy->cell_charge);
+               }
+               else  // RESET
+               {
+                   strg_copy->energy_forest_worker->reset_energy_forest(strg_copy->cell_charge);
+               }
            }
-           else  // RESET
+           else
            {
-               strg_copy->energy_forest_worker->reset_energy_forest(strg_copy->cell_charge);
+
            }
        }
-       else
-       {
 
-       }
-   }
-
-   return strg_copy;
-}
+       return strg_copy;
+    }
 };
 
 template <class T>

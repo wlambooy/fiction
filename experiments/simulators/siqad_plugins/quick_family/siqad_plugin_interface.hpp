@@ -63,6 +63,7 @@ class siqad_plugin_interface
                 invocations += 1;
                 simulation_results = fiction::quicksim<fiction::sidb_cell_clk_lyt_siqad>(layout, quicksim_params);
             }
+            std::cout << "Invocations: " << invocations << std::endl;
         }
 
         return EXIT_SUCCESS;

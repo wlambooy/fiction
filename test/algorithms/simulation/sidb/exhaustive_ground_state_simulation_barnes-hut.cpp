@@ -7,6 +7,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
 #include <fiction/algorithms/simulation/sidb/exhaustive_ground_state_simulation.hpp>
+#include <fiction/algorithms/simulation/sidb/quicksim.hpp>
 #include <fiction/layouts/cartesian_layout.hpp>
 #include <fiction/layouts/cell_level_layout.hpp>
 #include <fiction/layouts/clocked_layout.hpp>
@@ -15,10 +16,13 @@
 #include <fiction/utils/layout_utils.hpp>
 #include <fiction/algorithms/physical_design/apply_gate_library.hpp>
 #include <fiction/technology/sidb_bestagon_library.hpp>
+#include <fiction/io/read_sqd_layout.hpp>
 
 #include <cstdint>
 #include <algorithm>
 #include <utility>
+#include <iostream>
+
 
 using namespace fiction;
 
@@ -296,7 +300,7 @@ TEMPLATE_TEST_CASE("ExGS simulation of a Y-shape SiDB OR gate with input 01", "[
 template <typename Lyt, bool b>
 std::optional<std::pair<double, uint64_t>> sort_by_energy(std::vector<charge_distribution_surface<Lyt, b>> cls)
 {
-    auto comp = [](charge_distribution_surface<Lyt, b>& cl1, charge_distribution_surface<Lyt, b>& cl2) { return cl1.get_system_energy() < cl2.get_system_energy(); };
+    const auto comp = [](charge_distribution_surface<Lyt, b>& cl1, charge_distribution_surface<Lyt, b>& cl2) { return cl1.get_system_energy() < cl2.get_system_energy(); };
 
     std::sort(cls.begin(), cls.end(), comp);
 
@@ -304,7 +308,7 @@ std::optional<std::pair<double, uint64_t>> sort_by_energy(std::vector<charge_dis
     for (const auto& cl : cls)
     {
         max = cl.get_num_validity_checks() > max ? cl.get_num_validity_checks() : max;
-        std::cout << "CHARGE INDEX: " << cl.get_charge_index_and_base().first << "\tENERGY: " << cl.get_system_energy() << std::endl;
+//        std::cout << "CHARGE INDEX: " << cl.get_charge_index_and_base().first << "\tENERGY: " << cl.get_system_energy() << std::endl;
     }
 
     std::cout << "\nEXACT VALIDITY CHECKS: " << max << "\n" << std::endl;
@@ -431,4 +435,46 @@ TEST_CASE("ExGS simulation of a Bestagon OR-gate (base 3)", "[ExGS]")
 
     CHECK_THAT(gs_info.value().first, Catch::Matchers::WithinAbs(0.6021180782, fiction::physical_constants::POP_STABILITY_ERR));
     CHECK(gs_info.value().second == 19371261);
+}
+
+
+TEST_CASE("testje", "[ExGS]")
+{
+    using sidb_layout = cell_level_layout<sidb_technology, clocked_layout<cartesian_layout<siqad::coord_t>>>;
+
+    std::ifstream infile{"../../cmake-build-release/test/4-in-NAND.sqd", std::ifstream::in};
+    REQUIRE(infile.is_open());
+
+    sidb_layout layout = read_sqd_layout<sidb_layout>(infile);
+
+    sidb_simulation_parameters params{2, -0.32};
+
+    charge_distribution_surface<sidb_cell_clk_lyt_siqad> cl{layout, params};
+
+//    auto res = quicksim(layout, quicksim_params{params, 10000});
+
+//    using hex_gate_lyt = hex_odd_row_gate_clk_lyt;
+//
+//    hex_gate_lyt layout{aspect_ratio<hex_gate_lyt>{2, 0}};
+//
+//    layout.create_pi("x1", {0, 0});
+//    layout.create_pi("x2", {2, 0});
+//
+//    sidb_simulation_parameters params{2, -0.32};
+//
+//    charge_distribution_surface<sidb_cell_clk_lyt_siqad, true> cl{
+//        convert_to_siqad_coordinates(apply_gate_library<sidb_cell_clk_lyt, sidb_bestagon_library>(layout)),
+//        params, sidb_charge_state::NEGATIVE};
+
+    cl.assign_charge_index(17753454441793673608ul);
+//    cl.assign_two_part_charge_index(15ul, 18410715276690587644ul);
+    cl.update_after_charge_change();
+    REQUIRE(cl.is_physically_valid());
+//    cl.charge_distribution_to_index_general();
+//    auto ix = cl.get_charge_index_and_base().first;
+//    REQUIRE(ix == 295111876382333861884);
+//    cl.assign_charge_index(ix);
+//    cl.update_after_charge_change();
+//    CHECK(cl.is_physically_valid());
+
 }

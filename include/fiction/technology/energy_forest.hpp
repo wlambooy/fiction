@@ -275,15 +275,21 @@ class energy_forest
                               center_of_mass.second - other.center_of_mass.second);
         }
 
-        [[nodiscard]] bool is_well_separated_from(const sidb_collection& other, const double theta) const noexcept
+        [[nodiscard]] bool maximum_is_well_separated_from(const sidb_collection& other, const double theta) const noexcept
         {
-            return width / dist_to(other) < theta;
+            return std::max(width, other.width) / dist_to(other) < theta;
         }
 
         [[nodiscard]] bool minimum_is_well_separated_from(const sidb_collection& other,
                                                           const double           theta) const noexcept
         {
             return std::min(width, other.width) / dist_to(other) < theta;
+        }
+
+        [[nodiscard]] bool is_well_separated_from(const sidb_collection& other,
+                                                  const double           theta) const noexcept
+        {
+            return width / dist_to(other) < theta;
         }
 
         [[nodiscard]] double compute_potential_with(const sidb_collection&            other,
@@ -414,15 +420,44 @@ class energy_forest
                 update_set{update_set_copy}
         {}
 
-        void set_inner_energy_term(const uint64_t ix) noexcept
+        void set_inner_energy_term(const uint64_t ix, const sidb_simulation_parameters& ps,
+                                   const std::vector<cell<Lyt>>& sidb_order) noexcept
         {
-            inner_et  = ets[ix];
+            inner_et  = ets[ix]; //added
             num_sidbs = ets[ix]->c1->sidbs.size() + ets[ix]->c2->sidbs.size();
+
+//            std::vector<std::pair<uint64_t, std::pair<double, double>>> sidb_locs{};
+//
+//            for (const uint64_t i : sidb_collection::get_sidbs_union(ets[ix]->c1->sidbs, ets[ix]->c2->sidbs))
+//            {
+//                sidb_locs.push_back({i, sidb_nm_position<Lyt>(ps, sidb_order[i])});
+//            }
+//
+//            double cum_pot = 0;
+//
+//            for (const auto& [db1, pos1] : sidb_locs)
+//            {
+//                for (const auto& [db2, pos2] : sidb_locs)
+//                {
+//                    if (db1 >= db2)
+//                    {
+//                        continue;
+//                    }
+//
+//                    const double r = std::hypot(pos1.first - pos2.first, pos1.second - pos2.second);
+//                    cum_pot +=
+//                        ps.k() / (r * 1E-9) * std::exp(-r / ps.lambda_tf) * physical_constants::ELEMENTARY_CHARGE;
+//                }
+//            }
+//
+//            inner_et = std::make_shared<energy_term>(ets[ix]->c1, ets[ix]->c2,
+//                                                     2 * cum_pot / static_cast<double>(num_sidbs * (num_sidbs - 1)));
 
             ets.erase(std::next(ets.begin(), static_cast<int64_t>(ix)));
         }
 
-        std::set<uint64_t> compute_greatest_lower_bound(const sidb_simulation_parameters& ps) noexcept
+        std::set<uint64_t> compute_greatest_lower_bound(const sidb_simulation_parameters& ps,
+                                                        const std::vector<cell<Lyt>>&     sidb_order) noexcept
         {
             uint64_t minimum_size = std::numeric_limits<uint64_t>::max();
 
@@ -432,9 +467,9 @@ class energy_forest
                 {
                     minimum_size = et->c1->sidbs.size();
                 }
-            }
+            }  // design flaw: minimum_size is always 1.
 
-            // if precisely one partner is found, set this pair as inner ET and return their union
+            // if precisely one partner is found, set this pair as the inner energy term and return their union
             std::optional<std::pair<bool, uint64_t>> partner_ix{};
 
             for (uint64_t i = 0; i < ets.size(); ++i)
@@ -453,7 +488,7 @@ class energy_forest
 
             if (!partner_ix.value().first)
             {
-                set_inner_energy_term(partner_ix.value().second);
+                set_inner_energy_term(partner_ix.value().second, ps, sidb_order);
             }
 
             for (auto& loc_et : ets)
@@ -772,7 +807,6 @@ class energy_forest
         qt->make_hemiquadrants();
 
         return std::make_shared<sidb_collection>(qt);
-        ;
     }
 };
 
@@ -848,7 +882,7 @@ class energy_forest_worker
 
             ef->global_energy_tree.construct_lpe(i, lpe, ef->phys_params);
 
-            for (const uint64_t j : lpe->compute_greatest_lower_bound(ef->phys_params))
+            for (const uint64_t j : lpe->compute_greatest_lower_bound(ef->phys_params, sidb_order))
             {
                 if (j == i)
                 {
@@ -871,7 +905,7 @@ class energy_forest_worker
 
         apply_greatest_lower_bounds(reference_store);
 
-        initialize_update_set(reference_store);
+        initialize_update_sets(reference_store);
 
         initialize_charges(cell_charge);
     }
@@ -890,14 +924,14 @@ class energy_forest_worker
 
     bool check_population_stability() const noexcept
     {
-//        {
-//            const std::lock_guard lock{ef->mutex};
-//
-//            if (*system_energy - ef->ground_state_energy > 0)
-//            {
-//                return false;
-//            }
-//        }
+        //        {
+        //            const std::lock_guard lock{ef->mutex};
+        //
+        //            if (*system_energy - ef->ground_state_energy > 0)
+        //            {
+        //                return false;
+        //            }
+        //        }
 
         for (const auto& lpe : unique_local_potential_expressions)
         {
@@ -1017,7 +1051,7 @@ class energy_forest_worker
         }
     }
 
-    void initialize_update_set(const std::map<uint64_t, std::shared_ptr<local_pot_expr>>& ref_store)
+    void initialize_update_sets(const std::map<uint64_t, std::shared_ptr<local_pot_expr>>& ref_store)
     {
         for (const auto& lpe : unique_local_potential_expressions)
         {
