@@ -88,7 +88,7 @@ enum class charge_distribution_history
  * @tparam has_sidb_charge_distribution Automatically determines whether a charge distribution interface is already
  * present.
  */
-template <typename Lyt, bool use_energy_forest = false,
+template <typename Lyt, bool use_energy_forest = true,
           bool has_charge_distribution_interface =
               std::conjunction_v<has_assign_charge_state<Lyt>, has_get_charge_state<Lyt>>>
 class charge_distribution_surface : public Lyt
@@ -108,9 +108,11 @@ template <typename Lyt, bool use_energy_forest>
 class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
 {
   public:
-    typedef unsigned __int128 uint128_t;
-    typedef __int128 int128_t;
-    using charge_index_base = typename std::pair<uint128_t, uint8_t>;
+//    typedef unsigned __int128 ubase_t;
+//    typedef __int128 base_t;
+    typedef uint64_t ubase_t;
+    typedef int64_t base_t;
+    using charge_index_base = typename std::pair<ubase_t, uint8_t>;
 
     struct charge_distribution_storage
     {
@@ -198,17 +200,17 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
          * Charge index of the sublayout (collection of SiDBs that could be positively charged for a specific charge
          * configuration of the layout).
          */
-        uint128_t charge_index_sublayout{};
+        ubase_t charge_index_sublayout{};
         /**
          * Depending on the number of SiDBs and the base number, a maximal number of possible charge distributions
          * exists.
          */
-        uint128_t max_charge_index{};
+        ubase_t max_charge_index{};
         /**
          * Depending on the number of SiDBs in the SiDBs, a maximal number of possible charge distributions
          * exists.
          */
-        uint128_t max_charge_index_sulayout{};
+        ubase_t max_charge_index_sulayout{};
         /**
          * This pair stores the cell index and its previously charge state (important when all possible charge
          * distributions are enumerated and checked for physical validity).
@@ -354,7 +356,7 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
         if (old_params.base != params.base)
         {
             strg->charge_index_and_base.second = strg->phys_params.base;
-            strg->max_charge_index = static_cast<uint128_t>(std::pow(strg->phys_params.base, this->num_cells())) - 1;
+            strg->max_charge_index = static_cast<ubase_t>(std::pow(strg->phys_params.base, this->num_cells())) - 1;
         }
 
         bool lattice_changed =
@@ -523,11 +525,11 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
         if (!strg->dependent_cell.is_dead())
         {
             strg->max_charge_index =
-                static_cast<uint128_t>(std::pow(static_cast<double>(base), this->num_cells() - 1) - 1);
+                static_cast<ubase_t>(std::pow(static_cast<double>(base), this->num_cells() - 1) - 1);
         }
         else
         {
-            strg->max_charge_index = static_cast<uint128_t>(std::pow(static_cast<double>(base), this->num_cells()) - 1);
+            strg->max_charge_index = static_cast<ubase_t>(std::pow(static_cast<double>(base), this->num_cells()) - 1);
         }
     }
     /**
@@ -1119,13 +1121,13 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
     {
         const uint8_t base = strg->phys_params.base;
 
-        uint128_t chargeindex = 0;
+        ubase_t chargeindex = 0;
 
         for (uint8_t i = 0; i < this->num_cells(); ++i)
         {
             chargeindex +=
-                static_cast<uint128_t>(charge_state_to_sign(strg->cell_charge[i]) + 1) *
-                uint128_t{1} << (this->num_cells() - 1 - i);
+                static_cast<ubase_t>(charge_state_to_sign(strg->cell_charge[i]) + 1) *
+                ubase_t{1} << (this->num_cells() - 1 - i);
         }
 
         strg->charge_index_and_base = {chargeindex, base};
@@ -1138,10 +1140,10 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
     {
         const uint8_t base = strg->phys_params.base;
 
-        uint128_t chargeindex = 0;
+        ubase_t chargeindex = 0;
         uint8_t counter     = 0;
 
-        uint128_t chargeindex_sub_layout = 0;
+        ubase_t chargeindex_sub_layout = 0;
         uint8_t counter_sub_layout     = 0;
 
         if (!strg->dependent_cell.is_dead())
@@ -1151,10 +1153,10 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
                 for (const auto& cell : strg->three_state_cells)
                 {
                     chargeindex_sub_layout +=
-                        static_cast<uint128_t>(
+                        static_cast<ubase_t>(
                             charge_state_to_sign(strg->cell_charge[static_cast<uint64_t>(cell_to_index(cell))]) +
                             int8_t{1}) *
-                        static_cast<uint128_t>(std::pow(3, strg->three_state_cells.size() - counter_sub_layout - 1));
+                        static_cast<ubase_t>(std::pow(3, strg->three_state_cells.size() - counter_sub_layout - 1));
                     counter_sub_layout += 1;
                 }
                 for (const auto& cell : strg->sidb_order_without_three_state_cells)
@@ -1162,10 +1164,10 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
                     if (cell != strg->dependent_cell)
                     {
                         chargeindex +=
-                            static_cast<uint128_t>(
+                            static_cast<ubase_t>(
                                 (charge_state_to_sign(strg->cell_charge[static_cast<uint64_t>(cell_to_index(cell))]) +
                                  int8_t{1})) *
-                            static_cast<uint128_t>(std::pow(2, this->num_cells() - 1 - counter - 1));
+                            static_cast<ubase_t>(std::pow(2, this->num_cells() - 1 - counter - 1));
                         counter += 1;
                     }
                 }
@@ -1177,7 +1179,7 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
                 {
                     if (c != static_cast<uint64_t>(cell_to_index(strg->dependent_cell)))
                     {
-                        chargeindex += static_cast<uint128_t>((charge_state_to_sign(strg->cell_charge[c]) + 1) *
+                        chargeindex += static_cast<ubase_t>((charge_state_to_sign(strg->cell_charge[c]) + 1) *
                                                              std::pow(base, this->num_cells() - 1 - counter - 1));
                         counter += 1;
                     }
@@ -1194,7 +1196,7 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
                 for (const auto& cell : strg->three_state_cells)
                 {
 
-                    chargeindex_sub_layout += static_cast<uint128_t>(
+                    chargeindex_sub_layout += static_cast<ubase_t>(
                         (charge_state_to_sign(strg->cell_charge[static_cast<uint64_t>(cell_to_index(cell))]) + 1) *
                         std::pow(3, strg->three_state_cells.size() - 1 - counter_sub_layout));
                     counter_sub_layout += 1;
@@ -1202,7 +1204,7 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
                 // iterate through SiDBs that cannot be positively charged
                 for (const auto& cell : strg->sidb_order_without_three_state_cells)
                 {
-                    chargeindex += static_cast<uint128_t>(
+                    chargeindex += static_cast<ubase_t>(
                         (charge_state_to_sign(strg->cell_charge[static_cast<uint64_t>(cell_to_index(cell))]) + 1) *
                         std::pow(2, this->num_cells() - 1 - counter));
                     counter += 1;
@@ -1213,8 +1215,8 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
             {
                 for (uint8_t i = 0; i < this->num_cells(); ++i)
                 {
-                    chargeindex += static_cast<uint128_t>(charge_state_to_sign(strg->cell_charge[i]) + 1) *
-                        uint128_t{1} << (this->num_cells() - 1 - i);
+                    chargeindex += static_cast<ubase_t>(charge_state_to_sign(strg->cell_charge[i]) + 1) *
+                        ubase_t{1} << (this->num_cells() - 1 - i);
                 }
             }
         }
@@ -1271,7 +1273,7 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
      *
      * @returns The maximal possible charge distribution index.
      */
-    [[nodiscard]] uint128_t get_max_charge_index() const noexcept
+    [[nodiscard]] ubase_t get_max_charge_index() const noexcept
     {
         return strg->max_charge_index;
     }
@@ -1281,7 +1283,7 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
      *
      * @param charge_index charge index of the new charge distribution.
      */
-    void assign_charge_index(const uint128_t& charge_index) const noexcept
+    void assign_charge_index(const ubase_t& charge_index) const noexcept
     {
         assert((charge_index <= strg->max_charge_index) && "charge index is too large");
         strg->charge_index_and_base.first = charge_index;
@@ -1289,7 +1291,7 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
     }
     void assign_two_part_charge_index(const uint64_t high, const uint64_t low) const noexcept
     {
-        uint128_t charge_index = (static_cast<uint128_t>(high) << 64) | low;
+        ubase_t charge_index = (static_cast<ubase_t>(high) << 64) | low;
         assert((charge_index <= strg->max_charge_index) && "charge index is too large");
         strg->charge_index_and_base.first = charge_index;
         this->index_to_charge_distribution();
@@ -1690,7 +1692,7 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
      *
      * @returns The charge distribution index of the sublayout.
      */
-    [[nodiscard]] uint128_t get_charge_index_of_sub_layout() const noexcept
+    [[nodiscard]] ubase_t get_charge_index_of_sub_layout() const noexcept
     {
         return strg->charge_index_sublayout;
     }
@@ -1701,8 +1703,8 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
      * @param new_gray_code Gray code as uint64_t of the new charge distribution.
      * @param old_gray_code Gray code as uint64_t of the previous charge distribution layout.
      */
-    void charge_index_gray_code_to_charge_distribution(const uint128_t& new_gray_code,
-                                                       const uint128_t& old_gray_code) const noexcept
+    void charge_index_gray_code_to_charge_distribution(const ubase_t& new_gray_code,
+                                                       const ubase_t& old_gray_code) const noexcept
     {
         strg->cell_history_gray_code = {};
 
@@ -1791,7 +1793,7 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
      * otherwise.
      */
     void assign_charge_index_by_gray_code(
-        const uint128_t& current_gray_code, const uint128_t& previous_gray_code,
+        const ubase_t& current_gray_code, const ubase_t& previous_gray_code,
         const dependent_cell_mode         dependent_cell   = dependent_cell_mode::FIXED,
         const energy_calculation          energy_calc_mode = energy_calculation::UPDATE_ENERGY,
         const charge_distribution_history history_mode     = charge_distribution_history::NEGLECT) const noexcept
@@ -1825,7 +1827,7 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
      *
      * @returns The maximal possible charge distribution index of the sublayout.
      */
-    [[nodiscard]] uint128_t get_max_charge_index_sub_layout() const noexcept
+    [[nodiscard]] ubase_t get_max_charge_index_sub_layout() const noexcept
     {
         return strg->max_charge_index_sulayout;
     }
@@ -1836,7 +1838,7 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
      * @param gray_code charge index (as Gray code in decimal) of the new charge distribution.
      * @param gray_code_old charge index (as Gray code in decimal) of the old charge distribution.
      */
-    void assign_charge_index_by_two_gray_codes(const uint128_t& gray_code, const uint128_t& gray_code_old) const noexcept
+    void assign_charge_index_by_two_gray_codes(const ubase_t& gray_code, const ubase_t& gray_code_old) const noexcept
     {
         strg->charge_index_and_base.first = gray_code;
         this->charge_index_gray_code_to_charge_distribution(gray_code, gray_code_old);
@@ -1887,7 +1889,7 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
         this->initialize_nm_distance_matrix();
         this->initialize_potential_matrix();
         strg->max_charge_index =
-            static_cast<uint128_t>(std::pow(static_cast<double>(strg->phys_params.base), this->num_cells()) - 1);
+            static_cast<ubase_t>(std::pow(static_cast<double>(strg->phys_params.base), this->num_cells()) - 1);
         this->update_local_potential();
         this->recompute_system_energy();
 
@@ -1915,15 +1917,15 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
             {
 
                 strg->max_charge_index =
-                    static_cast<uint128_t>(std::pow(2, this->num_cells() - 1 - strg->three_state_cells.size()) - 1);
+                    static_cast<ubase_t>(std::pow(2, this->num_cells() - 1 - strg->three_state_cells.size()) - 1);
                 strg->max_charge_index_sulayout =
-                    static_cast<uint128_t>(std::pow(3, strg->three_state_cells.size()) - 1);
+                    static_cast<ubase_t>(std::pow(3, strg->three_state_cells.size()) - 1);
             }
         }
         else
         {
-            strg->max_charge_index          = static_cast<uint128_t>(std::pow(3, this->num_cells()) - 1);
-            strg->max_charge_index_sulayout = static_cast<uint128_t>(std::pow(3, strg->three_state_cells.size()) - 1);
+            strg->max_charge_index          = static_cast<ubase_t>(std::pow(3, this->num_cells()) - 1);
+            strg->max_charge_index_sulayout = static_cast<ubase_t>(std::pow(3, strg->three_state_cells.size()) - 1);
         }
         if (strg->max_charge_index == 0)
         {
@@ -2022,13 +2024,13 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
         // charged) is updated.
         while (charge_quot > 0)
         {
-            const auto    charge_quot_int = static_cast<int128_t>(charge_quot);
-            const auto    base_int        = static_cast<int128_t>(base);
-            const int128_t quotient_int    = charge_quot_int / base_int;
-            const int128_t remainder_int   = charge_quot_int % base_int;
-            charge_quot                   = static_cast<uint128_t>(quotient_int);
+            const auto    charge_quot_int = static_cast<base_t>(charge_quot);
+            const auto    base_int        = static_cast<base_t>(base);
+            const base_t quotient_int    = charge_quot_int / base_int;
+            const base_t remainder_int   = charge_quot_int % base_int;
+            charge_quot                   = static_cast<ubase_t>(quotient_int);
             // If the current position is not the dependent-cell position, the charge state is updated.
-            if (counter_negative == static_cast<uint128_t>(dependent_cell_index_two_state))
+            if (counter_negative == static_cast<ubase_t>(dependent_cell_index_two_state))
             {
                 counter_negative -= 1;
             }
@@ -2064,8 +2066,8 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
         const auto dependent_cell_index = static_cast<int8_t>(cell_to_index(strg->dependent_cell));
         const bool has_dependent_cell = dependent_cell_index >= 0;
 
-        const auto base = static_cast<uint128_t>(strg->charge_index_and_base.second);
-        uint128_t charge_quot = strg->charge_index_and_base.first;
+        const auto base = static_cast<ubase_t>(strg->charge_index_and_base.second);
+        ubase_t charge_quot = strg->charge_index_and_base.first;
 
         auto counter = static_cast<int8_t>(this->num_cells() - 1);
 

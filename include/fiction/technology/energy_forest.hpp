@@ -423,35 +423,35 @@ class energy_forest
         void set_inner_energy_term(const uint64_t ix, const sidb_simulation_parameters& ps,
                                    const std::vector<cell<Lyt>>& sidb_order) noexcept
         {
-            inner_et  = ets[ix]; //added
+//            inner_et  = ets[ix]; //added
             num_sidbs = ets[ix]->c1->sidbs.size() + ets[ix]->c2->sidbs.size();
 
-//            std::vector<std::pair<uint64_t, std::pair<double, double>>> sidb_locs{};
-//
-//            for (const uint64_t i : sidb_collection::get_sidbs_union(ets[ix]->c1->sidbs, ets[ix]->c2->sidbs))
-//            {
-//                sidb_locs.push_back({i, sidb_nm_position<Lyt>(ps, sidb_order[i])});
-//            }
-//
-//            double cum_pot = 0;
-//
-//            for (const auto& [db1, pos1] : sidb_locs)
-//            {
-//                for (const auto& [db2, pos2] : sidb_locs)
-//                {
-//                    if (db1 >= db2)
-//                    {
-//                        continue;
-//                    }
-//
-//                    const double r = std::hypot(pos1.first - pos2.first, pos1.second - pos2.second);
-//                    cum_pot +=
-//                        ps.k() / (r * 1E-9) * std::exp(-r / ps.lambda_tf) * physical_constants::ELEMENTARY_CHARGE;
-//                }
-//            }
-//
-//            inner_et = std::make_shared<energy_term>(ets[ix]->c1, ets[ix]->c2,
-//                                                     2 * cum_pot / static_cast<double>(num_sidbs * (num_sidbs - 1)));
+            std::vector<std::pair<uint64_t, std::pair<double, double>>> sidb_locs{};
+
+            for (const uint64_t i : sidb_collection::get_sidbs_union(ets[ix]->c1->sidbs, ets[ix]->c2->sidbs))
+            {
+                sidb_locs.push_back({i, sidb_nm_position<Lyt>(ps, sidb_order[i])});
+            }
+
+            double cum_pot = 0;
+
+            for (const auto& [db1, pos1] : sidb_locs)
+            {
+                for (const auto& [db2, pos2] : sidb_locs)
+                {
+                    if (db1 >= db2)
+                    {
+                        continue;
+                    }
+
+                    const double r = std::hypot(pos1.first - pos2.first, pos1.second - pos2.second);
+                    cum_pot +=
+                        ps.k() / (r * 1E-9) * std::exp(-r / ps.lambda_tf) * physical_constants::ELEMENTARY_CHARGE;
+                }
+            }
+
+            inner_et = std::make_shared<energy_term>(ets[ix]->c1, ets[ix]->c2,
+                                                     2 * cum_pot / static_cast<double>(num_sidbs * (num_sidbs - 1)));
 
             ets.erase(std::next(ets.begin(), static_cast<int64_t>(ix)));
         }

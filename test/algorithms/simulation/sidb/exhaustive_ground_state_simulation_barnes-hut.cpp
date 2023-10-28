@@ -375,6 +375,14 @@ TEST_CASE("ExGS simulation of two Bestagon wires", "[ExGS]")
 
     sidb_simulation_parameters params{2, -0.32};
 
+    charge_distribution_surface<sidb_cell_clk_lyt_siqad, true> cl2{
+        convert_to_siqad_coordinates(apply_gate_library<sidb_cell_clk_lyt, sidb_bestagon_library>(layout)),
+        params, sidb_charge_state::NEGATIVE};
+
+    cl2.assign_charge_index(53539020);
+    cl2.update_after_charge_change();
+    REQUIRE(cl2.is_physically_valid());
+
     charge_distribution_surface<sidb_cell_clk_lyt_siqad, true> cl{
         convert_to_siqad_coordinates(apply_gate_library<sidb_cell_clk_lyt, sidb_bestagon_library>(layout)),
         params, sidb_charge_state::NEGATIVE};

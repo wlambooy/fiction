@@ -22,11 +22,11 @@ struct energy_forest_parameters
     /*
      * Local theta. It controls the distance threshold before making approximations using local potential of clusters.
      */
-    double local_theta{1.3};//{0.726};//{7.0e-1};
+    double local_theta{8};//{0.726};//{7.0e-1};
     /*
      * Population stability test error.
      */
-    double stability_error{0.1};//{0.0415};//{7.0e-2};
+    double stability_error{0.107};//{0.0415};//{7.0e-2};
     /*
      * Ground state energy comparison error.
      */
