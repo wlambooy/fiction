@@ -5,16 +5,13 @@
 #ifndef FICTION_ENERGY_FOREST_HPP
 #define FICTION_ENERGY_FOREST_HPP
 
-#include "fiction/algorithms/path_finding/distance.hpp"
 #include "fiction/algorithms/simulation/sidb/sidb_simulation_parameters.hpp"
 #include "fiction/layouts/bounding_box.hpp"
 #include "fiction/layouts/cell_level_layout.hpp"
 #include "fiction/technology/cell_ports.hpp"
 #include "fiction/technology/sidb_charge_state.hpp"
 #include "fiction/technology/sidb_nm_position.hpp"
-#include "fiction/types.hpp"
-#include "fiction/utils/hash.hpp"
-#include "fiction/utils/layout_utils.hpp"
+#include "fiction/utils/math_utils.hpp"
 
 #include <algorithm>
 #include <array>
@@ -58,6 +55,13 @@ class energy_forest
             root_collection{std::move(make_root_collection(bbox_min, bbox_max, sidb_order, phys_params))},
             global_energy_tree{energy_for_collection(root_collection)}
     {}
+
+    inline bool is_ground_state_candidate(const double system_energy)
+    {
+        const std::lock_guard lock{mutex};
+
+        return system_energy < ground_state_energy;
+    }
 
     inline void challenge_ground_state_energy(const double candidate) noexcept
     {
@@ -275,7 +279,8 @@ class energy_forest
                               center_of_mass.second - other.center_of_mass.second);
         }
 
-        [[nodiscard]] bool maximum_is_well_separated_from(const sidb_collection& other, const double theta) const noexcept
+        [[nodiscard]] bool maximum_is_well_separated_from(const sidb_collection& other,
+                                                          const double           theta) const noexcept
         {
             return std::max(width, other.width) / dist_to(other) < theta;
         }
@@ -286,8 +291,7 @@ class energy_forest
             return std::min(width, other.width) / dist_to(other) < theta;
         }
 
-        [[nodiscard]] bool is_well_separated_from(const sidb_collection& other,
-                                                  const double           theta) const noexcept
+        [[nodiscard]] bool is_well_separated_from(const sidb_collection& other, const double theta) const noexcept
         {
             return width / dist_to(other) < theta;
         }
@@ -423,7 +427,6 @@ class energy_forest
         void set_inner_energy_term(const uint64_t ix, const sidb_simulation_parameters& ps,
                                    const std::vector<cell<Lyt>>& sidb_order) noexcept
         {
-//            inner_et  = ets[ix]; //added
             num_sidbs = ets[ix]->c1->sidbs.size() + ets[ix]->c2->sidbs.size();
 
             std::vector<std::pair<uint64_t, std::pair<double, double>>> sidb_locs{};
@@ -518,12 +521,15 @@ class energy_forest
 
         void update(const int8_t delta) noexcept
         {
-//            *system_energy += delta * outer_pot;  // delta * inner_pot?
+//            *system_energy += delta * outer_pot;
 
             // update internal energy
             if (inner_et.has_value())
             {
                 inner_pot += delta * inner_et.value()->chargeless_potential;
+
+//                *system_energy += inner_et.value()->chargeless_potential / 2 *
+//                                  static_cast<double>(delta * (2 * charge + delta) - abs(charge + delta) + abs(charge));
             }
 
             charge += delta;
@@ -819,6 +825,9 @@ class energy_forest_worker
     // constructor for secondary worker
     explicit energy_forest_worker(std::shared_ptr<energy_forest<Lyt>> p) : ef{std::move(p)} {}
 
+    using local_pot_expr = struct energy_forest<Lyt>::local_potential_expression;
+    using reference_store = std::map<uint64_t, std::shared_ptr<local_pot_expr>>;
+
     // constructor for primary worker
     explicit energy_forest_worker(const Lyt& lyt, const std::vector<cell<Lyt>>& sidb_order,
                                   const std::vector<sidb_charge_state>& cell_charge,
@@ -868,13 +877,13 @@ class energy_forest_worker
             return;
         }
 
-        std::map<uint64_t, std::shared_ptr<local_pot_expr>> reference_store{};
+        reference_store ref_store{};
 
         for (uint64_t i = 0; i < ef->root_collection->sidbs.size(); ++i)
         {
-            if (reference_store.count(i) != 0)
+            if (ref_store.count(i) != 0)
             {
-                local_potential_expressions.push_back(reference_store.at(i));
+                local_potential_expressions.push_back(ref_store.at(i));
                 continue;
             }
 
@@ -889,7 +898,7 @@ class energy_forest_worker
                     continue;
                 }
 
-                reference_store[j] = lpe;
+                ref_store[j] = lpe;
 
                 if (j > i)
                 {
@@ -900,17 +909,16 @@ class energy_forest_worker
             }
 
             local_potential_expressions.push_back(lpe);
-            unique_local_potential_expressions.push_back(lpe);
         }
 
-        apply_greatest_lower_bounds(reference_store);
+        get_unique_local_potential_expressions(ref_store);
 
-        initialize_update_sets(reference_store);
+        apply_greatest_lower_bounds(ref_store);
+
+        initialize_update_sets(ref_store);
 
         initialize_charges(cell_charge);
     }
-
-    using local_pot_expr = struct energy_forest<Lyt>::local_potential_expression;
 
     void update(const uint64_t i, int8_t delta) noexcept
     {
@@ -924,14 +932,14 @@ class energy_forest_worker
 
     bool check_population_stability() const noexcept
     {
-        //        {
-        //            const std::lock_guard lock{ef->mutex};
-        //
-        //            if (*system_energy - ef->ground_state_energy > 0)
-        //            {
-        //                return false;
-        //            }
-        //        }
+//        if (flag)
+//        {
+//            std::cout<<*system_energy <<std::endl;
+//        }
+//        if (!ef->is_ground_state_candidate(*system_energy))
+//        {
+//            return false;
+//        }
 
         for (const auto& lpe : unique_local_potential_expressions)
         {
@@ -944,7 +952,7 @@ class energy_forest_worker
         return true;
     }
 
-    std::shared_ptr<energy_forest_worker> make_new_worker(const std::vector<sidb_charge_state>& cell_charge)
+    std::shared_ptr<energy_forest_worker> make_new_worker(const std::vector<sidb_charge_state>& cell_charge) const noexcept
     {
         std::shared_ptr<energy_forest_worker> w = std::make_shared<energy_forest_worker>(ef);
 
@@ -958,6 +966,7 @@ class energy_forest_worker
 
         for (uint64_t i = 0; i < ef->root_collection->sidbs.size(); ++i)
         {
+            // find index of unique local potential expression
             uint64_t unique_ix = 0;
             for (; ef->primary_worker->local_potential_expressions[i] !=
                    ef->primary_worker->unique_local_potential_expressions[unique_ix];
@@ -1007,7 +1016,18 @@ class energy_forest_worker
     }
 
   private:
-    void apply_greatest_lower_bounds(const std::map<uint64_t, std::shared_ptr<local_pot_expr>>& ref_store)
+    void get_unique_local_potential_expressions(const reference_store& ref_store) noexcept
+    {
+        for (uint64_t i = 0; i < ef->root_collection->sidbs.size(); ++i)
+        {
+            if (ref_store.count(i) == 0)
+            {
+                unique_local_potential_expressions.push_back(local_potential_expressions[i]);
+            }
+        }
+    }
+
+    void apply_greatest_lower_bounds(const reference_store& ref_store) noexcept
     {
         if (unique_local_potential_expressions.size() < 2 || ref_store.empty())
         {
@@ -1051,7 +1071,7 @@ class energy_forest_worker
         }
     }
 
-    void initialize_update_sets(const std::map<uint64_t, std::shared_ptr<local_pot_expr>>& ref_store)
+    void initialize_update_sets(const reference_store& ref_store) noexcept
     {
         for (const auto& lpe : unique_local_potential_expressions)
         {

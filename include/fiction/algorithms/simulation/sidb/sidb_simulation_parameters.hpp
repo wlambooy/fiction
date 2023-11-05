@@ -30,7 +30,7 @@ struct energy_forest_parameters
     /*
      * Ground state energy comparison error.
      */
-    double energy_error{1.0e-1};//{-0.383};//{1.0e-1};
+    double energy_error{5.0e-1};//{-0.383};//{1.0e-1};
 };
 
 /**

@@ -108,8 +108,8 @@ template <typename Lyt, bool use_energy_forest>
 class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
 {
   public:
-    //    typedef unsigned __int128 ubase_t;
-    //    typedef __int128 base_t;
+//        typedef unsigned __int128 ubase_t;
+//        typedef __int128 base_t;
     typedef uint64_t ubase_t;
     typedef int64_t  base_t;
     using charge_index_base = typename std::pair<ubase_t, uint8_t>;
@@ -1029,6 +1029,12 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
     {
         if constexpr (use_energy_forest)
         {
+//            if (strg->charge_index_and_base.first == 53539019)
+//            {
+//                this->recompute_system_energy();
+//                std::cout<<this->get_system_energy() << std::endl;
+//            }
+//            if (!strg->energy_forest_worker->check_population_stability(strg->charge_index_and_base.first == 53539020 || strg->charge_index_and_base.first == 53539019))
             if (!strg->energy_forest_worker->check_population_stability())
             {
                 strg->validity = false;
@@ -1099,7 +1105,7 @@ class charge_distribution_surface<Lyt, use_energy_forest, false> : public Lyt
         {
             this->recompute_system_energy();
 
-            //            strg->energy_forest_worker->ef->challenge_ground_state_energy(strg->system_energy);
+//            strg->energy_forest_worker->ef->challenge_ground_state_energy(strg->system_energy);
         }
     }
     /**
