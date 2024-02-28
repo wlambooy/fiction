@@ -316,11 +316,17 @@ struct potential_projection_orders
 
     explicit potential_projection_orders() noexcept = default;
 
-    explicit potential_projection_orders(const double inter_sidb_pot, const uint64_t onto_sidb_ix) noexcept :
+    explicit potential_projection_orders(const uint64_t onto_sidb_ix, const double inter_sidb_pot,
+                                         const sidb_charge_state most_positive_cs) noexcept :
             order{pot_proj_order_onto_sidb{
-                {onto_sidb_ix, pot_proj_order{potential_projection{-inter_sidb_pot, sidb_charge_state::POSITIVE},
-                                              potential_projection{0.0, sidb_charge_state::NEUTRAL},
-                                              potential_projection{inter_sidb_pot, sidb_charge_state::NEGATIVE}}}}}
+                {onto_sidb_ix, most_positive_cs == sidb_charge_state::POSITIVE ?
+                                   pot_proj_order{potential_projection{-inter_sidb_pot, sidb_charge_state::POSITIVE},
+                                                  potential_projection{0.0, sidb_charge_state::NEUTRAL},
+                                                  potential_projection{inter_sidb_pot, sidb_charge_state::NEGATIVE}} :
+                               most_positive_cs == sidb_charge_state::NEUTRAL ?
+                                   pot_proj_order{potential_projection{0.0, sidb_charge_state::NEUTRAL},
+                                                  potential_projection{inter_sidb_pot, sidb_charge_state::NEGATIVE}} :
+                                   pot_proj_order{potential_projection{inter_sidb_pot, sidb_charge_state::NEGATIVE}}}}}
     {}
 
     template <bound_direction bound>
@@ -333,23 +339,6 @@ struct potential_projection_orders
         else
         {
             return *order.at(sidb_ix).crbegin();
-        }
-    }
-
-    template <bound_direction bound>
-    inline potential_projection get_next(const uint64_t sidb_ix) const noexcept
-    {
-        const uint64_t bound_m = get<bound>(sidb_ix).M;
-
-        if constexpr (bound == bound_direction::LOWER)
-        {
-            return *std::find_if(order.at(sidb_ix).cbegin(), order.at(sidb_ix).cend(),
-                                 [&](const potential_projection& pp) { return pp.M != bound_m; });
-        }
-        else
-        {
-            return *std::find_if(order.at(sidb_ix).crbegin(), order.at(sidb_ix).crend(),
-                                 [&](const potential_projection& pp) { return pp.M != bound_m; });
         }
     }
 
@@ -367,15 +356,6 @@ struct potential_projection_orders
                                            [&](const potential_projection& pp) { return pp.M == m_conf; })
                                   .base(),
                               1);
-        }
-    }
-
-    void remove_m_conf(const uint64_t m_conf, const uint64_t sidb_ix) noexcept
-    {
-
-        for (pot_proj_order::const_iterator it = order.at(sidb_ix).cbegin(); it != order.at(sidb_ix).cend();)
-        {
-            it->M == m_conf ? it = order[sidb_ix].erase(it) : ++it;
         }
     }
 
@@ -438,8 +418,8 @@ struct sidb_cluster
         children = v;
     };
 
-    void initialize_singleton_cluster_charge_space(const sidb_ix i, const double loc_pot_min,
-                                                   const double loc_pot_max) noexcept
+    void initialize_singleton_cluster_charge_space(const sidb_ix i, const sidb_charge_state most_positive_cs,
+                                                   const double loc_pot_min, const double loc_pot_max) noexcept
     {
         assert(sidbs.size() == 1);
         for (const sidb_charge_state cs : sidb_charge_state_iterator{})
@@ -447,6 +427,11 @@ struct sidb_cluster
             charge_space.emplace(sidb_cluster_charge_state{
                 cs, *std::find_if(parent->children.cbegin(), parent->children.cend(),
                                   [&](const sidb_cluster_ptr& c) { return *c->sidbs.cbegin() == i; })});
+
+            if (cs == most_positive_cs)
+            {
+                break;
+            }
         }
 
         recv_ext_pot_bounds[i][static_cast<uint8_t>(bound_direction::LOWER)] = loc_pot_min;
