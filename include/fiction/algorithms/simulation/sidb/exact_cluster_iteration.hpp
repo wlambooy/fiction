@@ -366,14 +366,15 @@ class cluster_exact
     explicit cluster_exact(const Lyt& lyt, const std::optional<uint64_t> min_key_size = std::nullopt,
                            const uint64_t num_threads = std::thread::hardware_concurrency()) :
             cl{get_charge_layout_and_check_three_state_simulation_required(lyt)},
+            possible_charge_states{get_possible_charge_states(cl)},
             negative_sidbs{get_negative_sidbs(cl)},
             mu_bounds_with_error{physical_constants::POP_STABILITY_ERR - cl.get_phys_params().mu_minus,
                                  -physical_constants::POP_STABILITY_ERR - cl.get_phys_params().mu_minus,
                                  physical_constants::POP_STABILITY_ERR - cl.get_phys_params().mu_plus(),
                                  -physical_constants::POP_STABILITY_ERR - cl.get_phys_params().mu_plus()},
-            minimum_key_size{min_key_size.has_value() ?
-                                 min_key_size.value() :
-                                 std::min(12ul, static_cast<uint64_t>(static_cast<double>(cl.num_cells()) / 2.0))},
+//            minimum_key_size{min_key_size.has_value() ?
+//                                 min_key_size.value() :
+//                                 std::min(12ul, static_cast<uint64_t>(static_cast<double>(cl.num_cells()) / 2.0))},
             threads{num_threads}
     {}
 
@@ -384,6 +385,18 @@ class cluster_exact
         cl.assign_base_number(2);
         cl.is_three_state_simulation_required();
         return cl;
+    }
+
+    static std::vector<sidb_charge_state> get_possible_charge_states(const charge_distribution_surface<Lyt>& cds)
+    {
+        if (cds.get_phys_params().base == 3)
+        {
+            return {sidb_charge_state::NEGATIVE, sidb_charge_state::NEUTRAL, sidb_charge_state::POSITIVE};
+        }
+        else
+        {
+            return {sidb_charge_state::NEGATIVE, sidb_charge_state::NEUTRAL};
+        }
     }
 
     static std::set<uint64_t> get_negative_sidbs(const charge_distribution_surface<Lyt>& cl)
@@ -401,35 +414,40 @@ class cluster_exact
     const charge_distribution_surface<Lyt> cl;
     const std::vector<sidb_charge_state>   possible_charge_states;
     const std::set<uint64_t>               negative_sidbs;
-    std::set<uint64_t>                     positive_sidbs{};
+//    std::set<uint64_t>                     positive_sidbs{};
 
     const std::array<double, 4> mu_bounds_with_error;
 
-    const uint64_t minimum_key_size;
+    const uint64_t minimum_key_size{0};
     const uint64_t threads;
 
     // Recursive function to generate charge assignments
     void generate_assignments_recursive(std::vector<sidb_charge_conf>&  charge_confs,
-                                        std::vector<sidb_charge_state>& current_assignment, uint64_t current_index,
-                                        uint64_t remaining_count, const charge_state_multiset& target_multiset)
+                                        std::vector<sidb_charge_state>& current_assignment, std::map<sidb_charge_state, uint64_t>& counts, uint64_t current_index, const charge_state_multiset& target_multiset)
     {
         // Base case: If all elements are assigned
-        if (remaining_count == 0)
+        if (current_index == charge_confs.size())
         {
-            // Check if the assignment matches the target multiset
-            if (charge_state_multiset{current_assignment.cbegin(), current_assignment.cend()} == target_multiset)
-            {
-                charge_confs.push_back(current_assignment);
-            }
+//            // Check if the assignment matches the target multiset
+//            if (charge_state_multiset{current_assignment.cbegin(), current_assignment.cend()} == target_multiset)
+//            {
+//                charge_confs.push_back(current_assignment);
+//            }
+            charge_confs.push_back(current_assignment);
             return;
         }
 
         // Recursive case: Try assigning each charge state to the current element
-        for (const sidb_charge_state charge_state : {sidb_charge_state::NEGATIVE, sidb_charge_state::NEUTRAL})
+        for (const sidb_charge_state charge_state : possible_charge_states)
         {
-            current_assignment[current_index] = charge_state;
-            generate_assignments_recursive(charge_confs, current_assignment, current_index + 1, remaining_count - 1,
-                                           target_multiset);
+            if (target_multiset.count(charge_state) < counts.at(charge_state))
+            {
+                counts[charge_state]++;
+                current_assignment[current_index] = charge_state;
+                generate_assignments_recursive(charge_confs, current_assignment, counts, current_index + 1,
+                                               target_multiset);
+                counts[charge_state]--;
+            }
         }
     }
 
@@ -443,8 +461,15 @@ class cluster_exact
         // Initialize the current assignment vector
         std::vector<sidb_charge_state> current_assignment(size, sidb_charge_state::NEGATIVE);
 
+        // Initialize the current charge counts map
+        std::map<sidb_charge_state, uint64_t> counts{};
+        for (const sidb_charge_state cs : sidb_charge_state_iterator{})
+        {
+            counts[cs] = 0;
+        }
+
         // Start the recursive generation
-        generate_assignments_recursive(charge_confs, current_assignment, 0, size, target_multiset);
+        generate_assignments_recursive(charge_confs, current_assignment, counts, 0, target_multiset);
 
         return charge_confs;
     }
@@ -650,7 +675,8 @@ class cluster_exact
         {
             if (other_c != c)
             {
-                energy += get_cluster_potential(c, other_c, sigma.at(other_c.c), potential_bound::LOWER);
+                energy += calculate_cluster_potential(c, other_c, get_charge_confs(sidb_charge_conf_store_key{other_c.c.size() - other_c.preassigned_count, sigma.at(other_c.c)}), potential_bound::LOWER);
+//                energy += get_cluster_potential(c, other_c, sigma.at(other_c.c), potential_bound::LOWER);
             }
         }
 
@@ -666,7 +692,8 @@ class cluster_exact
         {
             if (other_c != c)
             {
-                energy += get_cluster_potential(c, other_c, sigma.at(other_c.c), potential_bound::UPPER);
+                energy += calculate_cluster_potential(c, other_c, get_charge_confs(sidb_charge_conf_store_key{other_c.c.size() - other_c.preassigned_count, sigma.at(other_c.c)}), potential_bound::UPPER);
+//                energy += get_cluster_potential(c, other_c, sigma.at(other_c.c), potential_bound::UPPER);
             }
         }
 
@@ -728,11 +755,11 @@ class cluster_exact
                 clus.preassigned[i] = sidb_charge_state::NEGATIVE;
                 clus.preassigned_count++;
             }
-            else if (positive_sidbs.count(*std::next(c.cbegin(), static_cast<int64_t>(i))) != 0)
-            {
-                clus.preassigned[i] = sidb_charge_state::POSITIVE;
-                clus.preassigned_count++;
-            }
+//            else if (positive_sidbs.count(*std::next(c.cbegin(), static_cast<int64_t>(i))) != 0)
+//            {
+//                clus.preassigned[i] = sidb_charge_state::POSITIVE;
+//                clus.preassigned_count++;
+//            }
         }
         return clus;
     }
@@ -772,10 +799,10 @@ class cluster_exact
                 {
                     charge_conf.emplace_back(sidb_charge_state::NEGATIVE);
                 }
-                else if (positive_sidbs.count(*c.cbegin()) != 0)
-                {
-                    charge_conf.emplace_back(sidb_charge_state::POSITIVE);
-                }
+//                else if (positive_sidbs.count(*c.cbegin()) != 0)
+//                {
+//                    charge_conf.emplace_back(sidb_charge_state::POSITIVE);
+//                }
                 else
                 {
                     charge_conf.emplace_back(*m.cbegin());
@@ -824,7 +851,7 @@ class cluster_exact
     std::vector<std::vector<sidb_charge_state>> get_k_element_multisets(const ch_node_ptr& top_node) const noexcept
     {
         charge_state_multiset m{};
-        for (const sidb_charge_state cs : {sidb_charge_state::NEGATIVE, sidb_charge_state::NEUTRAL})
+        for (const sidb_charge_state cs : possible_charge_states)
         {
             for (uint64_t i = 0; i < cl.num_cells(); ++i)
             {
@@ -841,32 +868,31 @@ class cluster_exact
             multiset_vecs.emplace_back(k_element_multisets.confs[0].vec);
         }
 
+        // apply random shuffle to distribute the thread load more evenly
+        std::random_shuffle(multiset_vecs.begin(), multiset_vecs.end());
+
         return multiset_vecs;
     }
 
     bool check_if_all_are_preassigned(sidb_simulation_result<Lyt>& res) const noexcept
     {
-        if (negative_sidbs.size() + positive_sidbs.size() < cl.num_cells())
+        if (negative_sidbs.size() < cl.num_cells())
         {
             return false;
         }
 
-        for (const auto& [cs, preassigned_indices] : {std::make_pair(sidb_charge_state::NEGATIVE, negative_sidbs),
-                                                      std::make_pair(sidb_charge_state::POSITIVE, positive_sidbs)})
+        charge_distribution_surface cl_copy{cl};
+
+        for (const uint64_t i : negative_sidbs)
         {
-            charge_distribution_surface cl_copy{cl};
-
-            for (const uint64_t i : preassigned_indices)
-            {
-                cl_copy.assign_charge_state_by_cell_index(i, cs, false);
-            }
-
-            cl_copy.update_local_potential();
-            cl_copy.recompute_system_energy();
-            cl_copy.declare_physically_valid();
-
-            res.charge_distributions.push_back(cl_copy);
+            cl_copy.assign_charge_state_by_cell_index(i, sidb_charge_state::NEGATIVE, false);
         }
+
+        cl_copy.update_local_potential();
+        cl_copy.recompute_system_energy();
+        cl_copy.declare_physically_valid();
+
+        res.charge_distributions.push_back(cl_copy);
 
         return true;
     }
@@ -967,18 +993,8 @@ class cluster_exact
             //                potential_hierarchy<Lyt>{cl.get_sidb_order(), cl.get_phys_params(),
             //                theta}.make_cluster_hierarchy();
 
-            // first simulate base 2
+            // simulate base 3
             iterate_over_all_multisets(res, top_node);
-
-            if (cl.get_phys_params().base == 3)
-            {
-                for (const cell<Lyt>& c : cl.get_positive_candidates())
-                {
-                    positive_sidbs.emplace(static_cast<uint64_t>(cl.cell_to_index(c)));
-                }
-                // then simulate base 2 again, but now with the positive candidates preassigned a POSITIVE charge state
-                iterate_over_all_multisets(res, top_node);
-            }
         }
 
         res.simulation_runtime = time_counter;
