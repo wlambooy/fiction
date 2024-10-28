@@ -11,6 +11,7 @@
 #include <fiction/algorithms/physical_design/on_the_fly_circuit_design_on_defective_surface.hpp>
 #include <fiction/algorithms/simulation/sidb/sidb_simulation_engine.hpp>
 #include <fiction/io/read_sidb_surface_defects.hpp>
+#include <fiction/io/write_sqd_layout.hpp>
 #include <fiction/layouts/bounding_box.hpp>
 #include <fiction/technology/area.hpp>
 #include <fiction/technology/cell_technologies.hpp>
@@ -57,39 +58,39 @@ int main()  // NOLINT
     design_gate_params.termination_cond =
         fiction::design_sidb_gates_params<fiction::cell<cell_lyt>>::termination_condition::AFTER_FIRST_SOLUTION;
 
-    // save atomic defects which their respective physical parameters as experimentally determined by T. R. Huff, T.
-    // Dienel, M. Rashidi, R. Achal, L. Livadaru, J. Croshaw, and R. A. Wolkow, "Electrostatic landscape of a
-    // Hydrogen-terminated Silicon Surface Probed by a Moveable Quantum Dot."
-    const auto stray_db   = fiction::sidb_defect{fiction::sidb_defect_type::DB, -1, 4.1, 1.8};
-    const auto si_vacancy = fiction::sidb_defect{fiction::sidb_defect_type::SI_VACANCY, -1, 10.6, 5.9};
+    // // save atomic defects which their respective physical parameters as experimentally determined by T. R. Huff, T.
+    // // Dienel, M. Rashidi, R. Achal, L. Livadaru, J. Croshaw, and R. A. Wolkow, "Electrostatic landscape of a
+    // // Hydrogen-terminated Silicon Surface Probed by a Moveable Quantum Dot."
+    // const auto stray_db   = fiction::sidb_defect{fiction::sidb_defect_type::DB, -1, 4.1, 1.8};
+    // const auto si_vacancy = fiction::sidb_defect{fiction::sidb_defect_type::SI_VACANCY, -1, 10.6, 5.9};
 
     static const std::string layouts_folder =
         fmt::format("{}/physical_design_with_on_the_fly_gate_design/layouts", EXPERIMENTS_PATH);
 
-    // read-in the initial defects. Physical parameters of the defects are not stored yet.
-    auto surface_lattice_initial = fiction::read_sidb_surface_defects<cell_lyt>(
-        "../../experiments/physical_design_with_on_the_fly_gate_design/1_percent_with_charged_surface.txt");
+    // // read-in the initial defects. Physical parameters of the defects are not stored yet.
+    // auto surface_lattice_initial = fiction::read_sidb_surface_defects<cell_lyt>(
+    //     "../../experiments/physical_design_with_on_the_fly_gate_design/1_percent_with_charged_surface.txt");
 
     // create an empty surface.
     fiction::sidb_defect_surface<cell_lyt> surface_lattice{};
 
-    // add physical parameters of the defects to the surface_lattice.
-    surface_lattice_initial.foreach_sidb_defect(
-        [&surface_lattice, &stray_db, &si_vacancy](const auto& cd)
-        {
-            if (cd.second.type == fiction::sidb_defect_type::DB)
-            {
-                surface_lattice.assign_sidb_defect(cd.first, stray_db);
-            }
-            else if (cd.second.type == fiction::sidb_defect_type::SI_VACANCY)
-            {
-                surface_lattice.assign_sidb_defect(cd.first, si_vacancy);
-            }
-            else
-            {
-                surface_lattice.assign_sidb_defect(cd.first, cd.second);
-            }
-        });
+    // // add physical parameters of the defects to the surface_lattice.
+    // surface_lattice_initial.foreach_sidb_defect(
+    //     [&surface_lattice, &stray_db, &si_vacancy](const auto& cd)
+    //     {
+    //         if (cd.second.type == fiction::sidb_defect_type::DB)
+    //         {
+    //             surface_lattice.assign_sidb_defect(cd.first, stray_db);
+    //         }
+    //         else if (cd.second.type == fiction::sidb_defect_type::SI_VACANCY)
+    //         {
+    //             surface_lattice.assign_sidb_defect(cd.first, si_vacancy);
+    //         }
+    //         else
+    //         {
+    //             surface_lattice.assign_sidb_defect(cd.first, cd.second);
+    //         }
+    //     });
 
     // determine bounding-box of the surface to set the aspect ratio of the surface lattice.
     const auto bb_defect_surface = fiction::bounding_box_2d{surface_lattice};
@@ -100,11 +101,12 @@ int main()  // NOLINT
     experiments::experiment<std::string, double, uint64_t, bool> sidb_circuits_with_defects{
         "sidb_circuits_with_defects", "benchmark", "runtime", "number of aspect ratios", "equivalent"};
 
-    constexpr const uint64_t bench_select =
-        fiction_experiments::all & ~fiction_experiments::parity & ~fiction_experiments::two_bit_add_maj &
-        ~fiction_experiments::b1_r2 & ~fiction_experiments::clpl & ~fiction_experiments::iscas85 &
-        ~fiction_experiments::epfl & ~fiction_experiments::half_adder & ~fiction_experiments::full_adder &
-        ~fiction_experiments::one_bit_add_aoig & ~fiction_experiments::one_bit_add_maj & ~fiction_experiments::cm82a_5;
+    constexpr const uint64_t bench_select = fiction_experiments::par_check & fiction_experiments::mux21 &
+                                            fiction_experiments::xor5_r1 & fiction_experiments::xor5_maj;
+    // fiction_experiments::all & ~fiction_experiments::parity & ~fiction_experiments::two_bit_add_maj &
+    // ~fiction_experiments::b1_r2 & ~fiction_experiments::clpl & ~fiction_experiments::iscas85 &
+    // ~fiction_experiments::epfl & ~fiction_experiments::half_adder & ~fiction_experiments::full_adder &
+    // ~fiction_experiments::one_bit_add_aoig & ~fiction_experiments::one_bit_add_maj & ~fiction_experiments::cm82a_5;
 
     for (const auto& benchmark : fiction_experiments::all_benchmarks(bench_select))
     {
@@ -173,7 +175,7 @@ int main()  // NOLINT
         sidb_circuits_with_defects.table();
 
         // write a SiQAD simulation file
-        // fiction::write_sqd_layout(result, fmt::format("{}/{}.sqd", layouts_folder, benchmark));
+        fiction::write_sqd_layout(result, fmt::format("{}/{}.sqd", layouts_folder, benchmark));
     }
 
     return EXIT_SUCCESS;
