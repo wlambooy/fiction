@@ -6706,7 +6706,7 @@ given layout.
 Parameter ``lyt``:
     Layout to construct the *Ground State Space* of.
 
-Parameter ``params``:
+Parameter ``parameters``:
     The parameters that *Ground State Space* will use throughout the
     construction.)doc";
 
