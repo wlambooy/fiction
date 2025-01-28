@@ -35,17 +35,29 @@ TEST_CASE("SiQAD OR gate", "[is-operational]")
         sidb_simulation_parameters{2, -0.32}, sidb_simulation_engine::QUICKEXACT,
         bdl_input_iterator_params{detect_bdl_wires_params{1.5},
                                   bdl_input_iterator_params::input_bdl_configuration::PERTURBER_ABSENCE_ENCODED},
-        is_operational_params::operational_condition::TOLERATE_KINKS};
+        is_operational_params::operational_condition::TOLERATE_KINKS, {}, is_operational_params::simulation_results_mode::KEEP_SIMULATION_RESULTS};
 
-    SECTION("determine if layout is operational, tolerate kinks")
+    SECTION("determine if layout is operational, tolerate kinks and keep simulation results")
     {
-        CHECK(is_operational(lat, std::vector<tt>{create_or_tt()}, op_params).first == operational_status::OPERATIONAL);
+        const auto [op_status, aux_stats] = is_operational(lat, std::vector<tt>{create_or_tt()}, op_params);
+        CHECK(op_status == operational_status::OPERATIONAL);
+        CHECK(aux_stats.simulation_results.has_value());
+    }
+
+    // from now on, we will discard simulation results
+    op_params.simulation_results_retention = is_operational_params::simulation_results_mode::DISCARD_SIMULATION_RESULTS;
+
+    SECTION("determine if layout is operational, tolerate kinks and discard simulation results")
+    {
+        const auto [op_status, aux_stats] = is_operational(lat, std::vector<tt>{create_or_tt()}, op_params);
+        CHECK(op_status == operational_status::OPERATIONAL);
+        CHECK(!aux_stats.simulation_results.has_value());
     }
 
     // from now on, we will reject kinks
     op_params.op_condition = is_operational_params::operational_condition::REJECT_KINKS;
 
-    SECTION("determine if layout is operational, accept kinks")
+    SECTION("determine if layout is operational, reject kinks")
     {
         CHECK(is_operational(lat, std::vector<tt>{create_and_tt()}, op_params).first ==
               operational_status::NON_OPERATIONAL);
