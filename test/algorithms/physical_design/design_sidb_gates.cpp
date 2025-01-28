@@ -215,10 +215,10 @@ TEST_CASE("Use SiQAD XNOR skeleton and generate SiQAD XNOR gate, exhaustive", "[
         const auto found_gate_layouts = design_sidb_gates(lyt, std::vector<tt>{create_xnor_tt()}, params);
 
         REQUIRE(found_gate_layouts.size() == 4);
-        CHECK(found_gate_layouts[0].get_cell_type({11, 4, 0}) == siqad_layout::technology::LOGIC);
-        CHECK(found_gate_layouts[1].get_cell_type({13, 4, 0}) == siqad_layout::technology::LOGIC);
-        CHECK(found_gate_layouts[2].get_cell_type({10, 4, 0}) == siqad_layout::technology::LOGIC);
-        CHECK(found_gate_layouts[3].get_cell_type({12, 4, 0}) == siqad_layout::technology::LOGIC);
+        CHECK(found_gate_layouts[0].get_cell_type({10, 4, 0}) == siqad_layout::technology::LOGIC);
+        CHECK(found_gate_layouts[1].get_cell_type({11, 4, 0}) == siqad_layout::technology::LOGIC);
+        CHECK(found_gate_layouts[2].get_cell_type({12, 4, 0}) == siqad_layout::technology::LOGIC);
+        CHECK(found_gate_layouts[3].get_cell_type({13, 4, 0}) == siqad_layout::technology::LOGIC);
     }
 }
 
