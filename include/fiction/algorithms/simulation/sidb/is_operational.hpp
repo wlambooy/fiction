@@ -75,7 +75,6 @@ struct is_operational_params
          */
         REJECT_KINKS
     };
-
     /**
      * Simulation method to determine if the layout is operational or non-operational. There are three possible
      * strategies:
@@ -444,7 +443,7 @@ class is_operational_impl
                 is_operational_params::operational_analysis_strategy::SIMULATION_ONLY &&
             parameters.strategy_to_analyze_operational_status !=
                 is_operational_params::operational_analysis_strategy::FILTER_THEN_SIMULATION &&
-           !canvas_lyt.is_empty())
+            !canvas_lyt.is_empty())
         {
             return {operational_status::OPERATIONAL, non_operationality_reason::NONE};
         }
@@ -696,8 +695,7 @@ class is_operational_impl
         while (canvas_charge_index <= max_index)
         {
             cds_canvas_copy.foreach_cell(
-                [&cds_layout, &cds_canvas_copy](const auto& c)
-                {
+                [&cds_layout, &cds_canvas_copy](const auto& c) {
                     cds_layout.assign_charge_state(c, cds_canvas_copy.get_charge_state(c),
                                                    charge_index_mode::KEEP_CHARGE_INDEX);
                 });
