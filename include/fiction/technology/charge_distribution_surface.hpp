@@ -1603,8 +1603,7 @@ class charge_distribution_surface<Lyt, false> : public Lyt
      * This function can be used to assign an external local electrostatic potential in Volt to the layout, which is
      * added to previously stored values. All important attributes of the charge layout are updated automatically.
      *
-     * @param cell Cell to which the local external potential is applied.
-     * @param external_voltage External electrostatic potential in Volt applied to different cells.
+     * @param external_potential External electrostatic potential in Volt applied to different cells.
      */
     void
     assign_local_external_potential(const std::unordered_map<typename Lyt::cell, double>& external_potential) noexcept
