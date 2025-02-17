@@ -3017,6 +3017,26 @@ Parameter ``n``:
 Returns:
     Columnar clocking scheme.)doc";
 
+static const char *__doc_fiction_compare_by_average_ground_state_isolation = R"doc()doc";
+
+static const char *__doc_fiction_compare_by_average_ground_state_isolation_average_ground_state_isolation_over_all_inputs = R"doc()doc";
+
+static const char *__doc_fiction_compare_by_average_ground_state_isolation_compare_by_average_ground_state_isolation = R"doc()doc";
+
+static const char *__doc_fiction_compare_by_average_ground_state_isolation_equals = R"doc()doc";
+
+static const char *__doc_fiction_compare_by_average_ground_state_isolation_operator_call = R"doc()doc";
+
+static const char *__doc_fiction_compare_by_minimum_ground_state_isolation = R"doc()doc";
+
+static const char *__doc_fiction_compare_by_minimum_ground_state_isolation_compare_by_minimum_ground_state_isolation = R"doc()doc";
+
+static const char *__doc_fiction_compare_by_minimum_ground_state_isolation_equals = R"doc()doc";
+
+static const char *__doc_fiction_compare_by_minimum_ground_state_isolation_minimum_ground_state_isolation_over_all_inputs = R"doc()doc";
+
+static const char *__doc_fiction_compare_by_minimum_ground_state_isolation_operator_call = R"doc()doc";
+
 static const char *__doc_fiction_convert_array =
 R"doc(Converts an array of size `N` and type `T` to an array of size `N` and
 type `ElementType` by applying `static_cast` at compile time.
@@ -3557,6 +3577,249 @@ Parameter ``lyt``:
 Returns:
     A struct containing the CP and TP.)doc";
 
+static const char *__doc_fiction_critical_temperature_domain =
+R"doc(The `critical_temperature_domain` class collects the critical
+temperature and the operational status for a range of different
+physical parameters of a given SiDB layout. It allows for the
+evaluation of how the critical temperature depends on variations in
+the underlying parameter points. This enables simulations to explore
+the critical temperature's behavior across different conditions and
+configurations.)doc";
+
+static const char *__doc_fiction_critical_temperature_domain_add_dimension =
+R"doc(Adds a dimension to sweep over. The first dimension is the x
+dimension, the second dimension is the y dimension, etc.
+
+Parameter ``param``:
+    The dimension to add.)doc";
+
+static const char *__doc_fiction_critical_temperature_domain_contour_tracing =
+R"doc(Computes the critical temperature domain of the given SiDB cell-level
+layout. The critical temperature domain consists of all parameter
+combinations for which the layout is logically operational, along with
+the critical temperature for each specific parameter point.nt.
+
+This algorithm first uses random sampling to find a set of operational
+point within the parameter range. From there, it traverses outwards to
+find the edge of the operational area and performs Moore neighborhood
+contour tracing to explore the contour of the operational domain. This
+is repeated for all initially sampled points that do not lie within a
+contour. The algorithm is guaranteed to determine the contours of all
+operational "islands" if the initial random sampling found at least
+one operational point within them. Thereby, this algorithm works for
+disconnected operational domains. The critical temperature is computed
+for each operational point.
+
+It performs `samples` uniformly-distributed random samples within the
+parameter range. For each thusly discovered operational island, it
+performs another number of samples equal to the distance to an edge of
+each operational area. Finally, it performs up to 8 samples for each
+contour point (however, the actual number is usually lower). For each
+sample, the algorithm performs one operational check on the layout,
+where each operational check consists of up to :math:`2^n` exact
+ground state simulations, where :math:`n` is the number of inputs of
+the layout. Each exact ground state simulation has exponential
+complexity in of itself. Therefore, the algorithm is only feasible for
+small layouts with few inputs.
+
+Template parameter ``Lyt``:
+    SiDB cell-level layout type.
+
+Template parameter ``TT``:
+    Truth table type.
+
+Parameter ``lyt``:
+    Layout to compute the operational domain for.
+
+Parameter ``spec``:
+    Expected Boolean function of the layout given as a multi-output
+    truth table.
+
+Parameter ``samples``:
+    Number of samples to perform.
+
+Parameter ``params``:
+    Operational domain computation parameters.
+
+Parameter ``stats``:
+    Operational domain computation statistics.
+
+Returns:
+    The (partial) operational domain of the layout.
+
+Throws:
+    std::invalid_argument if the given sweep parameters are invalid.)doc";
+
+static const char *__doc_fiction_critical_temperature_domain_critical_temperature_domain = R"doc(Default constructor.)doc";
+
+static const char *__doc_fiction_critical_temperature_domain_critical_temperature_domain_2 =
+R"doc(Standard constructor.
+
+Parameter ``dims``:
+    Dimensions.)doc";
+
+static const char *__doc_fiction_critical_temperature_domain_dimensions =
+R"doc(The dimensions to sweep over, ordered by priority. The first dimension
+is the x dimension, the second dimension is the y dimension, etc.)doc";
+
+static const char *__doc_fiction_critical_temperature_domain_flood_fill =
+R"doc(Computes the critical temperature domain of the given SiDB cell-level
+layout. The critical temperature domain consists of all parameter
+combinations for which the layout is logically operational, along with
+the critical temperature for each specific parameter point.
+
+This algorithm first uses random sampling to find several operational
+points within the parameter range. From there, it employs the "flood
+fill" algorithm to explore the operational domain. The algorithm is
+guaranteed to determine all operational "islands" in their entirety if
+the initial random sampling found at least one operational point
+within them. Thereby, this algorithm works for disconnected
+operational domains.
+
+It performs `samples` uniformly-distributed random samples within the
+parameter range. From there, it performs another number of samples
+equal to the number of points within the operational domain plus the
+first non-operational point in each direction. For each sample, the
+algorithm performs one operational check on the layout, where each
+operational check consists of up to :math:`2^n` exact ground state
+simulations, where :math:`n` is the number of inputs of the layout.
+Each exact ground state simulation has exponential complexity in of
+itself. Therefore, the algorithm is only feasible for small layouts
+with few inputs.
+
+Template parameter ``Lyt``:
+    SiDB cell-level layout type.
+
+Template parameter ``TT``:
+    Truth table type.
+
+Parameter ``lyt``:
+    Layout to compute the operational domain for.
+
+Parameter ``spec``:
+    Expected Boolean function of the layout given as a multi-output
+    truth table.
+
+Parameter ``samples``:
+    Number of samples to perform.
+
+Parameter ``params``:
+    Operational domain computation parameters.
+
+Parameter ``stats``:
+    Operational domain computation statistics.
+
+Returns:
+    The (partial) operational domain of the layout.
+
+Throws:
+    std::invalid_argument if the given sweep parameters are invalid.)doc";
+
+static const char *__doc_fiction_critical_temperature_domain_get_dimension =
+R"doc(Returns a specific dimension by index.
+
+Parameter ``index``:
+    The index of the dimension to return.
+
+Returns:
+    The dimension at the specified index.
+
+Throws:
+    std::out_of_range if the index is out of range.)doc";
+
+static const char *__doc_fiction_critical_temperature_domain_get_number_of_dimensions =
+R"doc(Returns the number of dimensions to sweep over.
+
+Returns:
+    The number of dimensions to sweep over.)doc";
+
+static const char *__doc_fiction_critical_temperature_domain_grid_search =
+R"doc(Computes the critical temperature domain of the given SiDB cell-level
+layout. The critical temperature domain consists of all parameter
+combinations for which the layout is logically operational, along with
+the critical temperature for each specific parameter point.
+
+This algorithm uses a grid search to find the operational domain. The
+grid search is performed by exhaustively sweeping the parameter space
+in the x and y dimensions. Since grid search is exhaustive, the
+algorithm is guaranteed to find the operational domain, if it exists
+within the parameter range. However, the algorithm performs a
+quadratic number of operational checks on the layout, where each
+operational check consists of up to :math:`2^n` exact ground state
+simulations, where :math:`n` is the number of inputs of the layout.
+Each exact ground state simulation has exponential complexity in of
+itself. Therefore, the algorithm is only feasible for small layouts
+with few inputs.
+
+Template parameter ``Lyt``:
+    SiDB cell-level layout type.
+
+Template parameter ``TT``:
+    Truth table type.
+
+Parameter ``lyt``:
+    Layout to compute the operational domain for.
+
+Parameter ``spec``:
+    Expected vector of truth tables of the layout. Each truth table
+    represents an output of the Boolean function.
+
+Parameter ``params``:
+    Operational domain computation parameters.
+
+Parameter ``stats``:
+    Operational domain computation statistics.
+
+Returns:
+    The operational domain of the layout.
+
+Throws:
+    std::invalid_argument if the given sweep parameters are invalid.)doc";
+
+static const char *__doc_fiction_critical_temperature_domain_random_sampling =
+R"doc(Computes the critical temperature domain of the given SiDB cell-level
+layout. The critical temperature domain consists of all parameter
+combinations for which the layout is logically operational, along with
+the critical temperature for each specific parameter point.
+
+This algorithm uses random sampling to find a part of the operational
+domain that might not be complete. It performs a total of `samples`
+uniformly-distributed random samples within the parameter range. For
+each sample, the algorithm performs one operational check on the
+layout, where each operational check consists of up to :math:`2^n`
+exact ground state simulations, where :math:`n` is the number of
+inputs of the layout. Each exact ground state simulation has
+exponential complexity in of itself. Therefore, the algorithm is only
+feasible for small layouts with few inputs.
+
+Template parameter ``Lyt``:
+    SiDB cell-level layout type.
+
+Template parameter ``TT``:
+    Truth table type.
+
+Parameter ``lyt``:
+    Layout to compute the operational domain for.
+
+Parameter ``spec``:
+    Expected Boolean function of the layout given as a multi-output
+    truth table.
+
+Parameter ``samples``:
+    Number of samples to perform.
+
+Parameter ``params``:
+    Operational domain computation parameters.
+
+Parameter ``stats``:
+    Operational domain computation statistics.
+
+Returns:
+    The (partial) operational domain of the layout.
+
+Throws:
+    std::invalid_argument if the given sweep parameters are invalid.)doc";
+
 static const char *__doc_fiction_critical_temperature_gate_based =
 R"doc(This algorithm performs temperature-aware SiDB simulation as proposed
 in \"Temperature Behavior of Silicon Dangling Bond Logic\" by J.
@@ -3939,13 +4202,11 @@ Returns:
     and vertical SiDBs affected by the given defect type.)doc";
 
 static const char *__doc_fiction_defect_influence_domain =
-R"doc(A defect influence domain defines for each defect position the
+R"doc(A `defect_influence_domain` defines for each defect position the
 influence of the defect on the layout. Depending on the chosen
 definition of influence, this can either mean that the operational
 status or the ground state of the layout is changed due to the
 presence of the defect.)doc";
-
-static const char *__doc_fiction_defect_influence_domain_influence_information = R"doc(This stores for each defect position the condition of the layout.)doc";
 
 static const char *__doc_fiction_defect_influence_grid_search =
 R"doc(This algorithm uses a grid search to determine the defect influence
@@ -4301,16 +4562,14 @@ Returns:
 static const char *__doc_fiction_design_sidb_gates_params =
 R"doc(This struct contains parameters and settings to design SiDB gates.
 
-Template parameter ``CellType``:
-    Cell type.)doc";
-
-static const char *__doc_fiction_design_sidb_gates_params_canvas = R"doc(Canvas spanned by the northwest and southeast cell.)doc";
+Template parameter ``Lyt``:
+    SiDB cell-level layout type.)doc";
 
 static const char *__doc_fiction_design_sidb_gates_params_design_mode = R"doc(Gate design mode.)doc";
 
 static const char *__doc_fiction_design_sidb_gates_params_design_sidb_gates_mode = R"doc(Selector for the available design approaches.)doc";
 
-static const char *__doc_fiction_design_sidb_gates_params_design_sidb_gates_mode_AUTOMATIC_EXHAUSTIVE_GATE_DESIGNER = R"doc(Gates are designed by using the *Automatic Exhaustive Gate Designer*.)doc";
+static const char *__doc_fiction_design_sidb_gates_params_design_sidb_gates_mode_EXHAUSTIVE_GATE_DESIGNER = R"doc(Gates are designed by using the *Automatic Exhaustive Gate Designer*.)doc";
 
 static const char *__doc_fiction_design_sidb_gates_params_design_sidb_gates_mode_QUICKCELL = R"doc(Gates are designed by using *QuickCell*.)doc";
 
@@ -4319,14 +4578,6 @@ static const char *__doc_fiction_design_sidb_gates_params_design_sidb_gates_mode
 static const char *__doc_fiction_design_sidb_gates_params_number_of_sidbs = R"doc(Number of SiDBs placed in the canvas to create a working gate.)doc";
 
 static const char *__doc_fiction_design_sidb_gates_params_operational_params = R"doc(Parameters for the `is_operational` function.)doc";
-
-static const char *__doc_fiction_design_sidb_gates_params_post_design_mode = R"doc(Selector for the available post-design processes.)doc";
-
-static const char *__doc_fiction_design_sidb_gates_params_post_design_mode_DO_NOTHING = R"doc(No post-design operation is performed.)doc";
-
-static const char *__doc_fiction_design_sidb_gates_params_post_design_mode_PREFER_ENERGETICALLY_ISOLATED_GROUND_STATES =
-R"doc(The designed gates are sorted by how energetically isolated the ground
-state is from the first excited state.)doc";
 
 static const char *__doc_fiction_design_sidb_gates_params_post_design_process =
 R"doc(After the design process, the returned gates are not sorted.
@@ -4355,7 +4606,7 @@ within the canvas are enumerated.)doc";
 
 static const char *__doc_fiction_design_sidb_gates_stats = R"doc(Statistics for the design of SiDB gates.)doc";
 
-static const char *__doc_fiction_design_sidb_gates_stats_duration = R"doc(The total runtime of SiDB gate design process.)doc";
+static const char *__doc_fiction_design_sidb_gates_stats_duration = R"doc(The total runtime of the SiDB gate design process.)doc";
 
 static const char *__doc_fiction_design_sidb_gates_stats_number_of_layouts = R"doc(The number of all possible layouts.)doc";
 
@@ -4382,6 +4633,101 @@ Parameter ``out``:
 static const char *__doc_fiction_design_sidb_gates_stats_sim_engine =
 R"doc(The simulation engine to be used for the operational domain
 computation.)doc";
+
+static const char *__doc_fiction_designed_sidb_gate_comparator =
+R"doc(A designed SiDB gate comparator is used to compare two designed SiDB
+gates. It offers an equality comparison, of which the sensitivity
+depends on the `sensitivity` parameter given to the comparator, and a
+strict comparator. These ingredients allow a chaining of comparators,
+in which the result of the strict comparison is returned of the first
+comparator in the chain that judges that the two designed SiDB gates
+to compare are not equal, as determined by its respective sensitivity
+parameter.
+
+Template parameter ``Lyt``:
+    SiDB cell-level layout.)doc";
+
+static const char *__doc_fiction_designed_sidb_gate_comparator_designed_sidb_gate_comparator = R"doc(The default no-arguments constructor is deleted.)doc";
+
+static const char *__doc_fiction_designed_sidb_gate_comparator_designed_sidb_gate_comparator_2 =
+R"doc(Standard constructor.
+
+Parameter ``sens``:
+    Determines the sensitivity of the equality comparison.)doc";
+
+static const char *__doc_fiction_designed_sidb_gate_comparator_designed_sidb_gate_comparator_3 =
+R"doc(Copy constructor.
+
+Parameter ``other``:
+    Other comparator to copy.)doc";
+
+static const char *__doc_fiction_designed_sidb_gate_comparator_designed_sidb_gate_comparator_4 =
+R"doc(Move constructor.
+
+Parameter ``other``:
+    Other comparator to move to this one.)doc";
+
+static const char *__doc_fiction_designed_sidb_gate_comparator_equals =
+R"doc(Each designed SiDB gate comparator must implement an equality
+comparison.
+
+Parameter ``lhs``:
+    Left hand side argument.
+
+Parameter ``rhs``:
+    Right hand side argument.
+
+Returns:
+    `lhs = rhs`)doc";
+
+static const char *__doc_fiction_designed_sidb_gate_comparator_operator_assign =
+R"doc(Copy assignment operator.
+
+Parameter ``other``:
+    Other comparator to copy.)doc";
+
+static const char *__doc_fiction_designed_sidb_gate_comparator_operator_assign_2 =
+R"doc(Move assignment operator.
+
+Parameter ``other``:
+    Other comparator to move to this one.)doc";
+
+static const char *__doc_fiction_designed_sidb_gate_comparator_operator_call =
+R"doc(Each designed SiDB gate comparator must implement a strict comparator.
+
+Parameter ``lhs``:
+    Left hand side argument.
+
+Parameter ``rhs``:
+    Right hand side argument.
+
+Returns:
+    `lhs < rhs`)doc";
+
+static const char *__doc_fiction_designed_sidb_gate_comparator_sensitivity =
+R"doc(Each designed SiDB gate comparator depends on a sensitivity parameter,
+which determines the sensitivity of the equality comparison.)doc";
+
+static const char *__doc_fiction_designed_sidb_gate_comparator_sidb_gate_design =
+R"doc(This struct is used to pair a gate design with its respective
+simulation results per input.)doc";
+
+static const char *__doc_fiction_designed_sidb_gate_comparator_sidb_gate_design_gate_design = R"doc(The designed SiDB gate layout.)doc";
+
+static const char *__doc_fiction_designed_sidb_gate_comparator_sidb_gate_design_simulation_results_per_input = R"doc(The respectively associated simulation results per input.)doc";
+
+static const char *__doc_fiction_designed_sidb_gates =
+R"doc(This struct is used to store designed gate layouts, optionally along
+with their respective simulation results for each input.
+
+Template parameter ``Lyt``:
+    SiDB cell-level layout)doc";
+
+static const char *__doc_fiction_designed_sidb_gates_gate_layouts = R"doc(The designed SiDB gate layouts are stored here.)doc";
+
+static const char *__doc_fiction_designed_sidb_gates_simulation_results =
+R"doc(Optionally, the respectively associated simulation results for each
+input are stored here.)doc";
 
 static const char *__doc_fiction_detail_a_star_impl = R"doc()doc";
 
@@ -5260,27 +5606,6 @@ static const char *__doc_fiction_detail_connect_and_place = R"doc()doc";
 
 static const char *__doc_fiction_detail_connect_and_place_2 = R"doc()doc";
 
-static const char *__doc_fiction_detail_contains_key = R"doc(Forward-declaration for `operational_domain`.)doc";
-
-static const char *__doc_fiction_detail_contains_key_2 =
-R"doc(This function checks for the containment of a given key in a given
-map. If the key is found in the map, the associated
-`MapType::value_type` is returned. Otherwise, `std::nullopt` is
-returned.
-
-Template parameter ``MapType``:
-    The type of the map.
-
-Parameter ``map``:
-    The map in which to search for `key`.
-
-Parameter ``key``:
-    The key to search for in `map`.
-
-Returns:
-    The associated `MapType::value_type` of `key` in `map`, or
-    `std::nullopt` if `key` is not contained in `map`.)doc";
-
 static const char *__doc_fiction_detail_convert_array =
 R"doc(Based on https://stackoverflow.com/questions/57756557/initializing-a-
 stdarray-with-a-constant-value)doc";
@@ -5506,13 +5831,6 @@ Parameter ``step_size``:
 Returns:
     The defect influence domain.)doc";
 
-static const char *__doc_fiction_detail_defect_influence_impl_has_already_been_sampled =
-R"doc(This function verifies whether the layout has already been analyzed
-for the specified defect position `c`.
-
-Parameter ``c``:
-    Position of the defect.)doc";
-
 static const char *__doc_fiction_detail_defect_influence_impl_influence_domain = R"doc(The defect influence domain of the layout.)doc";
 
 static const char *__doc_fiction_detail_defect_influence_impl_is_defect_influential =
@@ -5652,8 +5970,6 @@ Parameter ``to_delete``:
 
 static const char *__doc_fiction_detail_design_sidb_gates_impl = R"doc()doc";
 
-static const char *__doc_fiction_detail_design_sidb_gates_impl_all_canvas_layouts = R"doc(All Canvas SiDB layout (without I/O pins).)doc";
-
 static const char *__doc_fiction_detail_design_sidb_gates_impl_all_sidbs_in_canvas = R"doc(All cells within the canvas.)doc";
 
 static const char *__doc_fiction_detail_design_sidb_gates_impl_convert_canvas_cell_indices_to_layout =
@@ -5664,6 +5980,15 @@ Parameter ``cell_indices``:
 
 Returns:
     An SiDB cell-level layout consisting of canvas SidBs.)doc";
+
+static const char *__doc_fiction_detail_design_sidb_gates_impl_create_all_possible_canvas_layouts =
+R"doc(This function calculates all combinations of distributing a given
+number of SiDBs across a specified number of positions in the canvas.
+Each combination is then used to create a gate layout candidate.
+
+Returns:
+    A vector containing all possible gate layouts generated from the
+    combinations.)doc";
 
 static const char *__doc_fiction_detail_design_sidb_gates_impl_design_sidb_gates_impl =
 R"doc(This constructor initializes an instance of the *SiDB Gate Designer*
@@ -5683,14 +6008,7 @@ Parameter ``ps``:
 Parameter ``st``:
     Statistics for the gate design process.)doc";
 
-static const char *__doc_fiction_detail_design_sidb_gates_impl_determine_all_possible_canvas_layouts =
-R"doc(This function calculates all combinations of distributing a given
-number of SiDBs across a specified number of positions in the canvas.
-Each combination is then used to create a gate layout candidate.
-
-Returns:
-    A vector containing all possible gate layouts generated from the
-    combinations.)doc";
+static const char *__doc_fiction_detail_design_sidb_gates_impl_extract_gate_designs = R"doc()doc";
 
 static const char *__doc_fiction_detail_design_sidb_gates_impl_input_bdl_wires = R"doc(Input BDL wires.)doc";
 
@@ -5710,8 +6028,8 @@ static const char *__doc_fiction_detail_design_sidb_gates_impl_output_bdl_wires 
 
 static const char *__doc_fiction_detail_design_sidb_gates_impl_params = R"doc(Parameters for the *SiDB Gate Designer*.)doc";
 
-static const char *__doc_fiction_detail_design_sidb_gates_impl_run_automatic_exhaustive_gate_designer =
-R"doc(Design gates by using the *Automatic Exhaustive Gate Desginer*. This
+static const char *__doc_fiction_detail_design_sidb_gates_impl_run_exhaustive_gate_designer =
+R"doc(Design gates by using the *Automatic Exhaustive Gate Designer*. This
 algorithm was proposed in \"Minimal Design of SiDB Gates: An Optimal
 Basis for Circuits Based on Silicon Dangling Bonds\" by J. Drewniok,
 M. Walter, and R. Wille in NANOARCH 2023
@@ -5751,41 +6069,22 @@ parameters. The design process is parallelized to improve performance.
 Returns:
     A vector of designed SiDB gate layouts.)doc";
 
-static const char *__doc_fiction_detail_design_sidb_gates_impl_set_simulation_results_retention_accordingly =
-R"doc(This function makes sure that the underlying parameters for
-`is_operational` allow simulation results to be used when the given
-parameter set indicates the use for it.)doc";
+static const char *__doc_fiction_detail_design_sidb_gates_impl_set_operational_params_accordingly =
+R"doc(This function makes sure that underlying parameters for
+`is_operational` are set according to the given parameters for
+`design_sidb_gates`.
+
+Parameter ``params``:
+    The given parameters for `design_sidb_gates`.
+
+Returns:
+    The same parameters, but now the underlying parameters for
+    `is_operational` are adjusted accordingly.)doc";
 
 static const char *__doc_fiction_detail_design_sidb_gates_impl_skeleton_layout =
 R"doc(The skeleton layout serves as a starting layout to which SiDBs are
 added to create unique SiDB layouts and, if possible, working gates.
 It defines input and output wires.)doc";
-
-static const char *__doc_fiction_detail_design_sidb_gates_impl_skeleton_layout_with_canvas_sidbs =
-R"doc(This function adds SiDBs (given by indices) to the skeleton layout
-that is returned afterwards.
-
-Parameter ``cell_indices``:
-    A vector of indices of cells to be added to the skeleton layout.
-
-Returns:
-    A copy of the original layout (`skeleton_layout`) with SiDB cells
-    added at specified indices.)doc";
-
-static const char *__doc_fiction_detail_design_sidb_gates_impl_sort_designed_gate_layouts_by_ground_state_isolation =
-R"doc(Performs a sorting operation on the designed gate layouts, putting
-those in front for which the energetic gap between the ground state
-and the first excited state is larger. For each designed gate layout,
-the minimum energetic gap is taken over each input. When the minima
-are equal for two designed gate layouts, the average energetic gap
-over each input is taken as a tiebreaker.
-
-Parameter ``designed_gate_layouts``:
-    A vector of designed gate layouts to sort in place.
-
-Parameter ``sim_results_per_input_for_each_gate_design``:
-    The simulation results for each input of each designed gate
-    layout.)doc";
 
 static const char *__doc_fiction_detail_design_sidb_gates_impl_stats = R"doc(The statistics of the gate design.)doc";
 
@@ -6928,25 +7227,6 @@ static const char *__doc_fiction_detail_fanout_substitution_impl_ps = R"doc()doc
 
 static const char *__doc_fiction_detail_fanout_substitution_impl_run = R"doc()doc";
 
-static const char *__doc_fiction_detail_find_key_with_tolerance =
-R"doc(This function searches for a floating-point value specified by the
-`key` in the provided map `map`, applying a tolerance specified by
-`fiction::physical_constants::POP_STABILITY_ERR`. Each key in the map
-is compared to the specified key within this tolerance.
-
-Template parameter ``MapType``:
-    The type of the map containing parameter points as keys.
-
-Parameter ``map``:
-    The map containing parameter points as keys and associated values.
-
-Parameter ``key``:
-    The parameter point to search for in the map.
-
-Returns:
-    An iterator to the found parameter point in the map, or
-    `map.cend()` if not found.)doc";
-
 static const char *__doc_fiction_detail_gate_level_drvs_impl = R"doc()doc";
 
 static const char *__doc_fiction_detail_gate_level_drvs_impl_border_io_check =
@@ -7180,6 +7460,8 @@ static const char *__doc_fiction_detail_generate_edge_intersection_graph_impl_ps
 static const char *__doc_fiction_detail_generate_edge_intersection_graph_impl_pst = R"doc(Statistics.)doc";
 
 static const char *__doc_fiction_detail_generate_edge_intersection_graph_impl_run = R"doc()doc";
+
+static const char *__doc_fiction_detail_get_ground_state_isolation = R"doc()doc";
 
 static const char *__doc_fiction_detail_get_offset =
 R"doc(Utility function to calculate the offset that has to be subtracted
@@ -8130,8 +8412,6 @@ Returns:
     `true` if any output wire contains a kink (i.e., an unexpected
     charge state), `false` otherwise.)doc";
 
-static const char *__doc_fiction_detail_is_operational_impl_dependent_cell = R"doc(Dependent cell of the canvas SiDBs.)doc";
-
 static const char *__doc_fiction_detail_is_operational_impl_determine_non_operational_input_patterns_and_non_operationality_reason =
 R"doc(Determines the input combinations for which the layout is non-
 operational and the reason why the layout is non-operational.
@@ -8153,6 +8433,9 @@ Parameter ``ground_state``:
 Parameter ``bdl``:
     BDL pair to be evaluated.
 
+Parameter ``port``:
+    Port direction where the BDL pair to be evaluated is.
+
 Returns:
     `true` if `1` is encoded, `false` otherwise.)doc";
 
@@ -8166,15 +8449,11 @@ Parameter ``ground_state``:
 Parameter ``bdl``:
     BDL pair to be evaluated.
 
+Parameter ``port``:
+    Port direction where the BDL pair to be evaluated is.
+
 Returns:
     `true` if `0` is encoded, `false` otherwise.)doc";
-
-static const char *__doc_fiction_detail_is_operational_impl_get_operational_status_assessment_stats =
-R"doc(Returns auxiliary results from the operational status assessment,
-including the number of simulator invocations.
-
-Returns:
-    Auxiliary results from the operational status assessment.)doc";
 
 static const char *__doc_fiction_detail_is_operational_impl_input_bdl_wires = R"doc(Input BDL wires.)doc";
 
@@ -8213,17 +8492,8 @@ identify and discard SiDB layouts that do not satisfy physical model
 constraints under the I/O pin conditions required for the desired
 Boolean function, and (3) detecting I/O signal instability.
 
-Template parameter ``ChargeLyt``:
-    The charge distribution surface layout type.
-
 Parameter ``input_pattern``:
     The current input pattern.
-
-Parameter ``cds_canvas``:
-    The charge distribution of the canvas layout.
-
-Parameter ``dependent_cell``:
-    A dependent-cell of the canvas SiDBs.
 
 Returns:
     A `layout_invalidity_reason` object indicating why the layout is
@@ -8236,7 +8506,7 @@ R"doc(Constructor to initialize the algorithm with a layout and parameters.
 Parameter ``lyt``:
     The SiDB cell-level layout to be checked.
 
-Parameter ``spec``:
+Parameter ``tt``:
     Expected Boolean function of the layout given as a multi-output
     truth table.
 
@@ -8275,7 +8545,7 @@ input and output wires, and a canvas layout.
 Parameter ``lyt``:
     The SiDB cell-level layout to be checked.
 
-Parameter ``spec``:
+Parameter ``tt``:
     Expected Boolean function of the layout given as a multi-output
     truth table.
 
@@ -8297,12 +8567,15 @@ R"doc(Constructor to initialize the algorithm with a layout and parameters.
 Parameter ``lyt``:
     The SiDB cell-level layout to be checked.
 
-Parameter ``spec``:
+Parameter ``tt``:
     Expected Boolean function of the layout given as a multi-output
     truth table.
 
 Parameter ``params``:
-    Parameters for the `is_operational` algorithm.)doc";
+    Parameters for the `is_operational` algorithm.
+
+Parameter ``c_lyt``:
+    Canvas layout.)doc";
 
 static const char *__doc_fiction_detail_is_operational_impl_is_physical_validity_feasible =
 R"doc(This function determines if there is a charge distribution of the
@@ -8372,10 +8645,6 @@ Parameter ``cds``:
 Parameter ``output_wire_index``:
     The index representing the current input pattern of the output
     wire.)doc";
-
-static const char *__doc_fiction_detail_is_operational_impl_stats =
-R"doc(Auxiliary results from the operational status assessment, including
-the number of simulator invocations.)doc";
 
 static const char *__doc_fiction_detail_is_operational_impl_truth_table = R"doc(The specification of the layout.)doc";
 
@@ -8762,20 +9031,6 @@ Returns:
     All physically valid physical parameters and the excited state
     number.)doc";
 
-static const char *__doc_fiction_detail_operational_domain_impl_has_already_been_sampled =
-R"doc(Determines whether the point at step position `(d1, ..., dn)` has
-already been sampled and returns the operational value at `(d1, ...,
-dn)` if it already exists. Here, `di` represents steps in the i-th
-dimension, not the actual values of the parameters.
-
-Parameter ``sp``:
-    Step point to check.
-
-Returns:
-    The operational status of the point at step position `sp = (d1,
-    ..., dn)` or `std::nullopt` if the point `(d1, ..., dn)` has not
-    been sampled yet.)doc";
-
 static const char *__doc_fiction_detail_operational_domain_impl_indices = R"doc(Dimension steps.)doc";
 
 static const char *__doc_fiction_detail_operational_domain_impl_infer_operational_status_in_enclosing_contour =
@@ -8905,7 +9160,7 @@ provided parameters.
 Returns:
     The number of steps in the given dimension.)doc";
 
-static const char *__doc_fiction_detail_operational_domain_impl_num_threads = R"doc(Number of available hardware threads.)doc";
+static const char *__doc_fiction_detail_operational_domain_impl_number_of_threads = R"doc(Number of available hardware threads.)doc";
 
 static const char *__doc_fiction_detail_operational_domain_impl_op_domain = R"doc(The operational domain of the layout.)doc";
 
@@ -10105,10 +10360,11 @@ dimension is larger than the corresponding maximum value.
 Additionally, it checks if the step size of any sweep dimension is
 negative or zero.
 
-If any of this is the case, an `std::invalid_argument` is thrown.
-
 Parameter ``params``:
-    The operational domain parameters to validate.)doc";
+    The operational domain parameters to validate.
+
+Throws:
+    std::invalid_argument if the sweep parameters are invalid.)doc";
 
 static const char *__doc_fiction_detail_wire_east = R"doc()doc";
 
@@ -11161,7 +11417,7 @@ R"doc(This function takes in a vector of `charge_distribution_surface`
 objects and returns a map containing the system energy and the number
 of occurrences of that energy in the input vector. To compare two
 energy values for equality, the comparison uses a tolerance specified
-by `physical_constants::POP_STABILITY_ERR`.
+by `constants::ERROR_MARGIN`.
 
 Template parameter ``Lyt``:
     SiDB cell-level layout type.
@@ -11988,6 +12244,25 @@ Returns:
     Iterator in the range `[first, last)` to the first position of the
     first 2-element sub-sequence shared between the two ranges, or
     `last` if no such shared sub-sequence exists.)doc";
+
+static const char *__doc_fiction_find_key_with_tolerance =
+R"doc(This function searches for a floating-point value specified by the
+`key` in the provided map `map`, applying a tolerance specified by
+`fiction::constants::ERROR_MARGIN`. Each key in the map is compared to
+the specified key within this tolerance.
+
+Template parameter ``MapType``:
+    The type of the map containing parameter points as keys.
+
+Parameter ``map``:
+    The map containing parameter points as keys and associated values.
+
+Parameter ``key``:
+    The parameter point to search for in the map.
+
+Returns:
+    An iterator to the found parameter point in the map, or
+    `map.cend()` if not found.)doc";
 
 static const char *__doc_fiction_flat_top_hex = R"doc(\verbatim _____ / \ / \ \ / \_____/ \endverbatim)doc";
 
@@ -14111,6 +14386,8 @@ static const char *__doc_fiction_has_cardinal_operations = R"doc()doc";
 
 static const char *__doc_fiction_has_create_dot = R"doc()doc";
 
+static const char *__doc_fiction_has_dimensions = R"doc()doc";
+
 static const char *__doc_fiction_has_east = R"doc()doc";
 
 static const char *__doc_fiction_has_elevation_operations = R"doc()doc";
@@ -15583,34 +15860,25 @@ static const char *__doc_fiction_is_operational_params = R"doc(Parameters for th
 
 static const char *__doc_fiction_is_operational_params_input_bdl_iterator_params = R"doc(Parameters for the BDL input iterator.)doc";
 
-static const char *__doc_fiction_is_operational_params_op_condition =
+static const char *__doc_fiction_is_operational_params_op_condition_kinks =
 R"doc(Condition to decide whether a layout is operational or non-
-operational.)doc";
+operational, relating to kinks.)doc";
+
+static const char *__doc_fiction_is_operational_params_op_condition_positive_charges =
+R"doc(Condition to decide whether a layout is operational or non-
+operational, relating to kinks.)doc";
 
 static const char *__doc_fiction_is_operational_params_operational_analysis_strategy =
 R"doc(Simulation method to determine if the layout is operational or non-
-operational. There are three possible strategies:
-
-- `SIMULATION_ONLY`: This setting does not apply any filtering
-strategies to determine if the layout is operational. Instead, it
-relies solely on physical simulation to make this determination. -
-`FILTER_ONLY`: This setting does only apply filtering strategies to
-determine if the layout is non-operational. If the layout passes all
-filtering strategies, it is considered operational. This is only an
-approximation. It may be possible that the layout is non-operational,
-but the filtering strategies do not detect it. -
-`FILTER_THEN_SIMULATION`: Before a physical simulation is conducted,
-the algorithm checks if filtering strategies have detected whether the
-layout is non-operational. This only provides any runtime benefits if
-kinks are rejected.)doc";
+operational.)doc";
 
 static const char *__doc_fiction_is_operational_params_operational_analysis_strategy_FILTER_ONLY =
 R"doc(Apply filtering exclusively to determine whether the layout is non-
 operational. If the layout passes all filter steps, it is considered
 operational.
 
-@note This is an extremely fast approximation that may sometimes lead
-to false positives.)doc";
+@note This is an extremely fast approximation that may lead to false
+positives.)doc";
 
 static const char *__doc_fiction_is_operational_params_operational_analysis_strategy_FILTER_THEN_SIMULATION =
 R"doc(Before a physical simulation is conducted, the algorithm checks if
@@ -15621,16 +15889,28 @@ static const char *__doc_fiction_is_operational_params_operational_analysis_stra
 R"doc(Do not apply filter strategies to determine whether the layout is
 operational. Instead, rely solely on physical simulation.)doc";
 
-static const char *__doc_fiction_is_operational_params_operational_condition =
+static const char *__doc_fiction_is_operational_params_operational_condition_kinks =
 R"doc(Condition to decide whether a layout is operational or non-
-operational.)doc";
+operational, relating to kinks.)doc";
 
-static const char *__doc_fiction_is_operational_params_operational_condition_REJECT_KINKS =
+static const char *__doc_fiction_is_operational_params_operational_condition_kinks_REJECT_KINKS =
 R"doc(The I/O pins are not allowed to show kinks. If kinks exist, the layout
 is considered as non-operational.)doc";
 
-static const char *__doc_fiction_is_operational_params_operational_condition_TOLERATE_KINKS =
+static const char *__doc_fiction_is_operational_params_operational_condition_kinks_TOLERATE_KINKS =
 R"doc(Even if the I/O pins show kinks, the layout is still considered as
+operational.)doc";
+
+static const char *__doc_fiction_is_operational_params_operational_condition_positive_charges =
+R"doc(Condition to decide whether a layout is operational or non-
+operational, relating to positive charges.)doc";
+
+static const char *__doc_fiction_is_operational_params_operational_condition_positive_charges_REJECT_POSITIVE_CHARGES =
+R"doc(Positive charges may not be able to occur. In the case of the converse
+being true, the layout is considered as non-operational.)doc";
+
+static const char *__doc_fiction_is_operational_params_operational_condition_positive_charges_TOLERATE_POSITIVE_CHARGES =
+R"doc(Even if positive charges can occur, the layout is still considered as
 operational.)doc";
 
 static const char *__doc_fiction_is_operational_params_sim_engine =
@@ -15658,6 +15938,21 @@ are not kept by default.)doc";
 static const char *__doc_fiction_is_operational_params_strategy_to_analyze_operational_status =
 R"doc(Strategy to determine whether a layout is operational or non-
 operational.)doc";
+
+static const char *__doc_fiction_is_operational_params_termination_cond =
+R"doc(Condition to decide when to terminate the assessment of the
+operational status of the given layout.)doc";
+
+static const char *__doc_fiction_is_operational_params_termination_condition =
+R"doc(The termination condition for assessment of the operational status of
+the given layout.)doc";
+
+static const char *__doc_fiction_is_operational_params_termination_condition_ALL_INPUT_COMBINATIONS_ASSESSED = R"doc(The operational status is assessed for all input combinations.)doc";
+
+static const char *__doc_fiction_is_operational_params_termination_condition_ON_FIRST_NON_OPERATIONAL =
+R"doc(The assessment for the given layout terminates either when it is found
+to be operational for all input combinations, or an input combination
+is found for which the layout is not operational.)doc";
 
 static const char *__doc_fiction_is_positively_charged_defect =
 R"doc(Checks whether the given defect has a positive charge value assigned
@@ -16480,6 +16775,51 @@ Parameter ``n``:
 Returns:
     Irregular clocking scheme.)doc";
 
+static const char *__doc_fiction_operational_assessment =
+R"doc(This struct is used to collect results from the operational status
+assessment.
+
+Template parameter ``Lyt``:
+    SiDB cell-level layout type.)doc";
+
+static const char *__doc_fiction_operational_assessment_assessment_per_input =
+R"doc(When the termination condition is set to
+`ALL_INPUT_COMBINATIONS_ASSESSED`, the operational status for each
+respective input combination is stored here, sorted by their binary
+representation. When the simulation retention is set to
+`KEEP_SIMULATION_RESULTS`, this optional structure is also populated.)doc";
+
+static const char *__doc_fiction_operational_assessment_extract_simulation_results_per_input =
+R"doc(Extracts the simulation results contained in this operational
+assessment through moves.
+
+Returns:
+    A vector containing the simulation results for each respective
+    input that was assessed.)doc";
+
+static const char *__doc_fiction_operational_assessment_operational_assessment = R"doc(Standard constructor that only sets the operational status.)doc";
+
+static const char *__doc_fiction_operational_assessment_operational_assessment_for_input =
+R"doc(This struct collects the information for a specific input combination
+that was obtained during the assessment.)doc";
+
+static const char *__doc_fiction_operational_assessment_operational_assessment_for_input_operational_assessment_for_input = R"doc(Standard constructor that only sets the operational status.)doc";
+
+static const char *__doc_fiction_operational_assessment_operational_assessment_for_input_simulation_results =
+R"doc(The charge distributions obtained for one input combination that was
+tested.)doc";
+
+static const char *__doc_fiction_operational_assessment_operational_assessment_for_input_status =
+R"doc(The assessed operational status of the given layout under one input
+combination.)doc";
+
+static const char *__doc_fiction_operational_assessment_simulator_invocations = R"doc(The number of input combinations tested.)doc";
+
+static const char *__doc_fiction_operational_assessment_status =
+R"doc(The assessed operational status of the given layout. The status
+`OPERATIONAL` is given if and only the layout is operational under all
+input combinations.)doc";
+
 static const char *__doc_fiction_operational_domain =
 R"doc(An operational domain is a set of simulation parameter values for
 which a given SiDB layout is logically operational. This means that a
@@ -16497,15 +16837,14 @@ simulation parameters and checking the operational status of the
 layout for each parameter combination. The operational domain is then
 defined as the set of all parameter combinations for which the layout
 is operational. Different techniques for performing these sweep are
-implemented.
+implemented.)doc";
 
-Template parameter ``Key``:
-    The type representing the key. Defaults to `parameter_point`.
+static const char *__doc_fiction_operational_domain_add_dimension =
+R"doc(Adds a dimension to sweep over. The first dimension is the x
+dimension, the second dimension is the y dimension, etc.
 
-Template parameter ``Value``:
-    The type representing the value. Defaults to `operational_status`.)doc";
-
-static const char *__doc_fiction_operational_domain_add_value = R"doc()doc";
+Parameter ``dim``:
+    The dimension to add.)doc";
 
 static const char *__doc_fiction_operational_domain_contour_tracing =
 R"doc(Computes the operational domain of the given SiDB cell-level layout.
@@ -16542,9 +16881,6 @@ This flavor of operational domain computation was proposed in
 Dangling Bond Logic\" by M. Walter, J. Drewniok, S. S. H. Ng, K.
 Walus, and R. Wille in NANOARCH 2023.
 
-This function may throw an `std::invalid_argument` exception if the
-given sweep parameters are invalid.
-
 Template parameter ``Lyt``:
     SiDB cell-level layout type.
 
@@ -16568,11 +16904,14 @@ Parameter ``stats``:
     Operational domain computation statistics.
 
 Returns:
-    The (partial) operational domain of the layout.)doc";
+    The (partial) operational domain of the layout.
+
+Throws:
+    std::invalid_argument if the given sweep parameters are invalid.)doc";
 
 static const char *__doc_fiction_operational_domain_dimensions =
-R"doc(The dimensions to sweep over, ordered by priority. The first dimension
-is the x dimension, the second dimension is the y dimension, etc.)doc";
+R"doc(The dimensions to sweep over. The first dimension is the x dimension,
+the second dimension is the y dimension, etc.)doc";
 
 static const char *__doc_fiction_operational_domain_flood_fill =
 R"doc(Computes the operational domain of the given SiDB cell-level layout.
@@ -16606,9 +16945,6 @@ This flavor of operational domain computation was proposed in
 Dangling Bond Logic\" by M. Walter, J. Drewniok, S. S. H. Ng, K.
 Walus, and R. Wille in NANOARCH 2023.
 
-This function may throw an `std::invalid_argument` exception if the
-given sweep parameters are invalid.
-
 Template parameter ``Lyt``:
     SiDB cell-level layout type.
 
@@ -16632,21 +16968,28 @@ Parameter ``stats``:
     Operational domain computation statistics.
 
 Returns:
-    The (partial) operational domain of the layout.)doc";
+    The (partial) operational domain of the layout.
 
-static const char *__doc_fiction_operational_domain_get_domain = R"doc()doc";
+Throws:
+    std::invalid_argument if the given sweep parameters are invalid.)doc";
 
-static const char *__doc_fiction_operational_domain_get_value =
-R"doc(This function retrieves the value associated with the provided key
-from the operational domain. If the key is found in the domain, its
-corresponding value is returned. Otherwise, `std::nullopt` is
-returned.
+static const char *__doc_fiction_operational_domain_get_dimension =
+R"doc(Returns a specific dimension by index.
 
-Parameter ``key``:
-    The key to look up.
+Parameter ``index``:
+    The index of the dimension to return.
 
 Returns:
-    The value associated with the parameter point.)doc";
+    The dimension at the specified index.
+
+Throws:
+    std::out_of_range if the index is out of range.)doc";
+
+static const char *__doc_fiction_operational_domain_get_number_of_dimensions =
+R"doc(Returns the number of dimensions to sweep over.
+
+Returns:
+    The number of dimensions to sweep over.)doc";
 
 static const char *__doc_fiction_operational_domain_grid_search =
 R"doc(Computes the operational domain of the given SiDB cell-level layout.
@@ -16668,9 +17011,6 @@ Each exact ground state simulation has exponential complexity in of
 itself. Therefore, the algorithm is only feasible for small layouts
 with few inputs.
 
-This function may throw an `std::invalid_argument` exception if the
-given sweep parameters are invalid.
-
 Template parameter ``Lyt``:
     SiDB cell-level layout type.
 
@@ -16691,12 +17031,18 @@ Parameter ``stats``:
     Operational domain computation statistics.
 
 Returns:
-    The operational domain of the layout.)doc";
+    The operational domain of the layout.
 
-static const char *__doc_fiction_operational_domain_operational_values =
-R"doc(This can store different information depending on the use case. If the
-operational domain is simulated for different physical parameters, the
-parameters are stored with the corresponding operating status.)doc";
+Throws:
+    std::invalid_argument if the given sweep parameters are invalid.)doc";
+
+static const char *__doc_fiction_operational_domain_operational_domain = R"doc(Default constructor.)doc";
+
+static const char *__doc_fiction_operational_domain_operational_domain_2 =
+R"doc(Standard constructor.
+
+Parameter ``dims``:
+    Dimensions.)doc";
 
 static const char *__doc_fiction_operational_domain_params =
 R"doc(Parameters for the operational domain computation. The parameters are
@@ -16729,9 +17075,6 @@ inputs of the layout. Each exact ground state simulation has
 exponential complexity in of itself. Therefore, the algorithm is only
 feasible for small layouts with few inputs.
 
-This function may throw an `std::invalid_argument` exception if the
-given sweep parameters are invalid.
-
 Template parameter ``Lyt``:
     SiDB cell-level layout type.
 
@@ -16755,7 +17098,10 @@ Parameter ``stats``:
     Operational domain computation statistics.
 
 Returns:
-    The (partial) operational domain of the layout.)doc";
+    The (partial) operational domain of the layout.
+
+Throws:
+    std::invalid_argument if the given sweep parameters are invalid.)doc";
 
 static const char *__doc_fiction_operational_domain_ratio =
 R"doc(Calculates the ratio of operational parameter points surrounding a
@@ -16848,7 +17194,38 @@ Parameter ``spec``:
     Vector of truth table specifications.
 
 Parameter ``params``:
-    Parameters to simulate if a input combination is operational.
+    Parameters to simulate if an input combination is operational.
+
+Returns:
+    The count of operational input combinations.)doc";
+
+static const char *__doc_fiction_operational_input_patterns_2 =
+R"doc(This function determines the input combinations for which the layout
+is operational.
+
+Template parameter ``Lyt``:
+    SiDB cell-level layout type.
+
+Template parameter ``TT``:
+    Type of the truth table.
+
+Parameter ``lyt``:
+    The SiDB layout.
+
+Parameter ``spec``:
+    Vector of truth table specifications.
+
+Parameter ``params``:
+    Parameters to simulate if an input combination is operational.
+
+Parameter ``input_bdl_wire``:
+    Optional BDL input wires of lyt.
+
+Parameter ``output_bdl_wire``:
+    Optional BDL output wires of lyt.
+
+Parameter ``canvas_lyt``:
+    Optional canvas layout.
 
 Returns:
     The count of operational input combinations.)doc";
@@ -16859,19 +17236,28 @@ static const char *__doc_fiction_operational_status_NON_OPERATIONAL = R"doc(The 
 
 static const char *__doc_fiction_operational_status_OPERATIONAL = R"doc(The layout is operational.)doc";
 
-static const char *__doc_fiction_operational_status_assessment_stats =
-R"doc(This struct is used to collect auxiliary results from the operational
-status assessment.
+static const char *__doc_fiction_order_designed_sidb_gates =
+R"doc(The designed SiDB gates are ordered inplace according to the given
+ordering recipe. Comparators that occur earlier in the recipe have a
+higher precedence. Two designed gates are compared using the recipe as
+follows: iterating through the comparators in the order of precedence,
+the `equals` function is invoked. When the current comparator judges
+the two gate implementations to be equal, we move on to the next
+comparator. This proceeds until one comparator judges non-equality, in
+which case `operator()` is invoked, which implements `<`. If all
+comparators judge the two gate implementations to be equal,
+`operator()` is invoked on the last in the recipe.
 
 Template parameter ``Lyt``:
-    SiDB cell-level layout type.)doc";
+    SiDB cell-level layout.
 
-static const char *__doc_fiction_operational_status_assessment_stats_simulation_results =
-R"doc(The charge distributions obtained for each input combination tested,
-sorted by the binary representation of the respectively associated
-input combinations.)doc";
+Parameter ``recipe``:
+    A list of comparators that compose a recipe for determining an
+    ordering of the designed SiDB gates.
 
-static const char *__doc_fiction_operational_status_assessment_stats_simulator_invocations = R"doc(The number of input combinations tested.)doc";
+Parameter ``designed_gates``:
+    The gates that were designed that are to be ordered by the given
+    ordering recipe.)doc";
 
 static const char *__doc_fiction_orthogonal =
 R"doc(A scalable placement & routing approach based on orthogonal graph
@@ -17046,12 +17432,21 @@ Template parameter ``I``:
     Index of the parameter value to be returned.
 
 Returns:
-    The parameter value at the specified index.)doc";
+    The parameter value at the specified index.
+
+Throws:
+    std::out_of_range if the index is out of bounds.)doc";
+
+static const char *__doc_fiction_parameter_point_get_parameters =
+R"doc(Returns the parameter values for each dimension.
+
+Returns:
+    The parameter values for each dimension.)doc";
 
 static const char *__doc_fiction_parameter_point_operator_eq =
 R"doc(Equality operator. Checks if this parameter point is equal to another
 point within a specified tolerance. The tolerance is defined by
-`physical_constants::POP_STABILITY_ERR`.
+`constants::ERROR_MARGIN`.
 
 Parameter ``other``:
     Other parameter point to compare with.
@@ -19616,9 +20011,9 @@ skeleton (i.e., the pre-defined input and output wires) are hexagonal
 in shape.)doc";
 
 static const char *__doc_fiction_sidb_on_the_fly_gate_library_add_defect_to_skeleton =
-R"doc(This function takes a defect surface and a skeleton skeleton and adds
-defects from the surrounding area to the skeleton. The defects within
-a specified distance from the center cell are taken into account. The
+R"doc(This function takes a defect surface and a skeleton and adds defects
+from the surrounding area to the skeleton. The defects within a
+specified distance from the center cell are taken into account. The
 resulting skeleton with added defects is returned.
 
 Template parameter ``CellLyt``:
@@ -19803,6 +20198,68 @@ Returns:
     Bestagon gate representation of `t` including mirroring.)doc";
 
 static const char *__doc_fiction_sidb_on_the_fly_gate_library_sidb_on_the_fly_gate_library = R"doc()doc";
+
+static const char *__doc_fiction_sidb_simulation_domain =
+R"doc(The `sidb_simulation_domain` is designed to represent a generic
+simulation domain where keys are associated with values stored as
+tuples. It uses a `locked_parallel_flat_hash_map` to ensure thread-
+safe access to the stored data. All methods of this class are thread-
+safe.
+
+Template parameter ``Key``:
+    The type of the key used to identify entries in the domain.
+
+Template parameter ``MappedTypes``:
+    Value types stored in the tuple.)doc";
+
+static const char *__doc_fiction_sidb_simulation_domain_add_value =
+R"doc(Adds a value to the operational domain. This function is thread-safe
+and uses the `try_emplace` method.
+
+Parameter ``key``:
+    The key to associate with the value.
+
+Parameter ``value``:
+    The value to add, which must be a tuple.)doc";
+
+static const char *__doc_fiction_sidb_simulation_domain_contains =
+R"doc(Checks whether a specified key exists in the given map and retrieves
+its associated value if present. This function utilizes the
+`if_contains` method of the map to ensure thread-safe access.
+
+Parameter ``key``:
+    The key to search for in the map.
+
+Returns:
+    The value associated with the key if it exists, `std::nullopt`
+    otherwise.)doc";
+
+static const char *__doc_fiction_sidb_simulation_domain_domain_values = R"doc(The domain values stored in a thread-safe map.)doc";
+
+static const char *__doc_fiction_sidb_simulation_domain_empty =
+R"doc(Checks whether the operational domain is empty.
+
+Returns:
+    `true` if the operational domain is empty, `false` otherwise.)doc";
+
+static const char *__doc_fiction_sidb_simulation_domain_for_each =
+R"doc(Applies a callable to all key-value pairs in the container. For
+thread-safety, this function operates on a copy of the underlying map
+created at the time of the function call.
+
+Template parameter ``Fn``:
+    Functor type.
+
+Parameter ``fn``:
+    Functor to apply to each key-value pair.)doc";
+
+static const char *__doc_fiction_sidb_simulation_domain_sidb_simulation_domain = R"doc(Constructs a new `sidb_simulation_domain` instance.)doc";
+
+static const char *__doc_fiction_sidb_simulation_domain_size =
+R"doc(Counts the number of key-value pairs in the operational domain.
+
+Returns:
+    The size of the operational domain.)doc";
 
 static const char *__doc_fiction_sidb_simulation_engine = R"doc(Selector for the available SiDB simulation engines.)doc";
 
@@ -21731,8 +22188,7 @@ parameters.
 
 Parameter ``defect_infdom``:
     The defect influence domain to be written. It contains a mapping
-    from sets of simulation parameters (represented as a pair of sweep
-    parameters for the X and Y dimensions) to their influence status.
+    from defect positions to their influence status.
 
 Parameter ``os``:
     The output stream where the CSV representation of the defect
@@ -21756,8 +22212,7 @@ parameters.
 
 Parameter ``defect_infdom``:
     The defect influence domain to be written. It contains a mapping
-    from sets of simulation parameters (represented as a pair of sweep
-    parameters for the X and Y dimensions) to their influence status.
+    from defect positions to their influence status.
 
 Parameter ``filename``:
     The filename where the CSV representation of the defect influence
@@ -21925,11 +22380,15 @@ The operational status is a binary value represented by specified tags
 in `params` indicating whether the simulation parameters are within
 the operational domain or not.
 
+Template parameter ``OpDomain``:
+    The type of the operational domain.
+
 Parameter ``opdom``:
-    The operational domain to be written. It contains a mapping from
-    sets of simulation parameters (represented as a pair of sweep
-    parameters for the X and Y dimensions) to their operational
-    status.
+    The operational domain to be written. It represents a mapping
+    between sets of simulation parameters (defined as a pair of sweep
+    parameters for the X, Y, and Z dimensions) and a tuple containing
+    detailed information about the SiDB layout associated with those
+    simulation parameters.
 
 Parameter ``os``:
     The output stream where the CSV representation of the operational
@@ -21939,7 +22398,11 @@ Parameter ``params``:
     The parameters used for writing, including the operational and
     non-operational tags. Defaults to an empty
     `write_operational_domain_params` object, which provides standard
-    tags.)doc";
+    tags.
+
+Throws:
+    std::invalid_argument if the number of dimensions in the
+    operational domain is 0 or greater than 3.)doc";
 
 static const char *__doc_fiction_write_operational_domain_2 =
 R"doc(Writes a CSV representation of an operational domain to the specified
@@ -21956,11 +22419,15 @@ The operational status is a binary value represented by specified tags
 in `params` indicating whether the simulation parameters are within
 the operational domain or not.
 
+Template parameter ``OpDomain``:
+    The type of the operational domain.
+
 Parameter ``opdom``:
-    The operational domain to be written. It contains a mapping from
-    sets of simulation parameters (represented as a pair of sweep
-    parameters for the X and Y dimensions) to their operational
-    status.
+    The operational domain to be written. It represents a mapping
+    between sets of simulation parameters (defined as a pair of sweep
+    parameters for the X, Y, and Z dimensions) and a tuple containing
+    detailed information about the SiDB layout associated with those
+    simulation parameters.
 
 Parameter ``filename``:
     The filename where the CSV representation of the operational
@@ -21970,7 +22437,10 @@ Parameter ``params``:
     The parameters used for writing, including the operational and
     non-operational tags. Defaults to an empty
     `write_operational_domain_params` object, which provides standard
-    tags.)doc";
+    tags.
+
+Throws:
+    std::ofstream::failure if the file could not be opened.)doc";
 
 static const char *__doc_fiction_write_operational_domain_params = R"doc(Parameters for writing an operational domain to a CSV file.)doc";
 

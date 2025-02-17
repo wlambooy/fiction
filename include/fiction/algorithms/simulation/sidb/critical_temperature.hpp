@@ -19,7 +19,7 @@
 #include "fiction/algorithms/simulation/sidb/sidb_simulation_parameters.hpp"
 #include "fiction/algorithms/simulation/sidb/sidb_simulation_result.hpp"
 #include "fiction/technology/cell_technologies.hpp"
-#include "fiction/technology/physical_constants.hpp"
+#include "fiction/technology/constants.hpp"
 #include "fiction/traits.hpp"
 #include "fiction/utils/math_utils.hpp"
 
@@ -162,7 +162,8 @@ class critical_temperature_impl
             auto input_bdl_wires  = std::vector<bdl_wire<Lyt>>{};
             auto output_bdl_wires = std::vector<bdl_wire<Lyt>>{};
 
-            if (params.operational_params.op_condition == is_operational_params::operational_condition::REJECT_KINKS)
+            if (params.operational_params.op_condition_kinks ==
+                is_operational_params::operational_condition_kinks::REJECT_KINKS)
             {
                 input_bdl_wires =
                     detect_bdl_wires(layout, params.operational_params.input_bdl_iterator_params.bdl_wire_params,
@@ -197,8 +198,8 @@ class critical_temperature_impl
 
                 sidb_energy_and_state_type energy_state_type{};
 
-                if (params.operational_params.op_condition ==
-                    is_operational_params::operational_condition::REJECT_KINKS)
+                if (params.operational_params.op_condition_kinks ==
+                    is_operational_params::operational_condition_kinks::REJECT_KINKS)
                 {
                     energy_state_type = calculate_energy_and_state_type_with_kinks_rejected<Lyt>(
                         distribution, sim_result.charge_distributions, spec, i, input_bdl_wires, output_bdl_wires);
@@ -354,7 +355,7 @@ class critical_temperature_impl
             // value of the given valid_layout to six decimal places to overcome possible rounding errors and for
             // comparability with the min_energy.
             if (std::abs(round_to_n_decimal_places(energy, 6) - round_to_n_decimal_places(min_energy, 6)) <
-                    physical_constants::POP_STABILITY_ERR &&
+                    constants::ERROR_MARGIN &&
                 state_type)
             {
                 ground_state_is_transparent = true;
