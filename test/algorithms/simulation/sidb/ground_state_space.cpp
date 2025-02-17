@@ -14,6 +14,7 @@
 #include <fiction/technology/charge_distribution_surface.hpp>
 #include <fiction/technology/constants.hpp>
 #include <fiction/technology/sidb_cluster_hierarchy.hpp>
+#include <fiction/traits.hpp>
 #include <fiction/types.hpp>
 
 #include <mockturtle/utils/stopwatch.hpp>
@@ -24,9 +25,12 @@
 #include <phmap.h>
 #endif
 
+#include <array>
 #include <cstdint>
 #include <iterator>
 #include <limits>
+#include <optional>
+#include <unordered_map>
 #include <vector>
 
 using namespace fiction;
@@ -83,15 +87,99 @@ TEMPLATE_TEST_CASE("Ground State Space construction of two SiDBs directly next t
     SECTION("Base 2")
     {
         const ground_state_space_results& res =
-            ground_state_space(lyt, ground_state_space_params{sidb_simulation_parameters{2}});
+            ground_state_space(lyt, ground_state_space_params<cell<TestType>>{sidb_simulation_parameters{2}});
         CHECK(res.top_cluster->charge_space.empty());
     }
 
     SECTION("Base 3")
     {
         const ground_state_space_results& res =
-            ground_state_space(lyt, ground_state_space_params{sidb_simulation_parameters{3}});
+            ground_state_space(lyt, ground_state_space_params<cell<TestType>>{sidb_simulation_parameters{3}});
         CHECK(!res.top_cluster->charge_space.empty());
+    }
+
+    SECTION("Base 2 with local external electrostatic potential bounds")
+    {
+        const ground_state_space_results& res =
+            ground_state_space(lyt, ground_state_space_params<cell<TestType>>{
+                                        sidb_simulation_parameters{2},
+                                        std::make_optional<std::unordered_map<cell<TestType>, std::array<double, 2>>>(
+                                            {{{0, 0, 0}, {-2.0, -2.0}}, {{0, 0, 1}, {0.0, 0.0}}})});
+        CHECK(res.top_cluster->charge_space.empty());
+    }
+
+    SECTION("Base 3 with local external electrostatic potential bounds")
+    {
+        // const ground_state_space_results& res =
+        //     ground_state_space(lyt, ground_state_space_params<cell<TestType>>{
+        //                                 sidb_simulation_parameters{3},
+        //                                 std::make_optional<std::unordered_map<cell<TestType>, std::array<double,
+        //                                 2>>>(
+        //                                     {{{0, 0, 0}, {-2.0, -2.0}}, {{0, 0, 1}, {0.0, 0.0}}})});
+        // REQUIRE(res.top_cluster->charge_space.size() == 1);
+        // REQUIRE(res.top_cluster->charge_space.cbegin()->compositions.size() == 1);
+        // if (res.top_cluster->charge_space.cbegin()->compositions.front().proj_states.front().cluster->uid == 1)
+        // {
+        //     REQUIRE(std::next(res.top_cluster->charge_space.cbegin()->compositions.front().proj_states.cbegin(), 1)
+        //                 ->cluster->uid == 0);
+        //     CHECK(res.top_cluster->charge_space.cbegin()->compositions.front().proj_states.front().multiset_conf ==
+        //           static_cast<uint64_t>(sidb_cluster_charge_state{sidb_charge_state::NEGATIVE}));
+        //     CHECK(std::next(res.top_cluster->charge_space.cbegin()->compositions.front().proj_states.cbegin(), 1)
+        //               ->multiset_conf ==
+        //               static_cast<uint64_t>(sidb_cluster_charge_state{sidb_charge_state::POSITIVE}));
+        // }
+        // else
+        // {
+        //     REQUIRE(std::next(res.top_cluster->charge_space.cbegin()->compositions.front().proj_states.cbegin(), 1)
+        //                 ->cluster->uid == 1);
+        //     CHECK(res.top_cluster->charge_space.cbegin()->compositions.front().proj_states.front().multiset_conf ==
+        //           static_cast<uint64_t>(sidb_cluster_charge_state{sidb_charge_state::POSITIVE}));
+        //     CHECK(std::next(res.top_cluster->charge_space.cbegin()->compositions.front().proj_states.cbegin(), 1)
+        //               ->multiset_conf ==
+        //               static_cast<uint64_t>(sidb_cluster_charge_state{sidb_charge_state::NEGATIVE}));
+        // }
+
+        const ground_state_space_results& res_bounded_loc_ext_pot =
+            ground_state_space(lyt, ground_state_space_params<cell<TestType>>{
+                                        sidb_simulation_parameters{3},
+                                        std::make_optional<std::unordered_map<cell<TestType>, std::array<double, 2>>>(
+                                            {{{0, 0, 0}, {-2.0, 2.0}}, {{0, 0, 1}, {0.0, 0.0}}})});
+        REQUIRE(res_bounded_loc_ext_pot.top_cluster->charge_space.size() == 2);
+
+        for (const sidb_cluster_charge_state& ccs : res_bounded_loc_ext_pot.top_cluster->charge_space)
+        {
+            for (const auto& [proj_states, pot_bounds] : ccs.compositions)
+            {
+                for (int64_t i = 0; i <= 1; ++i)
+                {
+                    const sidb_cluster_projector_state& pst     = *std::next(proj_states.cbegin(), i);
+                    const uint64_t                      sidb_ix = pst.cluster->uid;
+
+                    // checks with error margins are not required for this test case
+                    if (pst.get_count<sidb_charge_state::NEGATIVE>() != 0)
+                    {
+                        // sidb is NEG
+                        CHECK(-pot_bounds.get<bound_direction::LOWER>(sidb_ix) > -0.32);
+                    }
+                    else if (pst.get_count<sidb_charge_state::POSITIVE>() != 0)
+                    {
+                        // sidb is POS
+                        CHECK(-pot_bounds.get<bound_direction::UPPER>(sidb_ix) < -0.91);
+                    }
+                    else if (pst.get_count<sidb_charge_state::NEUTRAL>() != 0)
+                    {
+                        // sidb is NEUT
+                        CHECK(-pot_bounds.get<bound_direction::LOWER>(sidb_ix) > -0.91);
+                        CHECK(-pot_bounds.get<bound_direction::UPPER>(sidb_ix) < -0.32);
+                    }
+                    else
+                    {
+                        // bad branch
+                        CHECK(false);
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -110,7 +198,7 @@ TEMPLATE_TEST_CASE("Ground State Space construction of a 7 DB layout", "[ground-
     lyt.assign_cell_type({4, 8, 1}, TestType::cell_type::NORMAL);
 
     const ground_state_space_results& gss_res =
-        ground_state_space(lyt, ground_state_space_params{sidb_simulation_parameters{2}});
+        ground_state_space(lyt, ground_state_space_params<cell<TestType>>{sidb_simulation_parameters{2}});
 
     CHECK(mockturtle::to_seconds(gss_res.runtime) > 0.0);
 

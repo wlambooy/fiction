@@ -11,7 +11,7 @@
  * Uncomment this line to switch to STL containers, which are slower than their respective analogues from the
  * Parallel-Hashmap library by Gregory Popovitch, but may be inspected with ease in a debugger.
  */
-// #define DEBUG_SIDB_CLUSTER_HIERARCHY
+#define DEBUG_SIDB_CLUSTER_HIERARCHY  // TODO
 
 #include "fiction/technology/charge_distribution_surface.hpp"
 #include "fiction/technology/sidb_charge_state.hpp"
@@ -126,8 +126,8 @@ template <typename Lyt>
 sidb_cluster_hierarchy(Lyt& lyt, sidb_cluster_hierarchy_linkage_method linkage_method =
                                      sidb_cluster_hierarchy_linkage_method::MINIMUM_VARIANCE) noexcept
 {
-    static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout");
-    static_assert(has_sidb_technology_v<Lyt>, "Lyt is not an SiDB layout");
+    static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout.");
+    static_assert(has_sidb_technology_v<Lyt>, "Lyt is not an SiDB layout.");
 
     // no clusterizer call required for <= 1 SiDBs
     if (lyt.num_cells() == 0)
@@ -188,7 +188,7 @@ sidb_cluster_hierarchy(Lyt& lyt, sidb_cluster_hierarchy_linkage_method linkage_m
         const uint64_t new_n = charge_lyt.num_cells() + static_cast<uint64_t>(i);
 
 #ifdef DEBUG_SIDB_CLUSTER_HIERARCHY
-        std::set<uint64_t> set_union{};
+        std::set<uint64_t> unioned_set{};
 #else
         phmap::flat_hash_set<uint64_t> unioned_set{};
 #endif
@@ -612,18 +612,21 @@ struct sidb_cluster_charge_state
      *
      * @param singleton Singleton cluster to put in the compositions of this cluster charge state.
      * @param cs Charge state to lift to a singleton multiset charge configuration.
-     * @param loc_ext_pot The local external potential at the SiDB in the singleton cluster. Specifically, this is the
-     * sum of the local defect potential and the local external potential.
+     * @param loc_ext_pot_min The lower bound on the local external potential at the SiDB in the singleton cluster.
+     * Specifically, this is the sum of the local defect potential and the local external potential.
+     * @param loc_ext_pot_max The upper bound on the local external potential at the SiDB in the singleton cluster.
+     * Specifically, this is the sum of the local defect potential and the local external potential.
      * @param total_num_sidbs The total number of SiDBs in the layout.
      */
-    sidb_cluster_charge_state(const sidb_cluster_ptr& singleton, const sidb_charge_state cs, const double loc_ext_pot,
+    sidb_cluster_charge_state(const sidb_cluster_ptr& singleton, const sidb_charge_state cs,
+                              const double loc_ext_pot_min, const double loc_ext_pot_max,
                               const uint64_t total_num_sidbs) noexcept :
             neg_count{static_cast<decltype(neg_count)>(cs == sidb_charge_state::NEGATIVE)},
             pos_count{static_cast<decltype(pos_count)>(cs == sidb_charge_state::POSITIVE)},
             compositions{{{{singleton, static_cast<uint64_t>(*this)}}}}
     {
         compositions.front().pot_bounds.initialize_complete_potential_bounds(total_num_sidbs);
-        compositions.front().pot_bounds.set(get_singleton_sidb_ix(singleton), loc_ext_pot, loc_ext_pot);
+        compositions.front().pot_bounds.set(get_singleton_sidb_ix(singleton), loc_ext_pot_min, loc_ext_pot_max);
     }
     /**
      * Constructor for cluster charge state given a multiset charge configuration represented in its compressed form. It
@@ -724,7 +727,8 @@ struct sidb_cluster_charge_state
      */
     constexpr sidb_cluster_charge_state& operator-=(const sidb_cluster_charge_state& other) noexcept
     {
-        assert(neg_count >= other.neg_count && pos_count >= other.pos_count);
+        assert(neg_count >= other.neg_count && pos_count >= other.pos_count &&
+               "There are not enough charges to subtract.");
         neg_count -= other.neg_count;
         pos_count -= other.pos_count;
         return *this;
@@ -836,19 +840,20 @@ struct potential_projection_order
     /**
      * Constructor for a potential projection from a singleton cluster onto the SiDB contained in it.
      *
-     * @param loc_ext_pot The local external potential at the SiDB in the singleton cluster. Specifically, this is the
-     * sum of the local defect potential and the local external potential.
+     * @param loc_ext_pot_min The local external potential at the SiDB in the singleton cluster. Specifically, this is
+     * the sum of the local defect potential and the local external potential.
+     * @param loc_ext_pot_max The local external potential at the SiDB in the singleton cluster. Specifically, this is
+     * the sum of the local defect potential and the local external potential.
      * @param base The simulation base. This defines whether positive charges are considered.
-     * @param self_projection Separates the constructor type from inter-SiDB potential projections.
      */
-    potential_projection_order(const double loc_ext_pot, const uint8_t base,
-                               [[maybe_unused]] const bool self_projection) noexcept :
-            order{base == 3 ? pot_proj_order{potential_projection{loc_ext_pot, sidb_charge_state::POSITIVE},
-                                             potential_projection{loc_ext_pot, sidb_charge_state::NEUTRAL},
-                                             potential_projection{loc_ext_pot, sidb_charge_state::NEGATIVE}} :
-                              pot_proj_order{potential_projection{loc_ext_pot, sidb_charge_state::NEUTRAL},
-                                             potential_projection{loc_ext_pot, sidb_charge_state::NEGATIVE}}}
-    {}
+    potential_projection_order(const double loc_ext_pot_min, const double loc_ext_pot_max, const uint8_t base) noexcept
+    {
+        for (const sidb_charge_state cs : sidb_charge_states_for_base_number(base))
+        {
+            order.insert(potential_projection{loc_ext_pot_min, cs});
+            order.insert(potential_projection{loc_ext_pot_max, cs});
+        }
+    }
     /**
      * Constructor for a potential projection from a singleton cluster onto an SiDB.
      *
@@ -1076,23 +1081,28 @@ struct sidb_cluster
      *
      * @param loc_pot_min The minimum local potential for the SiDB in the singleton cluster.
      * @param loc_pot_max The maximum local potential for the SiDB in the singleton cluster.
-     * @param loc_ext_pot The local external potential at the SiDB in the singleton cluster. Specifically, this is the
-     * sum of the local defect potential and the local external potential.
+     * @param loc_ext_pot_min The minimum local external potential at the SiDB in the singleton cluster. Specifically,
+     * this is the sum of the local defect potential and the local external potential.
+     * @param loc_ext_pot_max The maximum local external potential at the SiDB in the singleton cluster. Specifically,
+     * this is the sum of the local defect potential and the local external potential.
      * @param base The simulation base.
      * @param self_ptr Shared pointer to itself.
      */
     void initialize_singleton_cluster_charge_space(const double loc_pot_min, const double loc_pot_max,
-                                                   const double loc_ext_pot, const uint8_t base,
-                                                   const sidb_cluster_ptr& self_ptr) noexcept
+                                                   const double loc_ext_pot_min, const double loc_ext_pot_max,
+                                                   const uint8_t base, const sidb_cluster_ptr& self_ptr) noexcept
     {
-        assert(sidbs.size() == 1 && "Not a singleton cluster");
+        assert(sidbs.size() == 1 && "Not a singleton cluster.");
+        assert(loc_pot_min <= loc_pot_max && "The minimum local potential is greater than the given maximum.");
+        assert(loc_ext_pot_min <= loc_ext_pot_max &&
+               "The minimum local external potential is greater than the given maximum.");
 
         const uint64_t ix = *sidbs.cbegin();
 
         // fill the initial charge space as determined by the simulation base
         for (const sidb_charge_state cs : sidb_charge_states_for_base_number(base))
         {
-            charge_space.emplace(self_ptr, cs, loc_ext_pot, external_sidbs.size() + 1);
+            charge_space.emplace(self_ptr, cs, loc_ext_pot_min, loc_ext_pot_max, external_sidbs.size() + 1);
         }
 
         received_ext_pot_bounds.set(ix, loc_pot_min, loc_pot_max);
@@ -1145,7 +1155,7 @@ struct sidb_cluster
  */
 [[nodiscard]] static uint64_t get_singleton_sidb_ix(const sidb_cluster_ptr& c) noexcept
 {
-    assert(get_cluster_size(c) == 1 && "Not a singleton cluster");
+    assert(get_cluster_size(c) == 1 && "Not a singleton cluster.");
     return get_unique_cluster_id(c);
 }
 /**

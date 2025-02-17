@@ -1352,7 +1352,7 @@ class charge_distribution_surface<Lyt, false> : public Lyt
      * @param dep_cell `dependent_cell_mode::FIXED` if the state of the dependent cell should not change,
      * `dependent_cell_mode::VARIABLE` if it should.
      */
-    void assign_global_external_potential(const double        potential_value,
+    void assign_global_external_potential(const double              potential_value,
                                           const dependent_cell_mode dep_cell = dependent_cell_mode::FIXED) noexcept
     {
         if (potential_value != 0.0)
@@ -1621,10 +1621,20 @@ class charge_distribution_surface<Lyt, false> : public Lyt
     /**
      * This function returns the local external electrostatic potential in Volt applied to the layout.
      *
-     * @return External electrostatic potential as unordered map. The cell is used as key and the external
+     * @return External electrostatic potential as an unordered map. The cell is used as key and the external
      * electrostatic potential in Volt (unit: V) at its position as value.
      */
     std::unordered_map<typename Lyt::cell, double> get_local_external_potentials() const noexcept
+    {
+        return strg->local_external_pot;
+    }
+    /**
+     * This function returns a reference to the local external electrostatic potential in Volt applied to the layout.
+     *
+     * @return A reference to the external electrostatic potential as an unordered map. The cell is used as key and the
+     * external electrostatic potential in Volt (unit: V) at its position as value.
+     */
+    std::unordered_map<typename Lyt::cell, double>& get_local_external_potentials_reference() noexcept
     {
         return strg->local_external_pot;
     }

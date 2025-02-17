@@ -68,9 +68,43 @@ struct clustercomplete_params
      */
     sidb_simulation_parameters simulation_parameters{};
     /**
-     * Local external electrostatic potentials (e.g., locally applied electrodes).
+     * Alias for single-valued local external electrostatic potentials (e.g., locally applied electrodes) per cell.
+     * double valued (bounds).
      */
-    std::unordered_map<CellType, double> local_external_potential = {};
+    using singular_local_external_potential = std::unordered_map<CellType, double>;
+    /**
+     * Alias for bounded local external electrostatic potentials (e.g., locally applied electrodes) per cell.
+     */
+    using bounded_local_external_potential = std::unordered_map<CellType, std::array<double, 2>>;
+    /**
+     * Local external electrostatic potentials (e.g., locally applied electrodes). Either single-valued per cell, or
+     * double valued (bounds).
+     */
+    std::variant<singular_local_external_potential, bounded_local_external_potential> local_external_potential = {};
+    /**
+     * @param c Cell to assign TODO
+     */
+    void insert_local_external_potential(const CellType                                     c,
+                                         const std::variant<double, std::array<double, 2>>& loc_ext_pot) noexcept
+    {
+        if (std::holds_alternative<singular_local_external_potential>(local_external_potential))
+        {
+            assert(std::holds_alternative<double>(loc_ext_pot) &&
+                   "Local external potential were initialised as single-valued, while bounds were given.");
+
+            std::get<singular_local_external_potential>(local_external_potential)
+                .insert({c, std::get<double>(loc_ext_pot)});
+        }
+        else
+        {
+
+            assert(!std::holds_alternative<double>(loc_ext_pot) &&
+                   "Local external potential were initialised as bounded, while a single value was given.");
+
+            std::get<bounded_local_external_potential>(local_external_potential)
+                .insert({c, std::get<std::array<double, 2>>(loc_ext_pot)});
+        }
+    }
     /**
      * Global external electrostatic potential. Value is applied on each cell in the layout.
      */
@@ -116,8 +150,10 @@ class clustercomplete_impl
      */
     clustercomplete_impl(const Lyt& lyt, const clustercomplete_params<cell<Lyt>>& params) noexcept :
             available_threads{std::max(uint64_t{1}, params.available_threads)},
+            bounded_local_external_potential{
+                set_bounded_local_external_potential_if_present(params.local_external_potential)},
             charge_layout{initialize_charge_layout(lyt, params)},
-            real_placed_defects{charge_layout.get_defects()},
+            // real_placed_defects{charge_layout.get_defects()},
             mu_bounds_with_error{constants::ERROR_MARGIN - params.simulation_parameters.mu_minus,
                                  -constants::ERROR_MARGIN - params.simulation_parameters.mu_minus,
                                  constants::ERROR_MARGIN - params.simulation_parameters.mu_plus(),
@@ -142,9 +178,16 @@ class clustercomplete_impl
 
         // run Ground State Space to obtain the complete hierarchical charge space
         const ground_state_space_results& gss_stats = ground_state_space(
-            charge_layout, ground_state_space_params{params.simulation_parameters,
-                                                     params.validity_witness_partitioning_max_cluster_size_gss,
-                                                     params.num_overlapping_witnesses_limit_gss});
+            charge_layout,
+            ground_state_space_params<cell<Lyt>>{
+                params.simulation_parameters,
+                std::holds_alternative<typename clustercomplete_params<cell<Lyt>>::singular_local_external_potential>(
+                    params.local_external_potential) ?
+                    std::nullopt :
+                    std::make_optional(
+                        std::get<typename clustercomplete_params<cell<Lyt>>::bounded_local_external_potential>(
+                            params.local_external_potential)),
+                params.validity_witness_partitioning_max_cluster_size_gss, params.num_overlapping_witnesses_limit_gss});
 
         if (!gss_stats.top_cluster)
         {
@@ -229,14 +272,19 @@ class clustercomplete_impl
      */
     std::mutex mutex_to_protect_the_simulation_results;
     /**
+     * TODO
+     */
+    const std::optional<typename clustercomplete_params<cell<Lyt>>::bounded_local_external_potential>
+        bounded_local_external_potential;
+    /**
      * The base layout, along with the map of placed defects, that are used to create charge distribution surface
      * copies.
      */
     const charge_distribution_surface<Lyt> charge_layout;
-    /**
-     * Atomic defects that are placed in the layout.
-     */
-    const std::unordered_map<typename Lyt::cell, const sidb_defect> real_placed_defects;
+    // /**
+    //  * Atomic defects that are placed in the layout.
+    //  */
+    // const std::unordered_map<typename Lyt::cell, const sidb_defect> real_placed_defects;
     /**
      * Globally available array of bounds that section the band gap, used for pruning.
      */
@@ -378,6 +426,11 @@ class clustercomplete_impl
 
         if (!charge_layout_copy.is_configuration_stable())
         {
+            if (bounded_local_external_potential.has_value())
+            {
+                add_if_configuration_stability_is_met_with_upper_bound_external_potential(clustering_state);
+            }
+
             return;
         }
 
@@ -387,13 +440,82 @@ class clustercomplete_impl
         // valid when configuration stability is met
         charge_layout_copy.declare_physically_valid();
 
-        if constexpr (has_get_sidb_defect_v<Lyt>)
+        if (bounded_local_external_potential.has_value())
         {
-            for (const auto& [cell, defect] : real_placed_defects)
+            for (const auto& [c, pot] : bounded_local_external_potential.value())
             {
-                charge_layout_copy.assign_sidb_defect(cell, defect);
+                // as above, we use the opposite bound direction because of a negation to keep the API intuitive
+                charge_layout_copy.get_local_external_potentials_reference()[c] +=
+                    bounded_local_external_potential.value().at(c)[static_cast<uint8_t>(bound_direction::UPPER)];
             }
+
+            add_if_configuration_stability_is_met_with_upper_bound_external_potential(clustering_state);
         }
+
+        // if constexpr (has_get_sidb_defect_v<Lyt>)
+        // {
+        //     for (const auto& [cell, defect] : real_placed_defects)
+        //     {
+        //         charge_layout_copy.assign_sidb_defect(cell, defect);
+        //     }
+        // }
+
+        {
+            const std::lock_guard lock{mutex_to_protect_the_simulation_results};
+
+            result.charge_distributions.emplace_back(charge_layout_copy);
+        }
+    }
+    /**
+     * TODO
+     *
+     * @param clustering_state A clustering state consisting of only singleton clusters along with associated charge
+     * states that make up a charge distribution that conforms to the *population stability* criterion.
+     */
+    void add_if_configuration_stability_is_met_with_upper_bound_external_potential(
+        const sidb_clustering_state& clustering_state) noexcept
+    {
+        charge_distribution_surface charge_layout_copy{charge_layout};
+
+        // convert bottom clustering state to charge distribution
+        for (const auto& pst : clustering_state.proj_states)
+        {
+            const uint64_t sidb_ix = get_singleton_sidb_ix(pst->cluster);
+            charge_layout_copy.assign_charge_state_by_cell_index(
+                sidb_ix, singleton_multiset_conf_to_charge_state(pst->multiset_conf),
+                charge_index_mode::KEEP_CHARGE_INDEX);
+
+            charge_layout_copy.assign_local_potential_by_index(
+                sidb_ix, -clustering_state.pot_bounds.get<bound_direction::UPPER>(sidb_ix));
+        }
+
+        charge_layout_copy.recompute_system_energy();
+
+        if (!charge_layout_copy.is_configuration_stable())
+        {
+            return;
+        }
+
+        charge_layout_copy.charge_distribution_to_index();
+
+        // population stability is a given when this function is called; hence the charge distribution is physically
+        // valid when configuration stability is met
+        charge_layout_copy.declare_physically_valid();
+
+        for (const auto& [c, pot] : bounded_local_external_potential.value())
+        {
+            // as above, we use the opposite bound direction because of a negation to keep the API intuitive
+            charge_layout_copy.get_local_external_potentials_reference()[c] +=
+                bounded_local_external_potential.value().at(c)[static_cast<uint8_t>(bound_direction::LOWER)];
+        }
+
+        // if constexpr (has_get_sidb_defect_v<Lyt>)
+        // {
+        //     for (const auto& [cell, defect] : real_placed_defects)
+        //     {
+        //         charge_layout_copy.assign_sidb_defect(cell, defect);
+        //     }
+        // }
 
         {
             const std::lock_guard lock{mutex_to_protect_the_simulation_results};
@@ -819,6 +941,24 @@ class clustercomplete_impl
         }
     };
     /**
+     * TODO
+     */
+    [[nodiscard]] static std::optional<typename clustercomplete_params<cell<Lyt>>::bounded_local_external_potential>
+    set_bounded_local_external_potential_if_present(
+        const std::variant<typename clustercomplete_params<cell<Lyt>>::singular_local_external_potential,
+                           typename clustercomplete_params<cell<Lyt>>::bounded_local_external_potential>&
+            local_external_potential) noexcept
+    {
+        if (std::holds_alternative<typename clustercomplete_params<cell<Lyt>>::bounded_local_external_potential>(
+                local_external_potential))
+        {
+            return std::get<typename clustercomplete_params<cell<Lyt>>::bounded_local_external_potential>(
+                local_external_potential);
+        }
+
+        return std::nullopt;
+    }
+    /**
      * Function to initialize the charge layout.
      *
      * @param lyt Layout to simulate.
@@ -844,7 +984,14 @@ class clustercomplete_impl
                 });
         }
 
-        cds.assign_local_external_potential(params.local_external_potential);
+        if (std::holds_alternative<typename clustercomplete_params<cell<Lyt>>::singular_local_external_potential>(
+                params.local_external_potential))
+        {
+            cds.assign_local_external_potential(
+                std::get<typename clustercomplete_params<cell<Lyt>>::singular_local_external_potential>(
+                    params.local_external_potential));
+        }
+
         cds.assign_global_external_potential(params.global_potential);
 
         return cds;

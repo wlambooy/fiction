@@ -36,12 +36,17 @@ namespace fiction
 /**
  * The set of parameters used in the *Ground State Space* construction.
  */
+template <typename CellType = offset::ucoord_t>
 struct ground_state_space_params
 {
     /**
      * The physical parameters that *Ground State Space* will use to prune the simulation search space.
      */
     const sidb_simulation_parameters simulation_parameters{};
+    /**
+     * Bounds on the local external electrostatic potentials (e.g., locally applied electrodes).
+     */
+    std::optional<std::unordered_map<CellType, std::array<double, 2>>> local_external_potential_bounds = {};
     /**
      * This specifies the maximum cluster size for which *Ground State Space* will solve an NP-complete sub-problem
      * exhaustively. The sets of SiDBs that witness local population stability for each respective charge state may be
@@ -125,11 +130,12 @@ class ground_state_space_impl
      * @param lyt Layout to construct the *Ground State Space* of.
      * @param parameters The parameters that *Ground State Space* will use throughout the construction.
      */
-    ground_state_space_impl(const Lyt& lyt, const ground_state_space_params parameters) noexcept :
+    ground_state_space_impl(const Lyt& lyt, const ground_state_space_params<cell<Lyt>>& parameters) noexcept :
             params{parameters},
             top_cluster{to_sidb_cluster(sidb_cluster_hierarchy(lyt))},
-            clustering{
-                get_initial_clustering(top_cluster, get_local_potential_bounds(lyt, params.simulation_parameters))},
+            clustering{get_initial_clustering(top_cluster,
+                                              get_local_potential_bounds(lyt, params.simulation_parameters,
+                                                                         parameters.local_external_potential_bounds))},
             mu_bounds_with_error{constants::ERROR_MARGIN - params.simulation_parameters.mu_minus,
                                  -constants::ERROR_MARGIN - params.simulation_parameters.mu_minus,
                                  constants::ERROR_MARGIN - params.simulation_parameters.mu_plus(),
@@ -155,7 +161,10 @@ class ground_state_space_impl
                 while (!update_charge_spaces())
                 {}
 
-                move_up_hierarchy();
+                if (!terminate)
+                {
+                    move_up_hierarchy();
+                }
             }
         }
 
@@ -212,21 +221,40 @@ class ground_state_space_impl
      *
      * @param lyt Layout to construct the *Ground State Space* of.
      * @param simulation_parameters Parameters used to calculate the electrostatic potential in the layout.
+     * @param loc_ext_pot_bounds Optionally, bounds on the external electrostatic potential local to each SiDB (e.g.,
+     * locally applied electrodes) are given.
      * @return The two charge distribution surfaces that each represent respective bounds on the electrostatic potential
      * in the layout.
      */
     [[nodiscard]] static std::pair<charge_distribution_surface<Lyt>, charge_distribution_surface<Lyt>>
-    get_local_potential_bounds(const Lyt& lyt, const sidb_simulation_parameters& simulation_parameters) noexcept
+    get_local_potential_bounds(
+        const Lyt& lyt, const sidb_simulation_parameters& simulation_parameters,
+        const std::optional<std::unordered_map<cell<Lyt>, std::array<double, 2>>>& loc_ext_pot_bounds) noexcept
     {
-        charge_distribution_surface<Lyt> cds_min{lyt};
-        charge_distribution_surface<Lyt> cds_max{lyt};
+        charge_distribution_surface<Lyt> cds_min{lyt}, cds_max{lyt};
 
         cds_min.assign_physical_parameters(simulation_parameters);
         cds_max.assign_physical_parameters(simulation_parameters);
 
         cds_min.assign_all_charge_states(simulation_parameters.base == 3 ? sidb_charge_state::POSITIVE :
-                                                                           sidb_charge_state::NEUTRAL);
-        cds_max.assign_all_charge_states(sidb_charge_state::NEGATIVE);
+                                                                           sidb_charge_state::NEUTRAL,
+                                         charge_index_mode::KEEP_CHARGE_INDEX);
+        cds_max.assign_all_charge_states(sidb_charge_state::NEGATIVE, charge_index_mode::KEEP_CHARGE_INDEX);
+
+        if (loc_ext_pot_bounds.has_value())
+        {
+            std::unordered_map<cell<Lyt>, double> loc_ext_pot_min, loc_ext_pot_max{};
+
+            for (const auto& [c, pot_bounds] : loc_ext_pot_bounds.value())
+            {
+                // in order to keep the API intuitive, we swap the order since we negate the values later
+                loc_ext_pot_min.insert({c, pot_bounds[static_cast<uint8_t>(bound_direction::UPPER)]});
+                loc_ext_pot_max.insert({c, pot_bounds[static_cast<uint8_t>(bound_direction::LOWER)]});
+            }
+
+            cds_min.assign_local_external_potential(loc_ext_pot_min);
+            cds_max.assign_local_external_potential(loc_ext_pot_max);
+        }
 
         cds_min.update_after_charge_change();
         cds_max.update_after_charge_change();
@@ -267,17 +295,20 @@ class ground_state_space_impl
             const cell<Lyt>& sidb = min_loc_pot_cds.index_to_cell(i);
 
             // separate the local potential into potential from SiDBs and external sources
-            const double loc_ext_pot = min_loc_pot_cds.get_local_defect_potentials()[sidb] +
-                                       min_loc_pot_cds.get_local_external_potentials()[sidb];
+            double loc_ext_pot_min = min_loc_pot_cds.get_local_defect_potentials()[sidb];
+            double loc_ext_pot_max = loc_ext_pot_min;
 
-            const double min_loc_pot = min_loc_pot_cds.get_local_potential_by_index(i).value() - loc_ext_pot;
-            const double max_loc_pot = max_loc_pot_cds.get_local_potential_by_index(i).value() - loc_ext_pot;
+            loc_ext_pot_min += min_loc_pot_cds.get_local_external_potentials()[sidb];
+            loc_ext_pot_max += max_loc_pot_cds.get_local_external_potentials()[sidb];
 
-            c->initialize_singleton_cluster_charge_space(-min_loc_pot, -max_loc_pot, -loc_ext_pot,
+            const double min_loc_pot = min_loc_pot_cds.get_local_potential_by_index(i).value() - loc_ext_pot_min;
+            const double max_loc_pot = max_loc_pot_cds.get_local_potential_by_index(i).value() - loc_ext_pot_max;
+
+            c->initialize_singleton_cluster_charge_space(-min_loc_pot, -max_loc_pot, -loc_ext_pot_min, -loc_ext_pot_max,
                                                          min_loc_pot_cds.get_simulation_params().base, c);
 
-            c->pot_projs[i] =
-                potential_projection_order{-loc_ext_pot, min_loc_pot_cds.get_simulation_params().base, true};
+            c->pot_projs[i] = potential_projection_order{-loc_ext_pot_min, -loc_ext_pot_max,
+                                                         min_loc_pot_cds.get_simulation_params().base};
 
             for (uint64_t j = 0; j < min_loc_pot_cds.num_cells(); ++j)
             {
@@ -753,14 +784,20 @@ class ground_state_space_impl
         // perform potential bound analysis on every multiset in the charge space
         for (const sidb_cluster_charge_state& m : c->charge_space)
         {
-            const sidb_cluster_projector_state pst{c, static_cast<uint64_t>(m)};
 
-            if (!perform_potential_bound_analysis<potential_bound_analysis_mode::ANALYZE_MULTISET>(pst))
+            if (const sidb_cluster_projector_state pst{c, static_cast<uint64_t>(m)};
+                !perform_potential_bound_analysis<potential_bound_analysis_mode::ANALYZE_MULTISET>(pst))
             {
                 handle_invalid_state(pst);
                 removed_ms.emplace_back(pst.multiset_conf);
                 fixpoint = false;
             }
+        }
+
+        if (c->charge_space.size() == removed_ms.size())
+        {
+            terminate = true;
+            return true;
         }
 
         for (const uint64_t m : removed_ms)
@@ -778,7 +815,7 @@ class ground_state_space_impl
      * @return `true` if and only if a fixed point has been reached; i.e., none of the charge space contain an element
      * that may be removed.
      */
-    [[nodiscard]] bool update_charge_spaces(const std::optional<uint64_t>& skip_cluster = std::nullopt) noexcept
+    bool update_charge_spaces(const std::optional<uint64_t>& skip_cluster = std::nullopt) noexcept
     {
         bool fixpoint = true;
 
@@ -845,20 +882,20 @@ class ground_state_space_impl
         {
             for (const sidb_cluster_charge_state& m : child->charge_space)
             {
-                for (sidb_charge_space_composition& composition : m.compositions)
+                for (auto& [proj_states, pot_bounds] : m.compositions)
                 {
                     for (const uint64_t sidb_ix : child->external_sidbs)
                     {
-                        for (const sidb_cluster_projector_state& child_pst_of_child : composition.proj_states)
+                        for (const sidb_cluster_projector_state& child_pst_of_child : proj_states)
                         {
-                            composition.pot_bounds.update(
+                            pot_bounds.update(
                                 sidb_ix,
                                 get_projector_state_bound<bound_direction::LOWER>(child_pst_of_child, sidb_ix).pot_val,
                                 get_projector_state_bound<bound_direction::UPPER>(child_pst_of_child, sidb_ix).pot_val);
                         }
                     }
 
-                    saved_projector_states += composition.proj_states.size();
+                    saved_projector_states += proj_states.size();
                 }
             }
         }
@@ -874,8 +911,8 @@ class ground_state_space_impl
      * @param child_rst Receptor state from one of the children of the parent.
      */
     template <bound_direction bound>
-    void subtract_sibling_pot_from_received_ext_pot_bound(const sidb_cluster_ptr&            parent,
-                                                          const sidb_cluster_receptor_state& child_rst) const noexcept
+    static void subtract_sibling_pot_from_received_ext_pot_bound(const sidb_cluster_ptr&            parent,
+                                                                 const sidb_cluster_receptor_state& child_rst) noexcept
     {
         double received_pot_without_siblings = child_rst.cluster->received_ext_pot_bounds.get<bound>(child_rst.sidb_ix);
 
@@ -895,7 +932,7 @@ class ground_state_space_impl
      *
      * @param parent The newly forming parent cluster.
      */
-    void derive_children_received_bounds_without_siblings(const sidb_cluster_ptr& parent) const noexcept
+    static void derive_children_received_bounds_without_siblings(const sidb_cluster_ptr& parent) noexcept
     {
         for (const sidb_cluster_ptr& child : parent->children)
         {
@@ -975,8 +1012,7 @@ class ground_state_space_impl
             }
 
             // check if cluster charge state exists
-            const auto it = parent->charge_space.find(m);
-            if (it != parent->charge_space.cend())
+            if (const auto it = parent->charge_space.find(m); it != parent->charge_space.cend())
             {
                 it->compositions.emplace_back(m.compositions.front());
             }
@@ -1024,17 +1060,17 @@ class ground_state_space_impl
      * @param rst The receptor state with the receiving SiDB that is currently handled.
      */
     template <bound_direction bound>
-    void merge_pot_projection_bounds(const sidb_cluster_ptr&            parent,
-                                     const sidb_cluster_receptor_state& rst) const noexcept
+    static void merge_pot_projection_bounds(const sidb_cluster_ptr&            parent,
+                                            const sidb_cluster_receptor_state& rst) noexcept
     {
         // construct external projected potential bounds for every composition of every element in the charge space
         for (const sidb_cluster_charge_state& m : parent->charge_space)
         {
-            for (const sidb_charge_space_composition& composition : m.compositions)
+            for (const auto& [proj_states, pot_bounds] : m.compositions)
             {
                 potential_projection pot_proj_onto_other_c{};
 
-                for (const sidb_cluster_projector_state& pst : composition.proj_states)
+                for (const sidb_cluster_projector_state& pst : proj_states)
                 {
                     pot_proj_onto_other_c += get_projector_state_bound<bound>(pst, rst.sidb_ix);
                 }
@@ -1093,12 +1129,12 @@ class ground_state_space_impl
                 double lb_meet = potential_bound_top<bound_direction::LOWER>();
                 double ub_meet = potential_bound_top<bound_direction::UPPER>();
 
-                for (const sidb_charge_space_composition& composition : m.compositions)
+                for (const auto& [_, pot_bounds] : m.compositions)
                 {
                     take_meet_of_potential_bounds<bound_direction::LOWER>(
-                        lb_meet, composition.pot_bounds.get<bound_direction::LOWER>(sidb_ix));
+                        lb_meet, pot_bounds.get<bound_direction::LOWER>(sidb_ix));
                     take_meet_of_potential_bounds<bound_direction::UPPER>(
-                        ub_meet, composition.pot_bounds.get<bound_direction::UPPER>(sidb_ix));
+                        ub_meet, pot_bounds.get<bound_direction::UPPER>(sidb_ix));
                 }
 
                 add_pot_projection(parent, sidb_ix, potential_projection{lb_meet, static_cast<uint64_t>(m)});
@@ -1169,14 +1205,13 @@ class ground_state_space_impl
      */
     [[nodiscard]] constexpr uint64_t maximum_top_level_multisets(const uint64_t number_of_sidbs) const noexcept
     {
-        //
         return params.simulation_parameters.base == 3 ? ((number_of_sidbs + 1) * (number_of_sidbs + 2)) / 2 :
                                                         number_of_sidbs + 1;
     }
     /**
      * Parameters used during the construction.
      */
-    const ground_state_space_params params;
+    const ground_state_space_params<cell<Lyt>> params;
     /**
      * The top cluster, the cluster that contains all SiDBs, is returned as the result of the construction.
      */
@@ -1235,8 +1270,8 @@ class ground_state_space_impl
  * contains the charge spaces of each cluster.
  */
 template <typename Lyt>
-[[nodiscard]] ground_state_space_results ground_state_space(const Lyt&                       lyt,
-                                                            const ground_state_space_params& params = {}) noexcept
+[[nodiscard]] ground_state_space_results
+ground_state_space(const Lyt& lyt, const ground_state_space_params<cell<Lyt>>& params = {}) noexcept
 {
     static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout");
     static_assert(has_sidb_technology_v<Lyt>, "Lyt is not an SiDB layout");
