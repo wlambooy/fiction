@@ -2873,9 +2873,13 @@ static const char *__doc_fiction_clustercomplete_params_ground_state_space_repor
 R"doc(Enabling this option will output *Ground State Space* statistics to
 the standard output.)doc";
 
+static const char *__doc_fiction_clustercomplete_params_insert_local_external_potential =
+R"doc(Parameter ``c``:
+    Cell to assign TODO)doc";
+
 static const char *__doc_fiction_clustercomplete_params_local_external_potential =
 R"doc(Local external electrostatic potentials (e.g., locally applied
-electrodes).)doc";
+electrodes). Either single-valued per cell, or double valued (bounds).)doc";
 
 static const char *__doc_fiction_clustercomplete_params_num_overlapping_witnesses_limit_gss =
 R"doc(The complexity is of validity witness partitioning bounded by a
@@ -5099,6 +5103,14 @@ Parameter ``clustering_state``:
     with associated charge states that make up a charge distribution
     that conforms to the *population stability* criterion.)doc";
 
+static const char *__doc_fiction_detail_clustercomplete_impl_add_if_configuration_stability_is_met_with_upper_bound_external_potential =
+R"doc(TODO
+
+Parameter ``clustering_state``:
+    A clustering state consisting of only singleton clusters along
+    with associated charge states that make up a charge distribution
+    that conforms to the *population stability* criterion.)doc";
+
 static const char *__doc_fiction_detail_clustercomplete_impl_add_parent =
 R"doc(After all specializations have been tried, the clustering state needs
 to un-specialize in order for other specializations to take place
@@ -5157,6 +5169,8 @@ Returns:
     completely empty and thus backtracking is not required.)doc";
 
 static const char *__doc_fiction_detail_clustercomplete_impl_available_threads = R"doc(Number of available threads.)doc";
+
+static const char *__doc_fiction_detail_clustercomplete_impl_bounded_local_external_potential = R"doc(TODO)doc";
 
 static const char *__doc_fiction_detail_clustercomplete_impl_charge_layout =
 R"doc(The base layout, along with the map of placed defects, that are used
@@ -5288,8 +5302,6 @@ pruning.)doc";
 
 static const char *__doc_fiction_detail_clustercomplete_impl_mutex_to_protect_the_simulation_results = R"doc(Mutex to protect the simulation results.)doc";
 
-static const char *__doc_fiction_detail_clustercomplete_impl_real_placed_defects = R"doc(Atomic defects that are placed in the layout.)doc";
-
 static const char *__doc_fiction_detail_clustercomplete_impl_remove_composition =
 R"doc(A composition is removed from the given clustering state, i.e., the
 projector states in the compositions are removed from the clustering
@@ -5317,6 +5329,8 @@ Parameter ``params``:
 
 Returns:
     Results of the exact simulation.)doc";
+
+static const char *__doc_fiction_detail_clustercomplete_impl_set_bounded_local_external_potential_if_present = R"doc(TODO)doc";
 
 static const char *__doc_fiction_detail_clustercomplete_impl_take_parent_out =
 R"doc(Before the parent projector state may be specialized to a specific
@@ -8671,6 +8685,22 @@ Returns:
     (either `OPERATIONAL` or `NON_OPERATIONAL`) and the second element
     indicating the reason if it is non-operational.)doc";
 
+static const char *__doc_fiction_detail_iterative_circuit_design_impl = R"doc()doc";
+
+static const char *__doc_fiction_detail_iterative_circuit_design_impl_design_circuit_on_defective_surface = R"doc()doc";
+
+static const char *__doc_fiction_detail_iterative_circuit_design_impl_iterate_circuit_design = R"doc()doc";
+
+static const char *__doc_fiction_detail_iterative_circuit_design_impl_iterative_circuit_design_impl = R"doc()doc";
+
+static const char *__doc_fiction_detail_iterative_circuit_design_impl_lattice_tiling = R"doc(Gate-level layout.)doc";
+
+static const char *__doc_fiction_detail_iterative_circuit_design_impl_network = R"doc(Network.)doc";
+
+static const char *__doc_fiction_detail_iterative_circuit_design_impl_params = R"doc(Parameters for the on-the-fly circuit design.)doc";
+
+static const char *__doc_fiction_detail_iterative_circuit_design_impl_stats = R"doc(Statistics for the on-the-fly circuit design.)doc";
+
 static const char *__doc_fiction_detail_jump_point_search_impl = R"doc()doc";
 
 static const char *__doc_fiction_detail_jump_point_search_impl_closed_list = R"doc(Closed list that acts as a set of already visited coordinates.)doc";
@@ -10210,6 +10240,14 @@ R"doc(Enum indicating if primary inputs (PIs) can be placed at the top or
 left.)doc";
 
 static const char *__doc_fiction_detail_search_space_graph_planar = R"doc(Create planar layouts.)doc";
+
+static const char *__doc_fiction_detail_skeleton_influence_bounds_impl = R"doc()doc";
+
+static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_params = R"doc()doc";
+
+static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_skeleton_influence_bounds_impl = R"doc()doc";
+
+static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_tile = R"doc()doc";
 
 static const char *__doc_fiction_detail_sweep_parameter_to_string =
 R"doc(Converts a sweep parameter to a string representation. This is used to
@@ -16012,6 +16050,53 @@ static const char *__doc_fiction_is_tile_based_layout = R"doc()doc";
 
 static const char *__doc_fiction_is_virtual_network_type = R"doc()doc";
 
+static const char *__doc_fiction_iterative_circuit_design =
+R"doc(Template parameter ``Ntk``:
+    The type of the input network.
+
+Template parameter ``CellLyt``:
+    SiDB cell-level layout type.
+
+Template parameter ``GateLyt``:
+    Gate-level layout type.
+
+Parameter ``ntk``:
+    The input network to be mapped onto the defective surface.
+
+Parameter ``lattice_tiling``:
+    The lattice tiling used for the circuit design.
+
+Parameter ``params``:
+    The parameters used for designing the circuit, encapsulated in an
+    `iterative_circuit_design_params` object.
+
+Parameter ``stats``:
+    Pointer to a structure for collecting statistics. If nullptr,
+    statistics are not collected.
+
+Returns:
+    A `sidb_defect_surface<CellLyt>` representing the designed circuit
+    on the defective surface.)doc";
+
+static const char *__doc_fiction_iterative_circuit_design_params =
+R"doc(This struct stores the parameters to design an SiDB circuit on a
+defective surface.
+
+Template parameter ``CellLyt``:
+    SiDB cell-level layout type.)doc";
+
+static const char *__doc_fiction_iterative_circuit_design_params_exact_design_parameters = R"doc(Parameters for the *exact* placement and routing algorithm.)doc";
+
+static const char *__doc_fiction_iterative_circuit_design_params_sidb_on_the_fly_gate_library_parameters = R"doc(Parameters for the SiDB on-the-fly gate library.)doc";
+
+static const char *__doc_fiction_iterative_circuit_design_stats = R"doc(Statistics for the on-the-fly defect-aware circuit design.)doc";
+
+static const char *__doc_fiction_iterative_circuit_design_stats_duration = R"doc(The total runtime of the operational domain computation.)doc";
+
+static const char *__doc_fiction_iterative_circuit_design_stats_exact_stats = R"doc(The `stats` of the *exact* algorithm.)doc";
+
+static const char *__doc_fiction_iterative_circuit_design_stats_gate_layout = R"doc(The gate-level layout after P&R.)doc";
+
 static const char *__doc_fiction_jump_point_search =
 R"doc(The Jump Point Search (JPS) path finding algorithm for shortest loop-
 less paths between a given source and target coordinate in a Cartesian
@@ -18231,18 +18316,19 @@ static const char *__doc_fiction_potential_projection_order_potential_projection
 R"doc(Constructor for a potential projection from a singleton cluster onto
 the SiDB contained in it.
 
-Parameter ``loc_ext_pot``:
+Parameter ``loc_ext_pot_min``:
+    The local external potential at the SiDB in the singleton cluster.
+    Specifically, this is the sum of the local defect potential and
+    the local external potential.
+
+Parameter ``loc_ext_pot_max``:
     The local external potential at the SiDB in the singleton cluster.
     Specifically, this is the sum of the local defect potential and
     the local external potential.
 
 Parameter ``base``:
     The simulation base. This defines whether positive charges are
-    considered.
-
-Parameter ``self_projection``:
-    Separates the constructor type from inter-SiDB potential
-    projections.)doc";
+    considered.)doc";
 
 static const char *__doc_fiction_potential_projection_order_potential_projection_order_3 =
 R"doc(Constructor for a potential projection from a singleton cluster onto
@@ -19615,10 +19701,15 @@ Parameter ``singleton``:
 Parameter ``cs``:
     Charge state to lift to a singleton multiset charge configuration.
 
-Parameter ``loc_ext_pot``:
-    The local external potential at the SiDB in the singleton cluster.
-    Specifically, this is the sum of the local defect potential and
-    the local external potential.
+Parameter ``loc_ext_pot_min``:
+    The lower bound on the local external potential at the SiDB in the
+    singleton cluster. Specifically, this is the sum of the local
+    defect potential and the local external potential.
+
+Parameter ``loc_ext_pot_max``:
+    The upper bound on the local external potential at the SiDB in the
+    singleton cluster. Specifically, this is the sum of the local
+    defect potential and the local external potential.
 
 Parameter ``total_num_sidbs``:
     The total number of SiDBs in the layout.)doc";
@@ -19705,10 +19796,15 @@ Parameter ``loc_pot_min``:
 Parameter ``loc_pot_max``:
     The maximum local potential for the SiDB in the singleton cluster.
 
-Parameter ``loc_ext_pot``:
-    The local external potential at the SiDB in the singleton cluster.
-    Specifically, this is the sum of the local defect potential and
-    the local external potential.
+Parameter ``loc_ext_pot_min``:
+    The minimum local external potential at the SiDB in the singleton
+    cluster. Specifically, this is the sum of the local defect
+    potential and the local external potential.
+
+Parameter ``loc_ext_pot_max``:
+    The maximum local external potential at the SiDB in the singleton
+    cluster. Specifically, this is the sum of the local defect
+    potential and the local external potential.
 
 Parameter ``base``:
     The simulation base.
@@ -20199,6 +20295,182 @@ Returns:
 
 static const char *__doc_fiction_sidb_on_the_fly_gate_library_sidb_on_the_fly_gate_library = R"doc()doc";
 
+static const char *__doc_fiction_sidb_on_the_fly_mini_gate_library =
+R"doc(A parameterized gate library for SiDB technology. It allows the design
+of SiDB gates tailored to given atomic defects, thus enabling the
+design of SiDB circuits in the presence of atomic defects. The
+skeleton (i.e., the pre-defined input and output wires) are hexagonal
+in shape.)doc";
+
+static const char *__doc_fiction_sidb_on_the_fly_mini_gate_library_add_defect_to_skeleton =
+R"doc(This function takes a defect surface and a skeleton skeleton and adds
+defects from the surrounding area to the skeleton. The defects within
+a specified distance from the center cell are taken into account. The
+resulting skeleton with added defects is returned.
+
+Template parameter ``CellLyt``:
+    The type of the defect surface, which should not have SiQAD
+    coordinates.
+
+Template parameter ``Params``:
+    Type of Parameters.
+
+Parameter ``skeleton``:
+    The skeleton to which defects will be added.
+
+Parameter ``center_cell``:
+    The coordinates of the center cell.
+
+Parameter ``absolute_cell``:
+    The coordinates of the skeleton's absolute cell.
+
+Parameter ``parameters``:
+    Parameters for defect handling.
+
+Returns:
+    The updated skeleton with added defects from the surrounding area.)doc";
+
+static const char *__doc_fiction_sidb_on_the_fly_mini_gate_library_cell_level_layout_to_list =
+R"doc(Generates a cell-level layout as a 2D array of characters based on the
+provided cell layout information.
+
+Template parameter ``Lyt``:
+    Cell-level layout type.
+
+Parameter ``lyt``:
+    Cell-level layout
+
+Returns:
+    A 2D array of characters representing the cell-level layout.)doc";
+
+static const char *__doc_fiction_sidb_on_the_fly_mini_gate_library_cell_list_to_cell_level_layout =
+R"doc(The function generates a layout where each cell is assigned a specific
+cell type according to the characters in the cell list/input grid.
+
+Template parameter ``Lyt``:
+    The type of the cell-level layout to be generated.
+
+Parameter ``cell_list``:
+    A 2D grid representing the cells and their types.
+
+Returns:
+    The cell-level layout with assigned cell types.)doc";
+
+static const char *__doc_fiction_sidb_on_the_fly_mini_gate_library_design_gate =
+R"doc(This function designs an SiDB gate for a given Boolean function at a
+given tile and a given rotation. If atomic defects exist, they are
+incorporated into the design process.
+
+An exception is thrown in case there is no possible gate design.
+
+Template parameter ``LytSkeleton``:
+    The cell-level layout of the skeleton.
+
+Template parameter ``TT``:
+    Truth table type.
+
+Template parameter ``CellLyt``:
+    The cell-level layout.
+
+Template parameter ``GateLyt``:
+    The gate-level layout.
+
+Parameter ``skeleton``:
+    Skeleton with atomic defects if available.
+
+Parameter ``spec``:
+    Expected Boolean function of the layout given as a multi-output
+    truth table.
+
+Parameter ``parameters``:
+    Parameters for the SiDB gate design process.
+
+Parameter ``p``:
+    The list of ports and their directions.
+
+Parameter ``tile``:
+    The specific tile on which the gate should be designed.
+
+Returns:
+    An `fcn_gate` object.)doc";
+
+static const char *__doc_fiction_sidb_on_the_fly_mini_gate_library_determine_port_routing =
+R"doc(This function determines the port routing for a specific tile within a
+layout represented by the object `lyt` of type `Lyt`. It examines the
+tile's characteristics and connectivity to determine the appropriate
+incoming and outgoing connector ports and populates them in a
+`port_list` object.
+
+Template parameter ``Lyt``:
+    Cell-level layout type.
+
+Parameter ``lyt``:
+    A reference to an object of type `Lyt` representing the layout.
+
+Parameter ``t``:
+    The tile for which port routing is being determined.
+
+Returns:
+    A `port_list` object containing the determined port directions for
+    incoming and outgoing signals.)doc";
+
+static const char *__doc_fiction_sidb_on_the_fly_mini_gate_library_is_bestagon_gate_applicable =
+R"doc(This function evaluates whether a Bestagon gate can be applied to the
+given node by considering various conditions, including the presence
+of defects and spacing requirements.
+
+Template parameter ``Lyt``:
+    The type of the cell-level layout.
+
+Template parameter ``TT``:
+    Truth table type.
+
+Template parameter ``Params``:
+    Type of the parameters used for the parametrized gate library.
+
+Parameter ``bestagon_lyt``:
+    The Bestagon gate which is to be applied.
+
+Parameter ``truth_table``:
+    The truth table representing the gate's logic function.
+
+Parameter ``parameters``:
+    Parameters for the gate design and simulation.
+
+Returns:
+    `true` if the Bestagon gate is applicable to the layout,
+    considering the provided conditions; otherwise, returns `false`.)doc";
+
+static const char *__doc_fiction_sidb_on_the_fly_mini_gate_library_set_up_gate =
+R"doc(Overrides the corresponding function in fcn_gate_library. Given a tile
+`t`, this function takes all necessary information from the stored
+grid into account to design the correct fcn_gate representation for
+that tile. In case there is no possible SiDB design, the blacklist is
+updated and an error fcn gate is returned.
+
+Template parameter ``GateLyt``:
+    Pointy-top hexagonal gate-level layout type.
+
+Template parameter ``CellLyt``:
+    The type of the cell-level layout.
+
+Template parameter ``Params``:
+    Type of the parameter used for the gate library.
+
+Parameter ``lyt``:
+    Layout that hosts tile `t`.
+
+Parameter ``t``:
+    Tile to be realized as a Bestagon gate.
+
+Parameter ``parameters``:
+    Parameter to design SiDB gates.
+
+Returns:
+    Bestagon gate representation of `t` including mirroring.)doc";
+
+static const char *__doc_fiction_sidb_on_the_fly_mini_gate_library_sidb_on_the_fly_mini_gate_library = R"doc()doc";
+
 static const char *__doc_fiction_sidb_simulation_domain =
 R"doc(The `sidb_simulation_domain` is designed to represent a generic
 simulation domain where keys are associated with values stored as
@@ -20399,7 +20671,57 @@ Returns:
     Map of all different gate implementations and their respective
     port information.)doc";
 
+static const char *__doc_fiction_sidb_skeleton_bestagon_library_set_up_gate =
+R"doc(Overrides the corresponding function in fcn_gate_library. Given a tile
+`t`, this function takes all necessary information from the stored
+grid into account to choose the correct fcn_gate representation for
+that tile. May it be a gate or wires. Rotation and special marks like
+input and output, const cells etc. are computed additionally.
+
+Template parameter ``GateLyt``:
+    Pointy-top hexagonal gate-level layout type.
+
+Parameter ``lyt``:
+    Layout that hosts tile `t`.
+
+Parameter ``t``:
+    Tile to be realized as a Bestagon skeleton gate.
+
+Returns:
+    Bestagon skeleton gate representation of `t` including mirroring.)doc";
+
 static const char *__doc_fiction_sidb_skeleton_bestagon_library_sidb_skeleton_bestagon_library = R"doc()doc";
+
+static const char *__doc_fiction_sidb_skeleton_bestagon_mini_library =
+R"doc(This library contains SiDB I/O wires designed for both 1- and 2-input
+functions. Each wire comprises 2 BDL pairs. The library contains all
+mirrored versions, a double wire and a crossing.)doc";
+
+static const char *__doc_fiction_sidb_skeleton_bestagon_mini_library_determine_port_routing = R"doc()doc";
+
+static const char *__doc_fiction_sidb_skeleton_bestagon_mini_library_get_functional_implementations =
+R"doc(Returns a map of all gate functions supported by the library and their
+respectively possible implementations.
+
+This is an optional interface function that is required by some
+algorithms.
+
+Returns:
+    Map of all gate functions supported by the library and their
+    respective implementations as Bestagon skeletons.)doc";
+
+static const char *__doc_fiction_sidb_skeleton_bestagon_mini_library_get_gate_ports =
+R"doc(Returns a map of all different gate implementations and their
+respective port information.
+
+This is an optional interface function that is required by some
+algorithms.
+
+Returns:
+    Map of all different gate implementations and their respective
+    port information.)doc";
+
+static const char *__doc_fiction_sidb_skeleton_bestagon_mini_library_sidb_skeleton_bestagon_mini_library = R"doc()doc";
 
 static const char *__doc_fiction_sidb_surface_analysis =
 R"doc(Analyzes a given defective SiDB surface and matches it against gate
@@ -20729,6 +21051,16 @@ Parameter ``coord``:
 
 Returns:
     SiQAD coordinate representation of `coord`.)doc";
+
+static const char *__doc_fiction_skeleton_influence_bounds_params = R"doc()doc";
+
+static const char *__doc_fiction_skeleton_influence_bounds_params_bdl_wire_params = R"doc(Parameters to detect BDL wires.)doc";
+
+static const char *__doc_fiction_skeleton_influence_bounds_params_canvas = R"doc(Canvas spanned by the northwest and southeast cell.)doc";
+
+static const char *__doc_fiction_skeleton_influence_bounds_params_simulation_parameters =
+R"doc(The simulation parameters for the physical simulation of the ground
+state.)doc";
 
 static const char *__doc_fiction_smart_distance_cache_functor =
 R"doc(A distance functor that internally uses a `sparse_distance_map` as a
