@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <set>
 #include <type_traits>
 
 // data types cannot properly be converted to bit field types
@@ -71,8 +72,10 @@ class apply_gate_library_impl
      * post-layout optimization and sets the layout name if certain conditions are met.
      *
      * @return A `CellLyt` object representing the generated cell layout.
+     * @param whitelist A whitelist for the tiles to which gates are assigned. When `std::nullopt` (default), all tiles
+     * are considered.
      */
-    [[nodiscard]] CellLyt run_static_gate_library()
+    [[nodiscard]] CellLyt run_static_gate_library(const std::optional<std::set<tile<GateLyt>>>& whitelist)
     {
 #if (PROGRESS_BARS)
         // initialize a progress bar
@@ -84,14 +87,16 @@ class apply_gate_library_impl
             {
                 if (!gate_lyt.is_constant(n))
                 {
-                    const auto t = gate_lyt.get_tile(n);
+                    if (const auto t = gate_lyt.get_tile(n); !whitelist.has_value() || whitelist.value().count(t) != 0)
+                    {
 
-                    // retrieve the top-leftmost cell in tile t
-                    const auto c =
-                        relative_to_absolute_cell_position<GateLibrary::gate_x_size(), GateLibrary::gate_y_size(),
-                                                           GateLyt, CellLyt>(gate_lyt, t, cell<CellLyt>{0, 0});
+                        // retrieve the top-leftmost cell in tile t
+                        const auto c =
+                            relative_to_absolute_cell_position<GateLibrary::gate_x_size(), GateLibrary::gate_y_size(),
+                                                               GateLyt, CellLyt>(gate_lyt, t, cell<CellLyt>{0, 0});
 
-                    assign_gate(c, GateLibrary::set_up_gate(gate_lyt, t), n);
+                        assign_gate(c, GateLibrary::set_up_gate(gate_lyt, t), n);
+                    }
                 }
 #if (PROGRESS_BARS)
                 // update progress
@@ -122,10 +127,13 @@ class apply_gate_library_impl
      *
      * @tparam Params Type of the Parameters used for the SiDB on-the-fly gate library.
      * @param params Parameters used for the SiDB on-the-fly gate library.
+     * @param whitelist A whitelist for the tiles to which gates are assigned. When `std::nullopt` (default), all tiles
+     * are considered.
      * @return A `CellLyt` object representing the generated cell layout.
      */
     template <typename Params>
-    [[nodiscard]] CellLyt run_parameterized_gate_library(const Params& params)
+    [[nodiscard]] CellLyt run_parameterized_gate_library(const Params&                                 params,
+                                                         const std::optional<std::set<tile<GateLyt>>>& whitelist)
     {
 #if (PROGRESS_BARS)
         // initialize a progress bar
@@ -136,16 +144,19 @@ class apply_gate_library_impl
             {
                 if (!gate_lyt.is_constant(n))
                 {
-                    const auto t = gate_lyt.get_tile(n);
 
-                    // retrieve the top-leftmost cell in tile t
-                    const auto c =
-                        relative_to_absolute_cell_position<GateLibrary::gate_x_size(), GateLibrary::gate_y_size(),
-                                                           GateLyt, CellLyt>(gate_lyt, t, cell<CellLyt>{0, 0});
+                    if (const auto t = gate_lyt.get_tile(n); !whitelist.has_value() || whitelist.value().count(t) != 0)
+                    {
+                        // retrieve the top-leftmost cell in tile t
+                        const auto c =
+                            relative_to_absolute_cell_position<GateLibrary::gate_x_size(), GateLibrary::gate_y_size(),
+                                                               GateLyt, CellLyt>(gate_lyt, t, cell<CellLyt>{0, 0});
 
-                    const auto gate = GateLibrary::template set_up_gate<GateLyt, CellLyt, Params>(gate_lyt, t, params);
+                        const auto gate =
+                            GateLibrary::template set_up_gate<GateLyt, CellLyt, Params>(gate_lyt, t, params);
 
-                    assign_gate(c, gate, n);
+                        assign_gate(c, gate, n);
+                    }
                 }
 #if (PROGRESS_BARS)
                 // update progress
@@ -250,10 +261,13 @@ class apply_gate_library_impl
  * @tparam GateLibrary Type of the gate library to apply.
  * @tparam GateLyt Type of the gate-level layout to apply the library to.
  * @param lyt The gate-level layout.
+ * @param whitelist A whitelist for the tiles to which gates are assigned. When `std::nullopt` (default), all tiles are
+ * considered.
  * @return A cell-level layout that implements `lyt`'s gate types with building blocks defined in `GateLibrary`.
  */
 template <typename CellLyt, typename GateLibrary, typename GateLyt>
-[[nodiscard]] CellLyt apply_gate_library(const GateLyt& lyt)
+[[nodiscard]] CellLyt apply_gate_library(const GateLyt&                                lyt,
+                                         const std::optional<std::set<tile<GateLyt>>>& whitelist = {})
 {
     static_assert(is_cell_level_layout_v<CellLyt>, "CellLyt is not a cell-level layout");
     static_assert(!has_siqad_coord_v<CellLyt>, "CellLyt cannot have SiQAD coordinates");
@@ -266,7 +280,7 @@ template <typename CellLyt, typename GateLibrary, typename GateLyt>
 
     detail::apply_gate_library_impl<CellLyt, GateLibrary, GateLyt> p{lyt};
 
-    return p.run_static_gate_library();
+    return p.run_static_gate_library(whitelist);
 }
 /**
  * Applies a parameterized gate library to a given
@@ -281,10 +295,13 @@ template <typename CellLyt, typename GateLibrary, typename GateLyt>
  * @tparam Params Type of the parameter used for SiDB on-the-fly gate library.
  * @param lyt The gate-level layout.
  * @param params Parameter for the gate library.
+ * @param whitelist A whitelist for the tiles to which gates are assigned. When `std::nullopt` (default), all tiles are
+ * considered.
  * @return A cell-level layout that implements `lyt`'s gate types with building blocks defined in `GateLibrary`.
  */
 template <typename CellLyt, typename GateLibrary, typename GateLyt, typename Params>
-[[nodiscard]] CellLyt apply_parameterized_gate_library(const GateLyt& lyt, const Params& params)
+[[nodiscard]] CellLyt apply_parameterized_gate_library(const GateLyt& lyt, const Params& params,
+                                                       const std::optional<std::set<tile<GateLyt>>>& whitelist = {})
 {
     static_assert(is_cell_level_layout_v<CellLyt>, "CellLyt is not a cell-level layout");
     static_assert(is_gate_level_layout_v<GateLyt>, "GateLyt is not a gate-level layout");
@@ -297,7 +314,7 @@ template <typename CellLyt, typename GateLibrary, typename GateLyt, typename Par
 
     detail::apply_gate_library_impl<CellLyt, GateLibrary, GateLyt> p{lyt};
 
-    return p.template run_parameterized_gate_library<Params>(params);
+    return p.template run_parameterized_gate_library<Params>(params, whitelist);
 }
 
 }  // namespace fiction
