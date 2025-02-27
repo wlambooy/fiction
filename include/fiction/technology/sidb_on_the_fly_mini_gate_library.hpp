@@ -7,6 +7,7 @@
 
 #include "fiction/algorithms/physical_design/design_sidb_gates.hpp"
 #include "fiction/algorithms/simulation/sidb/is_operational.hpp"
+#include "fiction/algorithms/simulation/sidb/skeleton_influence_bounds.hpp"
 #include "fiction/layouts/bounding_box.hpp"
 #include "fiction/technology/cell_ports.hpp"
 #include "fiction/technology/cell_technologies.hpp"
@@ -15,6 +16,7 @@
 #include "fiction/technology/sidb_defect_surface.hpp"
 #include "fiction/technology/sidb_nm_distance.hpp"
 #include "fiction/technology/sidb_on_the_fly_gate_library.hpp"
+#include "fiction/technology/sidb_skeleton_bestagon_mini_library.hpp"
 #include "fiction/traits.hpp"
 #include "fiction/types.hpp"
 #include "fiction/utils/layout_utils.hpp"
@@ -58,7 +60,7 @@ class sidb_on_the_fly_mini_gate_library
      * @return Bestagon gate representation of `t` including mirroring.
      */
     template <typename GateLyt, typename CellLyt, typename Params>
-    static fcn_gate set_up_gate(const GateLyt& lyt, const tile<GateLyt>& t, const Params& parameters = Params{})
+    static fcn_gate set_up_gate(const GateLyt& lyt, const tile<GateLyt>& t, Params parameters = Params{})
     {
         static_assert(is_gate_level_layout_v<GateLyt>, "GateLyt must be a gate-level layout");
         static_assert(has_cube_coord_v<CellLyt>, "CellLyt must be based on cube coordinates");
@@ -74,6 +76,21 @@ class sidb_on_the_fly_mini_gate_library
         auto absolute_cell = relative_to_absolute_cell_position<gate_x_size(), gate_y_size(), GateLyt, CellLyt>(
             lyt, t, cell<CellLyt>{0, 0});
 
+        if (parameters.use_skeleton_influence_bounds)
+        {
+            std::cout << "starting to determine skeleton influence bounds" << std::endl;
+            parameters.design_gate_params.operational_params.cc_map =
+                skeleton_influence_bounds<CellLyt, sidb_skeleton_bestagon_mini_library, GateLyt>(
+                    lyt, t,
+                    skeleton_influence_bounds_params<cell<CellLyt>>{
+                        parameters.design_gate_params.operational_params.simulation_parameters,
+                        // {{0, 0}, {gate_x_size(), gate_y_size()}},
+                        parameters.design_gate_params.canvas,
+                        parameters.design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params});
+            std::cout << "done determining skeleton influence bounds; size = "
+                      << parameters.design_gate_params.operational_params.cc_map.value().size() << std::endl;
+        }
+
         try
         {
             if constexpr (fiction::has_is_fanout_v<GateLyt>)
@@ -85,7 +102,6 @@ class sidb_on_the_fly_mini_gate_library
                         const auto layout =
                             add_defect_to_skeleton(cell_list_to_cell_level_layout<CellLyt>(ONE_IN_TWO_OUT_MAP.at(p)),
                                                    center_cell, absolute_cell, parameters);
-
                         return design_gate<decltype(layout), tt, CellLyt, GateLyt>(layout, create_fan_out_tt(),
                                                                                    parameters, p, t);
                     }
@@ -426,7 +442,12 @@ class sidb_on_the_fly_mini_gate_library
             throw gate_design_exception<tt, GateLyt>(tile, spec.front(), p);
         }
 
+        std::cout << "starting gate design" << std::endl;
+
         const auto found_gate_layouts = design_sidb_gates(skeleton, spec, parameters.design_gate_params);
+
+        std::cout << "number of gate layouts found: " << found_gate_layouts.size() << std::endl;
+
         if (found_gate_layouts.empty())
         {
             throw gate_design_exception<tt, GateLyt>(tile, spec.front(), p);
@@ -474,7 +495,7 @@ class sidb_on_the_fly_mini_gate_library
                         lyt.assign_cell_type(all_cell[counter], Lyt::technology::cell_type::OUTPUT);
                         break;
                     }
-                    case 'l':  // output cell
+                    case 'l':  // logic cell
                     {
                         lyt.assign_cell_type(all_cell[counter], Lyt::technology::cell_type::LOGIC);
                         break;

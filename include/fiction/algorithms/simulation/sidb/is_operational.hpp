@@ -57,8 +57,9 @@ enum class operational_status : uint8_t
 };
 
 /**
- * Parameters for the `is_operational` algorithm.
+ * Parameters for the `is_operational` algorithm. TODO
  */
+template <typename CellLyt>
 struct is_operational_params
 {
     /**
@@ -176,6 +177,8 @@ struct is_operational_params
      * Simulation results that are used to certify the status `OPERATIONAL` are not kept by default.
      */
     simulation_results_mode simulation_results_retention = simulation_results_mode::DISCARD_SIMULATION_RESULTS;
+    // TODO
+    std::optional<typename clustercomplete_params<CellLyt>::bounded_local_external_potential> cc_map{};
 };
 
 /**
@@ -310,7 +313,7 @@ class is_operational_impl
      * @param tt Expected Boolean function of the layout given as a multi-output truth table.
      * @param params Parameters for the `is_operational` algorithm.
      */
-    is_operational_impl(const Lyt& lyt, const std::vector<TT>& tt, const is_operational_params& params) :
+    is_operational_impl(const Lyt& lyt, const std::vector<TT>& tt, const is_operational_params<cell<Lyt>>& params) :
             layout{lyt},
             truth_table{tt},
             parameters{params},
@@ -335,7 +338,7 @@ class is_operational_impl
      * @param initialize_bii If `true`, the BDL input iterator is initialized, `false` otherwise. This parameter is only
      * needed in special cases (verify_logic_match.hpp).
      */
-    is_operational_impl(const Lyt& lyt, const std::vector<TT>& tt, const is_operational_params& params,
+    is_operational_impl(const Lyt& lyt, const std::vector<TT>& tt, const is_operational_params<cell<Lyt>>& params,
                         const std::vector<bdl_wire<Lyt>>& input_wires, const std::vector<bdl_wire<Lyt>>& output_wires,
                         const bool initialize_bii = true) :
             layout{lyt},
@@ -360,7 +363,7 @@ class is_operational_impl
      * @param output_wires BDL output wires of lyt.
      * @param c_lyt Canvas layout.
      */
-    is_operational_impl(const Lyt& lyt, const std::vector<TT>& tt, const is_operational_params& params,
+    is_operational_impl(const Lyt& lyt, const std::vector<TT>& tt, const is_operational_params<cell<Lyt>>& params,
                         const std::vector<bdl_wire<Lyt>>& input_wires, const std::vector<bdl_wire<Lyt>>& output_wires,
                         const Lyt& c_lyt) :
             layout{lyt},
@@ -375,7 +378,7 @@ class is_operational_impl
             number_of_input_wires{input_bdl_wires.size()},
             canvas_lyt{c_lyt}
     {
-        if (params.op_condition_kinks == is_operational_params::operational_condition_kinks::TOLERATE_KINKS)
+        if (params.op_condition_kinks == is_operational_params<cell<Lyt>>::operational_condition_kinks::TOLERATE_KINKS)
         {
             output_bdl_pairs = detect_bdl_pairs(layout, sidb_technology::cell_type::OUTPUT,
                                                 params.input_bdl_iterator_params.bdl_wire_params.bdl_pairs_params);
@@ -389,7 +392,7 @@ class is_operational_impl
      * @param params Parameters for the `is_operational` algorithm.
      * @param c_lyt Canvas layout.
      */
-    is_operational_impl(const Lyt& lyt, const std::vector<TT>& tt, const is_operational_params& params,
+    is_operational_impl(const Lyt& lyt, const std::vector<TT>& tt, const is_operational_params<cell<Lyt>>& params,
                         const Lyt& c_lyt) :
             layout{lyt},
             truth_table{tt},
@@ -425,7 +428,7 @@ class is_operational_impl
         cds_layout.assign_physical_parameters(parameters.simulation_parameters);
 
         if (parameters.op_condition_positive_charges ==
-                is_operational_params::operational_condition_positive_charges::REJECT_POSITIVE_CHARGES &&
+                is_operational_params<cell<Lyt>>::operational_condition_positive_charges::REJECT_POSITIVE_CHARGES &&
             can_positive_charges_occur(cds_layout, parameters.simulation_parameters))
         {
             return layout_invalidity_reason::POTENTIAL_POSITIVE_CHARGES;
@@ -462,11 +465,12 @@ class is_operational_impl
     {
         if (!canvas_lyt.is_empty())
         {
-            if ((parameters.op_condition_kinks == is_operational_params::operational_condition_kinks::REJECT_KINKS &&
+            if ((parameters.op_condition_kinks ==
+                     is_operational_params<cell<Lyt>>::operational_condition_kinks::REJECT_KINKS &&
                  parameters.strategy_to_analyze_operational_status ==
-                     is_operational_params::operational_analysis_strategy::FILTER_THEN_SIMULATION) ||
+                     is_operational_params<cell<Lyt>>::operational_analysis_strategy::FILTER_THEN_SIMULATION) ||
                 parameters.strategy_to_analyze_operational_status ==
-                    is_operational_params::operational_analysis_strategy::FILTER_ONLY)
+                    is_operational_params<cell<Lyt>>::operational_analysis_strategy::FILTER_ONLY)
             {
                 // number of different input combinations
                 for (auto i = 0u; i < truth_table.front().num_bits(); ++i, ++bii)
@@ -483,16 +487,16 @@ class is_operational_impl
         // if the layout is not discarded during the three filtering steps, it is considered operational.
         // This is only an approximation.
         if (parameters.strategy_to_analyze_operational_status ==
-                is_operational_params::operational_analysis_strategy::FILTER_ONLY &&
+                is_operational_params<cell<Lyt>>::operational_analysis_strategy::FILTER_ONLY &&
             !canvas_lyt.is_empty())
         {
             return {operational_assessment<Lyt>{operational_status::OPERATIONAL}, non_operationality_reason::NONE};
         }
 
         if (parameters.strategy_to_analyze_operational_status !=
-                is_operational_params::operational_analysis_strategy::SIMULATION_ONLY &&
+                is_operational_params<cell<Lyt>>::operational_analysis_strategy::SIMULATION_ONLY &&
             parameters.strategy_to_analyze_operational_status !=
-                is_operational_params::operational_analysis_strategy::FILTER_THEN_SIMULATION &&
+                is_operational_params<cell<Lyt>>::operational_analysis_strategy::FILTER_THEN_SIMULATION &&
             !canvas_lyt.is_empty())
         {
             return {operational_assessment<Lyt>{operational_status::OPERATIONAL}, non_operationality_reason::NONE};
@@ -505,7 +509,7 @@ class is_operational_impl
         std::vector<typename operational_assessment<Lyt>::operational_assessment_for_input>
             assessment_results_per_input{};
         if (parameters.termination_cond ==
-            is_operational_params::termination_condition::ALL_INPUT_COMBINATIONS_ASSESSED)
+            is_operational_params<cell<Lyt>>::termination_condition::ALL_INPUT_COMBINATIONS_ASSESSED)
         {
             assessment_results_per_input.reserve(truth_table.front().num_bits());
         }
@@ -514,7 +518,7 @@ class is_operational_impl
         // each input combination
         std::vector<std::vector<charge_distribution_surface<Lyt>>> sim_res_per_input{};
         if (parameters.simulation_results_retention ==
-            is_operational_params::simulation_results_mode::KEEP_SIMULATION_RESULTS)
+            is_operational_params<cell<Lyt>>::simulation_results_mode::KEEP_SIMULATION_RESULTS)
         {
             sim_res_per_input.reserve(truth_table.front().num_bits());
         }
@@ -528,13 +532,13 @@ class is_operational_impl
 
             // if positively charged SiDBs can occur, the SiDB layout is considered as non-operational
             if (parameters.op_condition_positive_charges ==
-                    is_operational_params::operational_condition_positive_charges::REJECT_POSITIVE_CHARGES &&
+                    is_operational_params<cell<Lyt>>::operational_condition_positive_charges::REJECT_POSITIVE_CHARGES &&
                 can_positive_charges_occur(*bii, parameters.simulation_parameters))
             {
                 assessment_results.status = operational_status::NON_OPERATIONAL;
 
                 if (parameters.termination_cond ==
-                    is_operational_params::termination_condition::ON_FIRST_NON_OPERATIONAL)
+                    is_operational_params<cell<Lyt>>::termination_condition::ON_FIRST_NON_OPERATIONAL)
                 {
                     return {assessment_results, non_operationality_reason::LOGIC_MISMATCH};
                 }
@@ -559,7 +563,7 @@ class is_operational_impl
                 assessment_results.status = operational_status::NON_OPERATIONAL;
 
                 if (parameters.termination_cond ==
-                    is_operational_params::termination_condition::ON_FIRST_NON_OPERATIONAL)
+                    is_operational_params<cell<Lyt>>::termination_condition::ON_FIRST_NON_OPERATIONAL)
                 {
                     return {assessment_results, non_operationality_reason::LOGIC_MISMATCH};
                 }
@@ -591,7 +595,7 @@ class is_operational_impl
                 assessment_results.status = operational_status::NON_OPERATIONAL;
 
                 if (parameters.termination_cond ==
-                    is_operational_params::termination_condition::ON_FIRST_NON_OPERATIONAL)
+                    is_operational_params<cell<Lyt>>::termination_condition::ON_FIRST_NON_OPERATIONAL)
                 {
                     if (non_op_reason == non_operationality_reason::LOGIC_MISMATCH)
                     {
@@ -600,7 +604,7 @@ class is_operational_impl
 
                     if (non_op_reason == non_operationality_reason::KINKS &&
                         parameters.op_condition_kinks ==
-                            is_operational_params::operational_condition_kinks::REJECT_KINKS)
+                            is_operational_params<cell<Lyt>>::operational_condition_kinks::REJECT_KINKS)
                     {
                         return {assessment_results, non_operationality_reason::KINKS};
                     }
@@ -615,14 +619,14 @@ class is_operational_impl
             // `termination_condition::ALL_INPUT_COMBINATION_ASSESSED` or the simulation result retention is set to
             // `simulation_results_mode::KEEP_SIMULATION_RESULTS`
             if (parameters.termination_cond ==
-                    is_operational_params::termination_condition::ALL_INPUT_COMBINATIONS_ASSESSED ||
+                    is_operational_params<cell<Lyt>>::termination_condition::ALL_INPUT_COMBINATIONS_ASSESSED ||
                 parameters.simulation_results_retention ==
-                    is_operational_params::simulation_results_mode::KEEP_SIMULATION_RESULTS)
+                    is_operational_params<cell<Lyt>>::simulation_results_mode::KEEP_SIMULATION_RESULTS)
             {
                 // save simulation results when the simulation result retention is set to
                 // `simulation_results_mode::KEEP_SIMULATION_RESULTS`
                 if (parameters.simulation_results_retention ==
-                    is_operational_params::simulation_results_mode::KEEP_SIMULATION_RESULTS)
+                    is_operational_params<cell<Lyt>>::simulation_results_mode::KEEP_SIMULATION_RESULTS)
                 {
                     assessment_results_for_this_input_combination.simulation_results =
                         std::move(simulation_results.charge_distributions);
@@ -636,9 +640,9 @@ class is_operational_impl
         // `termination_condition::ALL_INPUT_COMBINATION_ASSESSED` or the simulation result retention is set to
         // `simulation_results_mode::KEEP_SIMULATION_RESULTS`
         if (parameters.termination_cond ==
-                is_operational_params::termination_condition::ALL_INPUT_COMBINATIONS_ASSESSED ||
+                is_operational_params<cell<Lyt>>::termination_condition::ALL_INPUT_COMBINATIONS_ASSESSED ||
             parameters.simulation_results_retention ==
-                is_operational_params::simulation_results_mode::KEEP_SIMULATION_RESULTS)
+                is_operational_params<cell<Lyt>>::simulation_results_mode::KEEP_SIMULATION_RESULTS)
         {
             assessment_results.assessment_per_input = std::move(assessment_results_per_input);
         }
@@ -672,7 +676,7 @@ class is_operational_impl
 
         // if positively charged SiDBs can occur, the SiDB layout is considered as non-operational
         if (parameters.op_condition_positive_charges ==
-                is_operational_params::operational_condition_positive_charges::REJECT_POSITIVE_CHARGES &&
+                is_operational_params<cell<Lyt>>::operational_condition_positive_charges::REJECT_POSITIVE_CHARGES &&
             can_positive_charges_occur(given_cds, parameters.simulation_parameters))
         {
             return {operational_status::NON_OPERATIONAL, non_operationality_reason::LOGIC_MISMATCH};
@@ -710,7 +714,8 @@ class is_operational_impl
             }
         }
 
-        if (parameters.op_condition_kinks == is_operational_params::operational_condition_kinks::REJECT_KINKS)
+        if (parameters.op_condition_kinks ==
+            is_operational_params<cell<Lyt>>::operational_condition_kinks::REJECT_KINKS)
         {
             assert(!input_bdl_wires.empty() && "No input wires provided.");
             assert(!output_bdl_wires.empty() && "No output wires provided.");
@@ -754,7 +759,7 @@ class is_operational_impl
         {
             // if positively charged SiDBs can occur, the SiDB layout is considered as non-operational
             if (parameters.op_condition_positive_charges ==
-                    is_operational_params::operational_condition_positive_charges::REJECT_POSITIVE_CHARGES &&
+                    is_operational_params<cell<Lyt>>::operational_condition_positive_charges::REJECT_POSITIVE_CHARGES &&
                 can_positive_charges_occur(*bii, parameters.simulation_parameters))
             {
                 continue;
@@ -1089,7 +1094,7 @@ class is_operational_impl
     /**
      * Parameters for the `is_operational` algorithm.
      */
-    const is_operational_params& parameters;
+    const is_operational_params<cell<Lyt>>& parameters;
     /**
      * Output BDL pairs.
      */
@@ -1146,8 +1151,54 @@ class is_operational_impl
         {
 #if (FICTION_ALGLIB_ENABLED)
             // perform ClusterComplete exact simulation
-            const clustercomplete_params<cell<Lyt>> cc_params{parameters.simulation_parameters};
-            return clustercomplete(*bdl_iterator, cc_params);
+
+            if (parameters.cc_map.has_value())
+            {
+                clustercomplete_params<cell<Lyt>> cc_params{
+                    parameters.simulation_parameters,
+                    typename clustercomplete_params<cell<Lyt>>::bounded_local_external_potential{}};
+                for (const auto& [c, bounds] : parameters.cc_map.value())
+                {
+                    if ((*bdl_iterator).get_cell_type(c) != sidb_technology::cell_type::EMPTY)
+                    {
+                        cc_params.insert_local_external_potential(c, bounds);
+                        // std::cout << "applied LB = " << bounds[0] << ", UB = " << bounds[1] << " to cell at " << c.x
+                        //           << ", " << c.y << std::endl;
+                    }
+                }
+
+                const auto& res = clustercomplete(*bdl_iterator, cc_params);
+                if ((*bdl_iterator).num_cells() > 33)
+                {
+                    std::cout << std::endl;
+                    if (res.charge_distributions.empty())
+                    {
+                        std::cout << "NO CHARGE DISTRIBUTIONS FOUNDS" << std::endl;
+                        return res;
+                    }
+                    print_layout(groundstate_from_simulation_result(res).front());
+                    std::cout << std::endl;
+                }
+                return res;
+            }
+            else
+            {
+                clustercomplete_params<cell<Lyt>> cc_params{parameters.simulation_parameters};
+                const auto&                       res = clustercomplete(*bdl_iterator, cc_params);
+                if ((*bdl_iterator).num_cells() > 40)
+                {
+                    std::cout << std::endl;
+                    if (res.charge_distributions.empty())
+                    {
+                        std::cout << "NO CHARGE DISTRIBUTIONS FOUNDS" << std::endl;
+                        return res;
+                    }
+                    print_layout(groundstate_from_simulation_result(res).front());
+                    std::cout << std::endl;
+                }
+                return res;
+            }
+
 #else   // FICTION_ALGLIB_ENABLED
             assert(false && "ALGLIB must be enabled if ClusterComplete is to be used");
 #endif  // FICTION_ALGLIB_ENABLED
@@ -1298,7 +1349,7 @@ class is_operational_impl
  */
 template <typename Lyt, typename TT>
 [[nodiscard]] operational_assessment<Lyt> is_operational(const Lyt& lyt, const std::vector<TT>& spec,
-                                                         const is_operational_params& params = {}) noexcept
+                                                         const is_operational_params<cell<Lyt>>& params = {}) noexcept
 {
     static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout");
     static_assert(has_sidb_technology_v<Lyt>, "Lyt is not an SiDB layout");
@@ -1314,7 +1365,21 @@ template <typename Lyt, typename TT>
 
     detail::is_operational_impl<Lyt, TT> p{lyt, spec, params};
 
-    const auto [assessment_result, _] = p.run();
+    const auto [assessment_result, non_op_reason] = p.run();
+
+    if (lyt.num_cells() > 33)
+    {
+        switch (non_op_reason)
+        {
+            case detail::non_operationality_reason::NONE:
+                std::cout << "NO NON-OPERATIONALITY REASON" << std::endl;
+                break;
+            case detail::non_operationality_reason::LOGIC_MISMATCH:
+                std::cout << "NON-OPERATIONALITY REASON: LOGIC_MISMATCH" << std::endl;
+                break;
+            case detail::non_operationality_reason::KINKS: std::cout << "NON-OPERATIONALITY REASON: KINKS" << std::endl;
+        }
+    }
 
     return assessment_result;
 }
@@ -1338,7 +1403,7 @@ template <typename Lyt, typename TT>
  */
 template <typename Lyt, typename TT>
 [[nodiscard]] operational_assessment<Lyt>
-is_operational(const Lyt& lyt, const std::vector<TT>& spec, const is_operational_params& params,
+is_operational(const Lyt& lyt, const std::vector<TT>& spec, const is_operational_params<cell<Lyt>>& params,
                const std::vector<bdl_wire<Lyt>>& input_bdl_wire, const std::vector<bdl_wire<Lyt>>& output_bdl_wire,
                const std::optional<Lyt>& canvas_lyt = std::nullopt) noexcept
 {
@@ -1396,8 +1461,9 @@ is_operational(const Lyt& lyt, const std::vector<TT>& spec, const is_operational
  * @return The count of operational input combinations.
  */
 template <typename Lyt, typename TT>
-[[nodiscard]] std::set<uint64_t> operational_input_patterns(const Lyt& lyt, const std::vector<TT>& spec,
-                                                            const is_operational_params& params = {}) noexcept
+[[nodiscard]] std::set<uint64_t>
+operational_input_patterns(const Lyt& lyt, const std::vector<TT>& spec,
+                           const is_operational_params<cell<Lyt>>& params = {}) noexcept
 {
     static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout");
     static_assert(has_sidb_technology_v<Lyt>, "Lyt is not an SiDB layout");
@@ -1446,7 +1512,7 @@ template <typename Lyt, typename TT>
  */
 template <typename Lyt, typename TT>
 [[nodiscard]] std::set<uint64_t>
-operational_input_patterns(const Lyt& lyt, const std::vector<TT>& spec, const is_operational_params& params,
+operational_input_patterns(const Lyt& lyt, const std::vector<TT>& spec, const is_operational_params<cell<Lyt>>& params,
                            const std::vector<bdl_wire<Lyt>>& input_bdl_wire,
                            const std::vector<bdl_wire<Lyt>>& output_bdl_wire,
                            const std::optional<Lyt>&         canvas_lyt = std::nullopt) noexcept
@@ -1523,7 +1589,7 @@ operational_input_patterns(const Lyt& lyt, const std::vector<TT>& spec, const is
 template <typename Lyt, typename TT>
 [[nodiscard]] std::set<uint64_t>
 kink_induced_non_operational_input_patterns(const Lyt& lyt, const std::vector<TT>& spec,
-                                            const is_operational_params& params = {}) noexcept
+                                            const is_operational_params<cell<Lyt>>& params = {}) noexcept
 {
     static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout");
     static_assert(has_sidb_technology_v<Lyt>, "Lyt is not an SiDB layout");
@@ -1537,9 +1603,10 @@ kink_induced_non_operational_input_patterns(const Lyt& lyt, const std::vector<TT
     assert(std::adjacent_find(spec.cbegin(), spec.cend(), [](const auto& a, const auto& b)
                               { return a.num_vars() != b.num_vars(); }) == spec.cend());
 
-    is_operational_params params_with_rejecting_kinks = params;
+    is_operational_params<cell<Lyt>> params_with_rejecting_kinks = params;
 
-    params_with_rejecting_kinks.op_condition_kinks = is_operational_params::operational_condition_kinks::REJECT_KINKS;
+    params_with_rejecting_kinks.op_condition_kinks =
+        is_operational_params<cell<Lyt>>::operational_condition_kinks::REJECT_KINKS;
 
     detail::is_operational_impl<Lyt, TT> p{lyt, spec, params_with_rejecting_kinks};
 
@@ -1577,7 +1644,7 @@ kink_induced_non_operational_input_patterns(const Lyt& lyt, const std::vector<TT
  */
 template <typename Lyt, typename TT>
 [[nodiscard]] std::set<uint64_t> kink_induced_non_operational_input_patterns(
-    const Lyt& lyt, const std::vector<TT>& spec, const is_operational_params& params,
+    const Lyt& lyt, const std::vector<TT>& spec, const is_operational_params<cell<Lyt>>& params,
     const std::vector<bdl_wire<Lyt>>& input_bdl_wire, const std::vector<bdl_wire<Lyt>>& output_bdl_wire,
     const std::optional<Lyt>& canvas_lyt = std::nullopt) noexcept
 {
@@ -1593,9 +1660,10 @@ template <typename Lyt, typename TT>
     assert(std::adjacent_find(spec.cbegin(), spec.cend(), [](const auto& a, const auto& b)
                               { return a.num_vars() != b.num_vars(); }) == spec.cend());
 
-    is_operational_params params_with_rejecting_kinks = params;
+    is_operational_params<cell<Lyt>> params_with_rejecting_kinks = params;
 
-    params_with_rejecting_kinks.op_condition_kinks = is_operational_params::operational_condition_kinks::REJECT_KINKS;
+    params_with_rejecting_kinks.op_condition_kinks =
+        is_operational_params<cell<Lyt>>::operational_condition_kinks::REJECT_KINKS;
 
     if (canvas_lyt.has_value())
     {
@@ -1652,7 +1720,7 @@ template <typename Lyt, typename TT>
  */
 template <typename Lyt, typename TT>
 [[nodiscard]] bool is_kink_induced_non_operational(const Lyt& lyt, const std::vector<TT>& spec,
-                                                   const is_operational_params& params = {}) noexcept
+                                                   const is_operational_params<cell<Lyt>>& params = {}) noexcept
 {
     static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout");
     static_assert(has_sidb_technology_v<Lyt>, "Lyt is not an SiDB layout");
@@ -1666,8 +1734,9 @@ template <typename Lyt, typename TT>
     assert(std::adjacent_find(spec.cbegin(), spec.cend(), [](const auto& a, const auto& b)
                               { return a.num_vars() != b.num_vars(); }) == spec.cend());
 
-    is_operational_params params_with_rejecting_kinks = params;
-    params_with_rejecting_kinks.op_condition_kinks = is_operational_params::operational_condition_kinks::REJECT_KINKS;
+    is_operational_params<cell<Lyt>> params_with_rejecting_kinks = params;
+    params_with_rejecting_kinks.op_condition_kinks =
+        is_operational_params<cell<Lyt>>::operational_condition_kinks::REJECT_KINKS;
 
     detail::is_operational_impl<Lyt, TT> p{lyt, spec, params_with_rejecting_kinks};
 
@@ -1697,10 +1766,10 @@ template <typename Lyt, typename TT>
  */
 template <typename Lyt, typename TT>
 [[nodiscard]] bool is_kink_induced_non_operational(const Lyt& lyt, const std::vector<TT>& spec,
-                                                   const is_operational_params&      params,
-                                                   const std::vector<bdl_wire<Lyt>>& input_bdl_wire,
-                                                   const std::vector<bdl_wire<Lyt>>& output_bdl_wire,
-                                                   const std::optional<Lyt>&         canvas_lyt = std::nullopt) noexcept
+                                                   const is_operational_params<cell<Lyt>>& params,
+                                                   const std::vector<bdl_wire<Lyt>>&       input_bdl_wire,
+                                                   const std::vector<bdl_wire<Lyt>>&       output_bdl_wire,
+                                                   const std::optional<Lyt>& canvas_lyt = std::nullopt) noexcept
 {
     static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout");
     static_assert(has_sidb_technology_v<Lyt>, "Lyt is not an SiDB layout");
@@ -1714,8 +1783,9 @@ template <typename Lyt, typename TT>
     assert(std::adjacent_find(spec.cbegin(), spec.cend(), [](const auto& a, const auto& b)
                               { return a.num_vars() != b.num_vars(); }) == spec.cend());
 
-    is_operational_params params_with_rejecting_kinks = params;
-    params_with_rejecting_kinks.op_condition_kinks = is_operational_params::operational_condition_kinks::REJECT_KINKS;
+    is_operational_params<cell<Lyt>> params_with_rejecting_kinks = params;
+    params_with_rejecting_kinks.op_condition_kinks =
+        is_operational_params<cell<Lyt>>::operational_condition_kinks::REJECT_KINKS;
 
     if (canvas_lyt.has_value())
     {
@@ -1748,8 +1818,9 @@ template <typename Lyt, typename TT>
  *
  */
 template <typename Lyt, typename TT>
-[[nodiscard]] std::size_t number_of_operational_input_combinations(const Lyt& lyt, const std::vector<TT>& spec,
-                                                                   const is_operational_params& params = {}) noexcept
+[[nodiscard]] std::size_t
+number_of_operational_input_combinations(const Lyt& lyt, const std::vector<TT>& spec,
+                                         const is_operational_params<cell<Lyt>>& params = {}) noexcept
 {
     static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout");
     static_assert(has_sidb_technology_v<Lyt>, "Lyt is not an SiDB layout");

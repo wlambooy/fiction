@@ -120,6 +120,7 @@ struct sidb_on_the_fly_gate_library_params
      * incorporated into the gate design.
      */
     double influence_radius_charged_defects = 15;  // (unit: nm)
+    bool   use_skeleton_influence_bounds    = false;
 };
 
 /**
@@ -430,11 +431,11 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, 60
         }
         bestagon_lyt.foreach_cell([&defect_copy, &bestagon_lyt](const auto& c)
                                   { defect_copy.assign_cell_type(c, bestagon_lyt.get_cell_type(c)); });
-        const auto status =
-            is_operational(defect_copy, truth_table,
-                           is_operational_params{parameters.design_gate_params.operational_params.simulation_parameters,
-                                                 parameters.design_gate_params.operational_params.sim_engine})
-                .status;
+        const auto status = is_operational(defect_copy, truth_table,
+                                           is_operational_params<cell<Lyt>>{
+                                               parameters.design_gate_params.operational_params.simulation_parameters,
+                                               parameters.design_gate_params.operational_params.sim_engine})
+                                .status;
         return static_cast<bool>(status == operational_status::OPERATIONAL);
     }
     /**
@@ -535,7 +536,12 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, 60
             throw gate_design_exception<tt, GateLyt>(tile, spec.front(), p);
         }
 
+        std::cout << "starting gate design" << std::endl;
+
         const auto found_gate_layouts = design_sidb_gates(skeleton, spec, parameters.design_gate_params);
+
+        std::cout << "number of gate layouts found: " << found_gate_layouts.size() << std::endl;
+
         if (found_gate_layouts.empty())
         {
             throw gate_design_exception<tt, GateLyt>(tile, spec.front(), p);
@@ -583,7 +589,7 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, 60
                         lyt.assign_cell_type(all_cell[counter], Lyt::technology::cell_type::OUTPUT);
                         break;
                     }
-                    case 'l':  // output cell
+                    case 'l':  // logic cell
                     {
                         lyt.assign_cell_type(all_cell[counter], Lyt::technology::cell_type::LOGIC);
                         break;

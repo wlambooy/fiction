@@ -81,7 +81,7 @@ struct design_sidb_gates_params
     /**
      * Parameters for the `is_operational` function.
      */
-    is_operational_params operational_params{};
+    is_operational_params<cell<Lyt>> operational_params{};
     /**
      * Gate design mode.
      */
@@ -283,6 +283,8 @@ class design_sidb_gates_impl
             stats.number_of_layouts_after_first_pruning - number_of_discarded_layouts_at_second_pruning.load();
         stats.number_of_layouts_after_third_pruning =
             stats.number_of_layouts_after_second_pruning - number_of_discarded_layouts_at_third_pruning.load();
+
+        std::cout << "done pruning (remaining = " << gate_candidates.size() << ")" << std::endl;
 
         return extract_gate_designs(gate_candidates);
     }
@@ -496,6 +498,8 @@ class design_sidb_gates_impl
 
                         add_combination_to_layout_and_check_operation(std::move(gate_candidates[j]));
                     }
+
+                    std::cout << "thread " << i << " finished" << std::endl;
                 });
         }
 
@@ -535,6 +539,9 @@ class design_sidb_gates_impl
         std::mutex mutex_to_protect_gate_candidates{};  // used to control access to shared resources
 
         std::vector<Lyt> all_canvas_layouts = create_all_possible_canvas_layouts();
+
+        std::cout << "done creating all possible canvas layouts (size = " << all_canvas_layouts.size() << ")"
+                  << std::endl;
 
         // Function to check validity and add layout to all_designs
         auto conduct_pruning_steps = [&](const Lyt& canvas_lyt)
@@ -699,13 +706,13 @@ class design_sidb_gates_impl
         if (!new_params.post_design_process.empty())
         {
             new_params.operational_params.simulation_results_retention =
-                is_operational_params::simulation_results_mode::KEEP_SIMULATION_RESULTS;
+                is_operational_params<cell<Lyt>>::simulation_results_mode::KEEP_SIMULATION_RESULTS;
         }
 
         if (new_params.design_mode == design_sidb_gates_params<Lyt>::design_sidb_gates_mode::QUICKCELL)
         {
             new_params.operational_params.strategy_to_analyze_operational_status =
-                is_operational_params::operational_analysis_strategy::SIMULATION_ONLY;
+                is_operational_params<cell<Lyt>>::operational_analysis_strategy::SIMULATION_ONLY;
         }
 
         return new_params;

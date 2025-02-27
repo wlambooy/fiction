@@ -27,6 +27,117 @@ class sidb_skeleton_bestagon_mini_library
     explicit sidb_skeleton_bestagon_mini_library() = delete;
 
     /**
+     * Overrides the corresponding function in fcn_gate_library. Given a tile `t`, this function takes all necessary
+     * information from the stored grid into account to choose the correct fcn_gate representation for that tile. May it
+     * be a gate or wires. Rotation and special marks like input and output, const cells etc. are computed additionally.
+     *
+     * @tparam GateLyt Pointy-top hexagonal gate-level layout type.
+     * @param lyt Layout that hosts tile `t`.
+     * @param t Tile to be realized as a Bestagon skeleton gate.
+     * @return Bestagon skeleton gate representation of `t` including mirroring.
+     */
+    template <typename GateLyt>
+    [[nodiscard]] static fcn_gate set_up_gate(const GateLyt& lyt, const tile<GateLyt>& t)
+    {
+        static_assert(is_gate_level_layout_v<GateLyt>, "GateLyt must be a gate-level layout");
+        static_assert(is_hexagonal_layout_v<GateLyt>, "GateLyt must be a hexagonal layout");
+        static_assert(has_pointy_top_hex_orientation_v<GateLyt>, "GateLyt must be a pointy-top hexagonal layout");
+
+        const auto n = lyt.get_node(t);
+        const auto p = determine_port_routing(lyt, t);
+
+        try
+        {
+            if constexpr (fiction::has_is_fanout_v<GateLyt>)
+            {
+                if (lyt.is_fanout(n))
+                {
+                    if (lyt.fanout_size(n) == 2)
+                    {
+                        return ONE_IN_TWO_OUT_MAP.at(p);
+                    }
+                }
+            }
+            if constexpr (fiction::has_is_buf_v<GateLyt>)
+            {
+                if (lyt.is_buf(n))
+                {
+                    if (lyt.is_ground_layer(t))
+                    {
+                        // crossing case
+                        if (const auto at = lyt.above(t); (t != at) && lyt.is_wire_tile(at))
+                        {
+                            // two possible options: actual crossover and (parallel) hourglass wire
+                            const auto pa = determine_port_routing(lyt, at);
+
+                            return TWO_IN_TWO_OUT;
+                        }
+                        // regular wire: look-up in the wire_map
+
+                        return ONE_IN_ONE_OUT_MAP.at(p);
+                    }
+
+                    return EMPTY_GATE;
+                }
+            }
+            if constexpr (fiction::has_is_inv_v<GateLyt>)
+            {
+                if (lyt.is_inv(n))
+                {
+                    return ONE_IN_ONE_OUT_MAP.at(p);
+                }
+            }
+            if constexpr (mockturtle::has_is_and_v<GateLyt>)
+            {
+                if (lyt.is_and(n))
+                {
+                    return TWO_IN_ONE_OUT_MAP.at(p);
+                }
+            }
+            if constexpr (mockturtle::has_is_or_v<GateLyt>)
+            {
+                if (lyt.is_or(n))
+                {
+                    return TWO_IN_ONE_OUT_MAP.at(p);
+                }
+            }
+            if constexpr (fiction::has_is_nand_v<GateLyt>)
+            {
+                if (lyt.is_nand(n))
+                {
+                    return TWO_IN_ONE_OUT_MAP.at(p);
+                }
+            }
+            if constexpr (fiction::has_is_nor_v<GateLyt>)
+            {
+                if (lyt.is_nor(n))
+                {
+                    return TWO_IN_ONE_OUT_MAP.at(p);
+                }
+            }
+            if constexpr (mockturtle::has_is_xor_v<GateLyt>)
+            {
+                if (lyt.is_xor(n))
+                {
+                    return TWO_IN_ONE_OUT_MAP.at(p);
+                }
+            }
+            if constexpr (fiction::has_is_xnor_v<GateLyt>)
+            {
+                if (lyt.is_xnor(n))
+                {
+                    return TWO_IN_ONE_OUT_MAP.at(p);
+                }
+            }
+        }
+        catch (const std::out_of_range&)
+        {
+            throw unsupported_gate_orientation_exception(t, p);
+        }
+
+        throw unsupported_gate_type_exception(t);
+    }
+    /**
      * Returns a map of all gate functions supported by the library and their respectively possible implementations.
      *
      * This is an optional interface function that is required by some algorithms.
@@ -503,6 +614,57 @@ class sidb_skeleton_bestagon_mini_library
     }})};
 
     // clang-format on
+
+    using port_gate_map = phmap::flat_hash_map<port_list<port_direction>, fcn_gate>;
+    using double_port_gate_map =
+        phmap::flat_hash_map<std::pair<port_list<port_direction>, port_list<port_direction>>, fcn_gate>;
+    /**
+     * Lookup table for 1-input/1-output Boolean functions.
+     */
+    static inline const port_gate_map ONE_IN_ONE_OUT_MAP = {
+        // primary inputs
+        {{{}, {port_direction(port_direction::cardinal::SOUTH_WEST)}}, STRAIGHT_WIRE},
+        {{{}, {port_direction(port_direction::cardinal::SOUTH_EAST)}}, DIAGONAL_WIRE},
+        // primary outputs
+        {{{port_direction(port_direction::cardinal::NORTH_WEST)}, {}}, DIAGONAL_WIRE},
+        {{{port_direction(port_direction::cardinal::NORTH_EAST)}, {}}, MIRRORED_STRAIGHT_WIRE},
+        // straight wire
+        {{{port_direction(port_direction::cardinal::NORTH_WEST)},
+          {port_direction(port_direction::cardinal::SOUTH_WEST)}},
+         STRAIGHT_WIRE},
+        {{{port_direction(port_direction::cardinal::NORTH_EAST)},
+          {port_direction(port_direction::cardinal::SOUTH_EAST)}},
+         MIRRORED_STRAIGHT_WIRE},
+        // diagonal wire
+        {{{port_direction(port_direction::cardinal::NORTH_WEST)},
+          {port_direction(port_direction::cardinal::SOUTH_EAST)}},
+         DIAGONAL_WIRE},
+        {{{port_direction(port_direction::cardinal::NORTH_EAST)},
+          {port_direction(port_direction::cardinal::SOUTH_WEST)}},
+         MIRRORED_DIAGONAL_WIRE},
+        // empty gate (for crossing layer)
+        {{{}, {}}, EMPTY_GATE},
+    };
+    /**
+     * Lookup table for 2-input/1-output Boolean function (e.g., AND, OR, ...).
+     */
+    static inline const port_gate_map TWO_IN_ONE_OUT_MAP = {
+        {{{port_direction(port_direction::cardinal::NORTH_WEST), port_direction(port_direction::cardinal::NORTH_EAST)},
+          {port_direction(port_direction::cardinal::SOUTH_EAST)}},
+         TWO_IN_ONE_OUT},
+        {{{port_direction(port_direction::cardinal::NORTH_WEST), port_direction(port_direction::cardinal::NORTH_EAST)},
+          {port_direction(port_direction::cardinal::SOUTH_WEST)}},
+         MIRRORED_TWO_IN_ONE_OUT}};
+    /**
+     * Lookup table for fan-out.
+     */
+    static inline const port_gate_map ONE_IN_TWO_OUT_MAP = {
+        {{{port_direction(port_direction::cardinal::NORTH_WEST)},
+          {port_direction(port_direction::cardinal::SOUTH_EAST), port_direction(port_direction::cardinal::SOUTH_WEST)}},
+         FANOUT_1_2},
+        {{{port_direction(port_direction::cardinal::NORTH_EAST)},
+          {port_direction(port_direction::cardinal::SOUTH_EAST), port_direction(port_direction::cardinal::SOUTH_WEST)}},
+         MIRRORED_FANOUT_1_2}};
 };
 
 }  // namespace fiction
