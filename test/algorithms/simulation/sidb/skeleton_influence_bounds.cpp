@@ -158,7 +158,6 @@ TEST_CASE("Skeleton influence bounds of Bestagon gates in connection with clocki
         {
             for (const auto& [c, bounds] : r)
             {
-                // std::cout << c.x << "," << c.y << " " << bounds[0] << " " << bounds[1] << std::endl;
                 CHECK(bounds[0] > 0);
                 CHECK(bounds[0] < bounds[1]);
             }
