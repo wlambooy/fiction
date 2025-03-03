@@ -7,6 +7,7 @@
 
 #include "fiction/technology/sidb_on_the_fly_gate_library.hpp"
 #include "fiction/traits.hpp"
+#include "fiction/utils/gate_design_utils.hpp"
 #include "fiction/utils/layout_utils.hpp"
 #include "fiction/utils/name_utils.hpp"
 
@@ -95,7 +96,8 @@ class apply_gate_library_impl
                             relative_to_absolute_cell_position<GateLibrary::gate_x_size(), GateLibrary::gate_y_size(),
                                                                GateLyt, CellLyt>(gate_lyt, t, cell<CellLyt>{0, 0});
 
-                        assign_gate(c, GateLibrary::set_up_gate(gate_lyt, t), n);
+                        assign_gate<CellLyt, GateLibrary, GateLyt>(cell_lyt, c, GateLibrary::set_up_gate(gate_lyt, t),
+                                                                   gate_lyt, n);
                     }
                 }
 #if (PROGRESS_BARS)
@@ -132,7 +134,7 @@ class apply_gate_library_impl
      * @return A `CellLyt` object representing the generated cell layout.
      */
     template <typename Params>
-    [[nodiscard]] CellLyt run_parameterized_gate_library(const Params&                                 params,
+    [[nodiscard]] CellLyt run_parameterized_gate_library(Params&                                       params,
                                                          const std::optional<std::set<tile<GateLyt>>>& whitelist)
     {
 #if (PROGRESS_BARS)
@@ -155,7 +157,7 @@ class apply_gate_library_impl
                         const auto gate =
                             GateLibrary::template set_up_gate<GateLyt, CellLyt, Params>(gate_lyt, t, params);
 
-                        assign_gate(c, gate, n);
+                        assign_gate<CellLyt, GateLibrary, GateLyt>(cell_lyt, c, gate, gate_lyt, n);
                     }
                 }
 #if (PROGRESS_BARS)
@@ -186,40 +188,7 @@ class apply_gate_library_impl
      */
     CellLyt cell_lyt;
 
-    /**
-     * This function assigns a given FCN gate implementation to the total cell layout.
-     *
-     * @param c Top-left cell of the tile where the gate is placed.
-     * @param g Gate implementation.
-     * @param n Corresponding node in the gate-level layout.
-     */
-    void assign_gate(const cell<CellLyt>& c, const typename GateLibrary::fcn_gate& g,
-                     const mockturtle::node<GateLyt>& n)
-    {
-        const auto start_x = c.x;
-        const auto start_y = c.y;
-        const auto layer   = c.z;
 
-        for (auto y = 0ul; y < g.size(); ++y)
-        {
-            for (auto x = 0ul; x < g[y].size(); ++x)
-            {
-                const cell<CellLyt> pos{start_x + x, start_y + y, layer};
-                const auto          type{g[y][x]};
-
-                if (!technology<CellLyt>::is_empty_cell(type))
-                {
-                    cell_lyt.assign_cell_type(pos, type);
-                }
-
-                // set IO names
-                if (technology<CellLyt>::is_input_cell(type) || technology<CellLyt>::is_output_cell(type))
-                {
-                    cell_lyt.assign_cell_name(pos, gate_lyt.get_name(n));
-                }
-            }
-        }
-    }
     /**
      * Computes the (inclusively) bounding coordinate for a cell-level layout that is derived from the dimensions of the
      * given gate-level layout, while respecting tiling geometry in which even and odd rows/columns do not line up.
@@ -300,7 +269,7 @@ template <typename CellLyt, typename GateLibrary, typename GateLyt>
  * @return A cell-level layout that implements `lyt`'s gate types with building blocks defined in `GateLibrary`.
  */
 template <typename CellLyt, typename GateLibrary, typename GateLyt, typename Params>
-[[nodiscard]] CellLyt apply_parameterized_gate_library(const GateLyt& lyt, const Params& params,
+[[nodiscard]] CellLyt apply_parameterized_gate_library(const GateLyt& lyt, Params& params,
                                                        const std::optional<std::set<tile<GateLyt>>>& whitelist = {})
 {
     static_assert(is_cell_level_layout_v<CellLyt>, "CellLyt is not a cell-level layout");
