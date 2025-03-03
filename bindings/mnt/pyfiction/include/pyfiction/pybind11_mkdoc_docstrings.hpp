@@ -153,6 +153,55 @@ static const char *__doc_fiction_a_star_params_crossings =
 R"doc(Allow paths to cross over obstructed tiles if they are occupied by
 wire segments.)doc";
 
+static const char *__doc_fiction_advanced_circuit_design =
+R"doc(Template parameter ``Ntk``:
+    The type of the input network.
+
+Template parameter ``CellLyt``:
+    SiDB cell-level layout type.
+
+Template parameter ``GateLyt``:
+    Gate-level layout type.
+
+Parameter ``ntk``:
+    The input network to be mapped onto the defective surface.
+
+Parameter ``lattice_tiling``:
+    The lattice tiling used for the circuit design.
+
+Parameter ``params``:
+    The parameters used for designing the circuit, encapsulated in an
+    `advanced_circuit_design_params` object.
+
+Parameter ``stats``:
+    Pointer to a structure for collecting statistics. If nullptr,
+    statistics are not collected.
+
+Returns:
+    A `sidb_defect_surface<CellLyt>` representing the designed circuit
+    on the defective surface.)doc";
+
+static const char *__doc_fiction_advanced_circuit_design_params =
+R"doc(This struct stores the parameters to design an SiDB circuit on a
+defective surface.
+
+Template parameter ``CellLyt``:
+    SiDB cell-level layout type.)doc";
+
+static const char *__doc_fiction_advanced_circuit_design_params_exact_design_parameters = R"doc(Parameters for the *exact* placement and routing algorithm.)doc";
+
+static const char *__doc_fiction_advanced_circuit_design_params_max_num_trials = R"doc()doc";
+
+static const char *__doc_fiction_advanced_circuit_design_params_sidb_on_the_fly_gate_library_parameters = R"doc(Parameters for the SiDB on-the-fly gate library.)doc";
+
+static const char *__doc_fiction_advanced_circuit_design_stats = R"doc(Statistics for the on-the-fly defect-aware circuit design.)doc";
+
+static const char *__doc_fiction_advanced_circuit_design_stats_duration = R"doc(The total runtime of the operational domain computation.)doc";
+
+static const char *__doc_fiction_advanced_circuit_design_stats_exact_stats = R"doc(The `stats` of the *exact* algorithm.)doc";
+
+static const char *__doc_fiction_advanced_circuit_design_stats_gate_layout = R"doc(The gate-level layout after P&R.)doc";
+
 static const char *__doc_fiction_all_2_input_functions =
 R"doc(Auxiliary function to create technology mapping parameters for AND,
 OR, NAND, NOR, XOR, XNOR, LE, GE, LT, GT, and NOT gates.
@@ -261,6 +310,10 @@ Template parameter ``GateLyt``:
 Parameter ``lyt``:
     The gate-level layout.
 
+Parameter ``whitelist``:
+    A whitelist for the tiles to which gates are assigned. When
+    `std::nullopt` (default), all tiles are considered.
+
 Returns:
     A cell-level layout that implements `lyt`'s gate types with
     building blocks defined in `GateLibrary`.)doc";
@@ -291,6 +344,10 @@ Parameter ``lyt``:
 
 Parameter ``params``:
     Parameter for the gate library.
+
+Parameter ``whitelist``:
+    A whitelist for the tiles to which gates are assigned. When
+    `std::nullopt` (default), all tiles are considered.
 
 Returns:
     A cell-level layout that implements `lyt`'s gate types with
@@ -475,6 +532,28 @@ static const char *__doc_fiction_aspect_ratio_iterator_operator_mul = R"doc()doc
 static const char *__doc_fiction_aspect_ratio_iterator_operator_ne = R"doc()doc";
 
 static const char *__doc_fiction_aspect_ratio_iterator_operator_ne_2 = R"doc()doc";
+
+static const char *__doc_fiction_assign_gate =
+R"doc(This function assigns a given FCN gate implementation to the total
+cell layout.
+
+Template parameter ``CellLyt``:
+    Type of the returned cell-level layout.
+
+Template parameter ``GateLibrary``:
+    Type of the gate library to apply.
+
+Template parameter ``GateLyt``:
+    Type of the gate-level layout to apply the library to.
+
+Parameter ``c``:
+    Top-left cell of the tile where the gate is placed.
+
+Parameter ``g``:
+    Gate implementation.
+
+Parameter ``n``:
+    Corresponding node in the gate-level layout.)doc";
 
 static const char *__doc_fiction_bancs_clocking =
 R"doc(Returns the BANCS clocking as defined in \"BANCS: Bidirectional
@@ -4973,6 +5052,22 @@ Parameter ``offset``:
 Parameter ``signals``:
     Vector to store signals for the adjusted coordinates.)doc";
 
+static const char *__doc_fiction_detail_advanced_circuit_design_impl = R"doc()doc";
+
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_advanced_circuit_design_impl = R"doc()doc";
+
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_design_circuit_on_defective_surface = R"doc()doc";
+
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_lattice_tiling = R"doc(Gate-level layout.)doc";
+
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_network = R"doc(Network.)doc";
+
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_params = R"doc(Parameters for the on-the-fly circuit design.)doc";
+
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_prune_gate_designs = R"doc()doc";
+
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_stats = R"doc(Statistics for the on-the-fly circuit design.)doc";
+
 static const char *__doc_fiction_detail_any_to_string =
 R"doc(Converts an `std::any` to a string if it contains an alpha-numerical
 standard data type.
@@ -4986,19 +5081,6 @@ Returns:
 static const char *__doc_fiction_detail_apply_gate_library_impl = R"doc()doc";
 
 static const char *__doc_fiction_detail_apply_gate_library_impl_apply_gate_library_impl = R"doc()doc";
-
-static const char *__doc_fiction_detail_apply_gate_library_impl_assign_gate =
-R"doc(This function assigns a given FCN gate implementation to the total
-cell layout.
-
-Parameter ``c``:
-    Top-left cell of the tile where the gate is placed.
-
-Parameter ``g``:
-    Gate implementation.
-
-Parameter ``n``:
-    Corresponding node in the gate-level layout.)doc";
 
 static const char *__doc_fiction_detail_apply_gate_library_impl_cell_lyt = R"doc(Cell-level layout.)doc";
 
@@ -5034,6 +5116,10 @@ Template parameter ``Params``:
 Parameter ``params``:
     Parameters used for the SiDB on-the-fly gate library.
 
+Parameter ``whitelist``:
+    A whitelist for the tiles to which gates are assigned. When
+    `std::nullopt` (default), all tiles are considered.
+
 Returns:
     A `CellLyt` object representing the generated cell layout.)doc";
 
@@ -5049,7 +5135,11 @@ layout optimization and sets the layout name if certain conditions are
 met.
 
 Returns:
-    A `CellLyt` object representing the generated cell layout.)doc";
+    A `CellLyt` object representing the generated cell layout.
+
+Parameter ``whitelist``:
+    A whitelist for the tiles to which gates are assigned. When
+    `std::nullopt` (default), all tiles are considered.)doc";
 
 static const char *__doc_fiction_detail_calculate_offset_matrix =
 R"doc(Calculate an offset matrix based on a to-delete list in a
@@ -8685,22 +8775,6 @@ Returns:
     (either `OPERATIONAL` or `NON_OPERATIONAL`) and the second element
     indicating the reason if it is non-operational.)doc";
 
-static const char *__doc_fiction_detail_iterative_circuit_design_impl = R"doc()doc";
-
-static const char *__doc_fiction_detail_iterative_circuit_design_impl_design_circuit_on_defective_surface = R"doc()doc";
-
-static const char *__doc_fiction_detail_iterative_circuit_design_impl_iterate_circuit_design = R"doc()doc";
-
-static const char *__doc_fiction_detail_iterative_circuit_design_impl_iterative_circuit_design_impl = R"doc()doc";
-
-static const char *__doc_fiction_detail_iterative_circuit_design_impl_lattice_tiling = R"doc(Gate-level layout.)doc";
-
-static const char *__doc_fiction_detail_iterative_circuit_design_impl_network = R"doc(Network.)doc";
-
-static const char *__doc_fiction_detail_iterative_circuit_design_impl_params = R"doc(Parameters for the on-the-fly circuit design.)doc";
-
-static const char *__doc_fiction_detail_iterative_circuit_design_impl_stats = R"doc(Statistics for the on-the-fly circuit design.)doc";
-
 static const char *__doc_fiction_detail_jump_point_search_impl = R"doc()doc";
 
 static const char *__doc_fiction_detail_jump_point_search_impl_closed_list = R"doc(Closed list that acts as a set of already visited coordinates.)doc";
@@ -10243,11 +10317,19 @@ static const char *__doc_fiction_detail_search_space_graph_planar = R"doc(Create
 
 static const char *__doc_fiction_detail_skeleton_influence_bounds_impl = R"doc()doc";
 
-static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_params = R"doc()doc";
+static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_bdl_wires_of_designed_gates_current_tile_with_other_tile = R"doc()doc";
+
+static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_current_tile = R"doc()doc";
+
+static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_gate_lyt = R"doc()doc";
+
+static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_is_lower_in_wire = R"doc()doc";
+
+static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_is_upper_in_wire = R"doc()doc";
+
+static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_obtain_bdl_wires_for_all_tile_pairs = R"doc()doc";
 
 static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_skeleton_influence_bounds_impl = R"doc()doc";
-
-static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_tile = R"doc()doc";
 
 static const char *__doc_fiction_detail_sweep_parameter_to_string =
 R"doc(Converts a sweep parameter to a string representation. This is used to
@@ -15894,7 +15976,9 @@ Returns:
     (either `OPERATIONAL` or `NON_OPERATIONAL`) along with auxiliary
     statistics.)doc";
 
-static const char *__doc_fiction_is_operational_params = R"doc(Parameters for the `is_operational` algorithm.)doc";
+static const char *__doc_fiction_is_operational_params = R"doc(Parameters for the `is_operational` algorithm. TODO)doc";
+
+static const char *__doc_fiction_is_operational_params_cc_map = R"doc()doc";
 
 static const char *__doc_fiction_is_operational_params_input_bdl_iterator_params = R"doc(Parameters for the BDL input iterator.)doc";
 
@@ -16049,53 +16133,6 @@ static const char *__doc_fiction_is_sidb_lattice_111 = R"doc()doc";
 static const char *__doc_fiction_is_tile_based_layout = R"doc()doc";
 
 static const char *__doc_fiction_is_virtual_network_type = R"doc()doc";
-
-static const char *__doc_fiction_iterative_circuit_design =
-R"doc(Template parameter ``Ntk``:
-    The type of the input network.
-
-Template parameter ``CellLyt``:
-    SiDB cell-level layout type.
-
-Template parameter ``GateLyt``:
-    Gate-level layout type.
-
-Parameter ``ntk``:
-    The input network to be mapped onto the defective surface.
-
-Parameter ``lattice_tiling``:
-    The lattice tiling used for the circuit design.
-
-Parameter ``params``:
-    The parameters used for designing the circuit, encapsulated in an
-    `iterative_circuit_design_params` object.
-
-Parameter ``stats``:
-    Pointer to a structure for collecting statistics. If nullptr,
-    statistics are not collected.
-
-Returns:
-    A `sidb_defect_surface<CellLyt>` representing the designed circuit
-    on the defective surface.)doc";
-
-static const char *__doc_fiction_iterative_circuit_design_params =
-R"doc(This struct stores the parameters to design an SiDB circuit on a
-defective surface.
-
-Template parameter ``CellLyt``:
-    SiDB cell-level layout type.)doc";
-
-static const char *__doc_fiction_iterative_circuit_design_params_exact_design_parameters = R"doc(Parameters for the *exact* placement and routing algorithm.)doc";
-
-static const char *__doc_fiction_iterative_circuit_design_params_sidb_on_the_fly_gate_library_parameters = R"doc(Parameters for the SiDB on-the-fly gate library.)doc";
-
-static const char *__doc_fiction_iterative_circuit_design_stats = R"doc(Statistics for the on-the-fly defect-aware circuit design.)doc";
-
-static const char *__doc_fiction_iterative_circuit_design_stats_duration = R"doc(The total runtime of the operational domain computation.)doc";
-
-static const char *__doc_fiction_iterative_circuit_design_stats_exact_stats = R"doc(The `stats` of the *exact* algorithm.)doc";
-
-static const char *__doc_fiction_iterative_circuit_design_stats_gate_layout = R"doc(The gate-level layout after P&R.)doc";
 
 static const char *__doc_fiction_jump_point_search =
 R"doc(The Jump Point Search (JPS) path finding algorithm for shortest loop-
@@ -20265,6 +20302,8 @@ R"doc(This variable specifies the radius in nanometers around the center of
 the hexagon where atomic defects are incorporated into the gate
 design.)doc";
 
+static const char *__doc_fiction_sidb_on_the_fly_gate_library_params_use_skeleton_influence_bounds = R"doc()doc";
+
 static const char *__doc_fiction_sidb_on_the_fly_gate_library_set_up_gate =
 R"doc(Overrides the corresponding function in fcn_gate_library. Given a tile
 `t`, this function takes all necessary information from the stored
@@ -20720,6 +20759,25 @@ algorithms.
 Returns:
     Map of all different gate implementations and their respective
     port information.)doc";
+
+static const char *__doc_fiction_sidb_skeleton_bestagon_mini_library_set_up_gate =
+R"doc(Overrides the corresponding function in fcn_gate_library. Given a tile
+`t`, this function takes all necessary information from the stored
+grid into account to choose the correct fcn_gate representation for
+that tile. May it be a gate or wires. Rotation and special marks like
+input and output, const cells etc. are computed additionally.
+
+Template parameter ``GateLyt``:
+    Pointy-top hexagonal gate-level layout type.
+
+Parameter ``lyt``:
+    Layout that hosts tile `t`.
+
+Parameter ``t``:
+    Tile to be realized as a Bestagon skeleton gate.
+
+Returns:
+    Bestagon skeleton gate representation of `t` including mirroring.)doc";
 
 static const char *__doc_fiction_sidb_skeleton_bestagon_mini_library_sidb_skeleton_bestagon_mini_library = R"doc()doc";
 
