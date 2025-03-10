@@ -173,10 +173,17 @@ class cell_level_layout : public ClockedLayout
         if (Technology::is_input_cell(ct))
         {
             strg->inputs.insert(c);
+            strg->outputs.erase(c);
         }
         else if (Technology::is_output_cell(ct))
         {
             strg->outputs.insert(c);
+            strg->inputs.erase(c);
+        }
+        else
+        {
+            strg->outputs.erase(c);
+            strg->inputs.erase(c);
         }
 
         strg->cell_type_map[c] = ct;

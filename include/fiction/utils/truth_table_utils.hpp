@@ -5,10 +5,14 @@
 #ifndef FICTION_TRUTH_TABLE_UTILS_HPP
 #define FICTION_TRUTH_TABLE_UTILS_HPP
 
+#include <fiction/traits.hpp>
+
 #include <kitty/bit_operations.hpp>
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
+#include <mockturtle/traits.hpp>
 
+#include <algorithm>
 #include <bitset>
 #include <cassert>
 #include <cstdint>
@@ -434,6 +438,56 @@ namespace fiction
 
 // NOLINTEND(*-pointer-arithmetic)
 
+// template <typename GateLyt>
+// [[nodiscard]] std::vector<kitty::dynamic_truth_table> grow_cut(const GateLyt&                   gate_lyt,
+//                                                                const mockturtle::node<GateLyt>& node) noexcept
+// {
+//     const std::vector<kitty::dynamic_truth_table>& node_f = gate_lyt.node_function(node);
+//
+//     std::vector<mockturtle::node<GateLyt>> direct_inputs{};
+//
+//     for (const tile<GateLyt>& other_t : gate_lyt.incoming_data_flow(gate_lyt.get_tile(node)))
+//     {
+//         direct_inputs.emplace_back(gate_lyt.get_node(other_t));
+//     }
+//
+//     std::vector<mockturtle::node<GateLyt>> inputs_of_direct_inputs{};
+//
+//     for (const mockturtle::node<GateLyt>& direct_input : direct_inputs)
+//     {
+//         for (const mockturtle::node<GateLyt>& input_of_direct_input_n : gate_lyt.incoming_data_flow(direct_input))
+//         {
+//             if (std::find(inputs_of_direct_inputs.cbegin(), inputs_of_direct_inputs.cend(), input_of_direct_input_n) !=
+//                 inputs_of_direct_inputs.cend())
+//             {
+//                 inputs_of_direct_inputs.emplace_back(direct_input);
+//             }
+//         }
+//     }
+//
+//     std::vector<kitty::dynamic_truth_table> resulting_function{};
+//
+//     for (uint64_t i = 0; i < inputs_of_direct_inputs.size(); ++i)
+//     {
+//         kitty::create_nth_var(gate_lyt.node_function(inputs_of_direct_inputs.at(i)), i);
+//     }
+// }
+
 }  // namespace fiction
 
 #endif  // FICTION_TRUTH_TABLE_UTILS_HPP
+
+/*
+static constexpr uint32_t K = 3u;
+
+std::vector<TT> xs;
+for( int i{0}; i<K; ++i )
+{
+  xs.emplace_back( K );
+  kitty::create_nth_var( xs[i], i );
+}
+
+auto fa = (xs[0]&xs[1]);
+
+// or you useinline auto compose_truth_table( const TTf& f, const std::vector<TTv>& vars )
+*/

@@ -5,9 +5,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
-#include "catch2/matchers/catch_matchers_container_properties.hpp"
-#include "catch2/matchers/catch_matchers_floating_point.hpp"
-
 #include <fiction/algorithms/simulation/sidb/skeleton_influence_bounds.hpp>
 #include <fiction/layouts/gate_level_layout.hpp>
 #include <fiction/technology/sidb_on_the_fly_mini_gate_library.hpp>

@@ -2,11 +2,13 @@
 // Created by Willem Lambooy on 28/02/2025.
 //
 
+#ifndef GATE_DESIGN_UTILS_HPP
+#define GATE_DESIGN_UTILS_HPP
+
 #include "fiction/traits.hpp"
 #include "mockturtle/traits.hpp"
 
-#ifndef GATE_DESIGN_UTILS_HPP
-#define GATE_DESIGN_UTILS_HPP
+#include <cstdint>
 
 namespace fiction
 {
@@ -17,6 +19,7 @@ namespace fiction
  * @tparam CellLyt Type of the returned cell-level layout.
  * @tparam GateLibrary Type of the gate library to apply.
  * @tparam GateLyt Type of the gate-level layout to apply the library to.
+ * todo
  * @param c Top-left cell of the tile where the gate is placed.
  * @param g Gate implementation.
  * @param n Corresponding node in the gate-level layout.
@@ -29,17 +32,27 @@ void assign_gate(CellLyt& cell_lyt, const cell<CellLyt>& c, const typename GateL
     const auto start_y = c.y;
     const auto layer   = c.z;
 
-    for (auto y = 0ul; y < g.size(); ++y)
+    for (decltype(c.y) y = 0ul; static_cast<uint64_t>(y) < g.size(); ++y)
     {
-        for (auto x = 0ul; x < g[y].size(); ++x)
+        for (decltype(c.x) x = 0ul; static_cast<uint64_t>(x) < g[static_cast<uint64_t>(y)].size(); ++x)
         {
             const cell<CellLyt> pos{start_x + x, start_y + y, layer};
-            const auto          type{g[y][x]};
+            const auto          type{g[static_cast<uint64_t>(y)][static_cast<uint64_t>(x)]};
 
-            if (!technology<CellLyt>::is_empty_cell(type))
+            if (technology<CellLyt>::is_empty_cell(type))
             {
-                cell_lyt.assign_cell_type(pos, type);
+                continue;
             }
+
+            // overwrites always make a NORMAL type cell
+            if (!technology<CellLyt>::is_empty_cell(cell_lyt.get_cell_type(pos)))
+            {
+                cell_lyt.assign_cell_type(pos, sidb_technology::cell_type::NORMAL);
+
+                continue;
+            }
+
+            cell_lyt.assign_cell_type(pos, type);
 
             // set IO names
             if (technology<CellLyt>::is_input_cell(type) || technology<CellLyt>::is_output_cell(type))

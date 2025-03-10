@@ -60,7 +60,7 @@ struct design_sidb_gates_params
          */
         EXHAUSTIVE_GATE_DESIGNER,
         /**
-         * Gate layouts are designed randomly.
+         * Gate layouts are designed randomly with possible repetition that needs to be checked.
          */
         RANDOM
     };
@@ -70,9 +70,9 @@ struct design_sidb_gates_params
     enum class termination_condition : uint8_t
     {
         /**
-         * The design process is terminated as soon as the first valid SiDB gate design is found.
+         * The design process is terminated as soon as the first valid SiDB gate design is found. todo
          */
-        AFTER_FIRST_SOLUTION,
+        OBTAINED_N_SOLUTIONS,
         /**
          * The design process ends after all possible combinations of SiDBs within the canvas are enumerated.
          */
@@ -96,14 +96,11 @@ struct design_sidb_gates_params
     std::size_t number_of_sidbs = 1;
     /**
      * The design process is terminated after a valid SiDB gate design is found.
-     *
-     * @note This parameter has no effect unless the gate design is exhaustive.
      */
-    termination_condition termination_cond = termination_condition::ALL_COMBINATIONS_ENUMERATED;
+    termination_condition termination_cond  = termination_condition::ALL_COMBINATIONS_ENUMERATED;
+    uint64_t              max_num_solutions = 1;
     /**
-     * After the design process, the returned gates are not sorted.
-     *
-     * @note This parameter has no effect unless the gate design is exhaustive and all combinations are enumerated.
+     * After the design process, the returned gates can be sorted.
      */
     designed_sidb_gates_ordering_recipe<Lyt> post_design_process{};
 };
@@ -311,15 +308,31 @@ class design_sidb_gates_impl
 
         std::mutex mutex_to_protect_designed_gate_layouts{};  // used to control access to shared resources
 
-        std::atomic<bool> gate_layout_is_found(false);
+        const auto check_if_gate_design_is_already_present = [&](const Lyt& gate_design)
+        {
+            for (const Lyt& stored_gate_design : randomly_designed_gate_layouts)
+            {
+                if (std::all_of(all_sidbs_in_canvas.cbegin(), all_sidbs_in_canvas.cend(), [&](const cell<Lyt>& sidb)
+                                { return gate_design.get_cell_type(sidb) == stored_gate_design.get_cell_type(sidb); }))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        };
+
+        std::atomic<uint64_t> num_solutions_found = 0;
+
+        const uint64_t max_number_of_solutions = std::min(params.max_num_solutions, stats.number_of_layouts);
 
         for (uint64_t z = 0u; z < number_of_threads; z++)
         {
             threads.emplace_back(
-                [this, &gate_layout_is_found, &mutex_to_protect_designed_gate_layouts, &parameter,
-                 &randomly_designed_gate_layouts]
+                [this, &num_solutions_found, &max_number_of_solutions, &mutex_to_protect_designed_gate_layouts,
+                 &check_if_gate_design_is_already_present, &parameter, &randomly_designed_gate_layouts]
                 {
-                    while (!gate_layout_is_found)
+                    while (num_solutions_found < max_number_of_solutions)
                     {
                         auto result_lyt = generate_random_sidb_layout<Lyt>(skeleton_layout, parameter);
 
@@ -340,6 +353,12 @@ class design_sidb_gates_impl
                             assessment_results.status == operational_status::OPERATIONAL)
                         {
                             const std::lock_guard lock{mutex_to_protect_designed_gate_layouts};
+
+                            if (check_if_gate_design_is_already_present(result_lyt))
+                            {
+                                continue;
+                            }
+
                             if constexpr (has_get_sidb_defect_v<Lyt>)
                             {
                                 skeleton_layout.foreach_sidb_defect(
@@ -352,9 +371,8 @@ class design_sidb_gates_impl
                                     });
                             }
 
-                            randomly_designed_gate_layouts.push_back(result_lyt);
-                            gate_layout_is_found = true;
-                            break;
+                            randomly_designed_gate_layouts.push_back(std::move(result_lyt));
+                            ++num_solutions_found;
                         }
                     }
                 });
@@ -445,11 +463,13 @@ class design_sidb_gates_impl
 
         std::mutex mutex_to_protect_designed_gate_layouts{};
 
-        std::atomic<bool> solution_found = false;
+        const uint64_t max_number_of_solutions = std::min(params.max_num_solutions, stats.number_of_layouts);
+
+        std::atomic<uint64_t> num_solutions_found = 0;
 
         const auto add_combination_to_layout_and_check_operation = [this, &mutex_to_protect_designed_gate_layouts,
                                                                     &designed_gate_layouts,
-                                                                    &solution_found](Lyt&& candidate) noexcept
+                                                                    &num_solutions_found](Lyt&& candidate) noexcept
         {
             if (const operational_assessment<Lyt>& assessment_results = is_operational(
                     candidate, truth_table, params.operational_params, input_bdl_wires, output_bdl_wires);
@@ -467,7 +487,7 @@ class design_sidb_gates_impl
                     }
                 }
 
-                solution_found = true;
+                ++num_solutions_found;
             }
         };
 
@@ -482,24 +502,22 @@ class design_sidb_gates_impl
         {
             threads.emplace_back(
                 [this, i, chunk_size, &gate_candidates, &add_combination_to_layout_and_check_operation,
-                 &solution_found]()
+                 &num_solutions_found, &max_number_of_solutions]()
                 {
                     const std::size_t start_index = i * chunk_size;
                     const std::size_t end_index   = std::min(start_index + chunk_size, gate_candidates.size());
 
                     for (std::size_t j = start_index; j < end_index; ++j)
                     {
-                        if (solution_found &&
-                            (params.termination_cond ==
-                             design_sidb_gates_params<Lyt>::termination_condition::AFTER_FIRST_SOLUTION))
+                        if (params.termination_cond ==
+                                design_sidb_gates_params<Lyt>::termination_condition::OBTAINED_N_SOLUTIONS &&
+                            num_solutions_found >= max_number_of_solutions)
                         {
                             return;
                         }
 
                         add_combination_to_layout_and_check_operation(std::move(gate_candidates[j]));
                     }
-
-                    std::cout << "thread " << i << " finished" << std::endl;
                 });
         }
 

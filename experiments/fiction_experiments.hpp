@@ -83,7 +83,11 @@ inline constexpr uint64_t sqrt             = 0b000000000000001000000000000000000
 inline constexpr uint64_t multiplier       = 0b0000000000000100000000000000000000000000000000000000000000000000;
 inline constexpr uint64_t epfl             = 0b0000000000000111111111111111110000000000000000000000000000000000;
 
-inline constexpr uint64_t all              = 0b000000000000011111111111111111111111111111111111111111111111111;
+/* TEST benchmarks */
+inline constexpr uint64_t fo               = 0b0000000000001000000000000000000000000000000000000000000000000000;
+inline constexpr uint64_t test             = 0b0000000000001000000000000000000000000000000000000000000000000000;
+
+inline constexpr uint64_t all              = 0b000000000000111111111111111111111111111111111111111111111111111;
 
 /* extra functions */
 
@@ -102,6 +106,8 @@ static constexpr const std::array benchmarks {
     "EPFL/adder", "EPFL/bar", "EPFL/max", "EPFL/sin", "EPFL/cavlc", "EPFL/ctrl", "EPFL/dec", "EPFL/i2c",
     "EPFL/int2float", "EPFL/priority", "EPFL/router", "EPFL/arbiter", "EPFL/voter", "EPFL/square", "EPFL/log2",
     "EPFL/sqrt", "EPFL/multiplier",
+
+    "TEST/fo",
     };
 
 // clang-format on
@@ -163,10 +169,25 @@ inline std::vector<std::string> epfl_benchmarks(uint64_t selection = epfl)
     return result;
 }
 
+inline std::vector<std::string> test_benchmarks(uint64_t selection = test)
+{
+    std::vector<std::string> result{};
+    for (uint64_t i = 51u; i < 52u; ++i)
+    {
+        if (((selection >> i) & 1u) != 0u)
+        {
+            result.emplace_back(benchmarks.at(i));
+            std::cout << "one found" << std::endl;
+        }
+    }
+
+    return result;
+}
+
 inline std::vector<std::string> all_benchmarks(uint64_t selection = all)
 {
     std::vector<std::string> result{};
-    for (uint64_t i = 0u; i < 51u; ++i)
+    for (uint64_t i = 0u; i < 52u; ++i)
     {
         if (((selection >> i) & 1u) != 0u)
         {

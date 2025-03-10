@@ -61,6 +61,13 @@ class skeleton_influence_bounds_impl
 
     [[nodiscard]] std::unordered_map<cell<CellLyt>, std::array<double, 2>> run() noexcept
     {
+        if (current_tile.y == 0)
+        {
+            std::cout << "Skeleton looks like:" << std::endl;
+            print_layout(apply_gate_library<CellLyt, SkeletonGateLibrary, GateLyt>(gate_lyt));
+            std::cout << std::endl;
+        }
+
         const CellLyt designed_gate =
             apply_gate_library<CellLyt, SkeletonGateLibrary, GateLyt>(gate_lyt, std::set{current_tile});
 

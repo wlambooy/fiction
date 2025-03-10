@@ -672,8 +672,6 @@ class is_operational_impl
     [[nodiscard]] std::pair<operational_status, non_operationality_reason>
     verify_logic_match_of_cds(const charge_distribution_surface<Lyt>& given_cds, const uint64_t input_pattern) noexcept
     {
-        auto non_operational_reason = non_operationality_reason::LOGIC_MISMATCH;
-
         // if positively charged SiDBs can occur, the SiDB layout is considered as non-operational
         if (parameters.op_condition_positive_charges ==
                 is_operational_params<cell<Lyt>>::operational_condition_positive_charges::REJECT_POSITIVE_CHARGES &&
@@ -725,13 +723,8 @@ class is_operational_impl
             if (check_existence_of_kinks_in_input_wires(given_cds, input_pattern) ||
                 check_existence_of_kinks_in_output_wires(given_cds, input_pattern))
             {
-                non_operational_reason = non_operationality_reason::KINKS;
+                return {operational_status::NON_OPERATIONAL, non_operationality_reason::KINKS};
             }
-        }
-
-        if (non_operational_reason == non_operationality_reason::KINKS)
-        {
-            return {operational_status::NON_OPERATIONAL, non_operationality_reason::KINKS};
         }
 
         // if we made it here, the layout is operational
@@ -1185,7 +1178,7 @@ class is_operational_impl
             {
                 clustercomplete_params<cell<Lyt>> cc_params{parameters.simulation_parameters};
                 const auto&                       res = clustercomplete(*bdl_iterator, cc_params);
-                if ((*bdl_iterator).num_cells() > 40)
+                if ((*bdl_iterator).num_cells() > 33)
                 {
                     std::cout << std::endl;
                     if (res.charge_distributions.empty())

@@ -21,6 +21,7 @@
 #include <fiction/traits.hpp>
 #include <fiction/types.hpp>
 #include <fiction/utils/truth_table_utils.hpp>
+// #include <fiction/algorithms/physical_design/advanced_circuit_design.hpp>
 
 #include <cstdint>
 #include <optional>
@@ -709,8 +710,8 @@ TEST_CASE("is operational check for Bestagon half adder", "[is-operational], [qu
 #endif
 
 TEMPLATE_TEST_CASE("is operational check of a designed multi-tile fan-out", "[is-operational], [quality]",
-                   // sidb_on_the_fly_gate_library, sidb_on_the_fly_mini_gate_library)
-                   sidb_on_the_fly_mini_gate_library)
+                    sidb_on_the_fly_mini_gate_library, sidb_on_the_fly_gate_library)
+                   // sidb_on_the_fly_mini_gate_library)
 {
     using GateLyt  = hex_even_row_gate_clk_lyt;
     using CellLyt  = sidb_cell_clk_lyt_cube;
@@ -755,51 +756,39 @@ TEMPLATE_TEST_CASE("is operational check of a designed multi-tile fan-out", "[is
                 apply_parameterized_gate_library<CellLyt, gate_lib, GateLyt,
                                                  sidb_on_the_fly_gate_library_params<CellLyt>>(gate_lyt, params);
 
-            // cell_lyt.foreach_coordinate(
-            //     [&](auto cell)
-            //     {
-            //         if (cell_lyt.get_cell_type(cell) == sidb_100_cell_clk_lyt_siqad::cell_type::OUTPUT)
-            //         {
-            //             std::cout << cell.x << " " << cell.y << std::endl;
-            //         }
-            //     });
+            // if constexpr (std::is_same_v<gate_lib, sidb_on_the_fly_mini_gate_library>)
+            // {
             //
-            // std::cout << std::endl;
-            // print_sidb_layout(std::cout, cell_lyt, true);
-
-            if constexpr (std::is_same_v<gate_lib, sidb_on_the_fly_mini_gate_library>)
-            {
-
-                // input
-                cell_lyt.assign_cell_type({22, 1}, CellLyt::technology::cell_type::INPUT);
-                cell_lyt.assign_cell_type({24, 3}, CellLyt::technology::cell_type::INPUT);
-
-                // left output
-                cell_lyt.assign_cell_type({40, 61}, CellLyt::technology::cell_type::OUTPUT);
-                cell_lyt.assign_cell_type({42, 63}, CellLyt::technology::cell_type::OUTPUT);
-                // cell_lyt.assign_cell_type({52, 69}, CellLyt::technology::cell_type::NORMAL);  // perturber
-
-                // right output
-                cell_lyt.assign_cell_type({76, 61}, CellLyt::technology::cell_type::OUTPUT);
-                cell_lyt.assign_cell_type({78, 63}, CellLyt::technology::cell_type::OUTPUT);
-                // cell_lyt.assign_cell_type({88, 69}, CellLyt::technology::cell_type::NORMAL);  // perturber
-            }
-            else
-            {
-                // input
-                cell_lyt.assign_cell_type({40, 2}, CellLyt::technology::cell_type::INPUT);
-                cell_lyt.assign_cell_type({42, 4}, CellLyt::technology::cell_type::INPUT);
-
-                // left output
-                cell_lyt.assign_cell_type({70, 104}, CellLyt::technology::cell_type::OUTPUT);
-                cell_lyt.assign_cell_type({72, 106}, CellLyt::technology::cell_type::OUTPUT);
-                // cell_lyt.assign_cell_type({76, 108}, CellLyt::technology::cell_type::NORMAL);  // perturber
-
-                // right output
-                cell_lyt.assign_cell_type({130, 104}, CellLyt::technology::cell_type::OUTPUT);
-                cell_lyt.assign_cell_type({132, 106}, CellLyt::technology::cell_type::OUTPUT);
-                // cell_lyt.assign_cell_type({136, 108}, CellLyt::technology::cell_type::NORMAL);  // perturber
-            }
+            //     // input
+            //     cell_lyt.assign_cell_type({22, 1}, CellLyt::technology::cell_type::INPUT);
+            //     cell_lyt.assign_cell_type({24, 3}, CellLyt::technology::cell_type::INPUT);
+            //
+            //     // left output
+            //     cell_lyt.assign_cell_type({40, 61}, CellLyt::technology::cell_type::OUTPUT);
+            //     cell_lyt.assign_cell_type({42, 63}, CellLyt::technology::cell_type::OUTPUT);
+            //     // cell_lyt.assign_cell_type({52, 69}, CellLyt::technology::cell_type::NORMAL);  // perturber
+            //
+            //     // right output
+            //     cell_lyt.assign_cell_type({76, 61}, CellLyt::technology::cell_type::OUTPUT);
+            //     cell_lyt.assign_cell_type({78, 63}, CellLyt::technology::cell_type::OUTPUT);
+            //     // cell_lyt.assign_cell_type({88, 69}, CellLyt::technology::cell_type::NORMAL);  // perturber
+            // }
+            // else
+            // {
+            //     // input
+            //     cell_lyt.assign_cell_type({40, 2}, CellLyt::technology::cell_type::INPUT);
+            //     cell_lyt.assign_cell_type({42, 4}, CellLyt::technology::cell_type::INPUT);
+            //
+            //     // left output
+            //     cell_lyt.assign_cell_type({70, 104}, CellLyt::technology::cell_type::OUTPUT);
+            //     cell_lyt.assign_cell_type({72, 106}, CellLyt::technology::cell_type::OUTPUT);
+            //     // cell_lyt.assign_cell_type({76, 108}, CellLyt::technology::cell_type::NORMAL);  // perturber
+            //
+            //     // right output
+            //     cell_lyt.assign_cell_type({130, 104}, CellLyt::technology::cell_type::OUTPUT);
+            //     cell_lyt.assign_cell_type({132, 106}, CellLyt::technology::cell_type::OUTPUT);
+            //     // cell_lyt.assign_cell_type({136, 108}, CellLyt::technology::cell_type::NORMAL);  // perturber
+            // }
 
             print_sidb_layout(std::cout, cell_lyt, true);
 
@@ -851,3 +840,107 @@ TEMPLATE_TEST_CASE("is operational check of a designed multi-tile fan-out", "[is
                   .status == operational_status::OPERATIONAL);
     }
 }
+
+//
+// TEMPLATE_TEST_CASE("is operational check of a designed multi-tile fan-out with advanced circuit design", "[is-operational], [quality]",
+//                    sidb_on_the_fly_mini_gate_library, sidb_on_the_fly_gate_library)
+// {
+//     using GateLyt  = hex_even_row_gate_clk_lyt;
+//     using CellLyt  = sidb_cell_clk_lyt_cube;
+//     using gate_lib = TestType;
+//
+//     GateLyt gate_lyt{{1, 2}, row_clocking<GateLyt>()};
+//
+//     const auto s  = gate_lyt.create_pi("A", {0, 0});
+//     const auto s1 = gate_lyt.create_buf(s, {1, 1});
+//     gate_lyt.create_po(s1, "fo1", {0, 2});
+//     gate_lyt.create_po(s1, "fo2", {1, 2});
+//
+//     design_sidb_gates_params<sidb_defect_surface<CellLyt>> design_gate_params{};
+//     design_gate_params.operational_params.simulation_parameters = sidb_simulation_parameters{2, -0.32};
+//     design_gate_params.operational_params.op_condition_positive_charges =
+//         is_operational_params<cell<CellLyt>>::operational_condition_positive_charges::TOLERATE_POSITIVE_CHARGES;
+//     design_gate_params.operational_params.op_condition_kinks =
+//         is_operational_params<cell<CellLyt>>::operational_condition_kinks::REJECT_KINKS;
+//     if constexpr (std::is_same_v<gate_lib, sidb_on_the_fly_mini_gate_library>)
+//     {
+//         design_gate_params.canvas = {{14, 10}, {21, 19}};  // smaller canvas
+//     }
+//     else
+//     {
+//         design_gate_params.canvas = {{24, 17}, {34, 28}};  // normal canvas
+//     }
+//     design_gate_params.number_of_sidbs               = 4;
+//     design_gate_params.operational_params.sim_engine = sidb_simulation_engine::CLUSTERCOMPLETE;
+//     design_gate_params.design_mode =
+//         design_sidb_gates_params<sidb_defect_surface<CellLyt>>::design_sidb_gates_mode::RANDOM;
+//
+//     sidb_on_the_fly_gate_library_params<CellLyt> params{};
+//     params.design_gate_params            = design_gate_params;
+//     params.canvas_sidb_complex_gates     = 4;
+//     params.use_skeleton_influence_bounds = true;
+//
+//     advanced_circuit_design_params<CellLyt> circuit_design_params{params};
+//
+//     // create an empty surface.
+//     sidb_defect_surface<CellLyt> surface_lattice{};
+//
+//
+//     auto make_layout = [&]
+//     {
+//         try
+//         {
+//             CellLyt cell_lyt =
+//                 apply_parameterized_gate_library<CellLyt, gate_lib, GateLyt,
+//                                                  sidb_on_the_fly_gate_library_params<CellLyt>>(gate_lyt, params);
+//
+//             print_sidb_layout(std::cout, cell_lyt, true);
+//
+//             return cell_lyt;
+//         }
+//         catch (const gate_design_exception<tt, GateLyt>& e)
+//         {
+//             std::cout << "Gate design exception at tile: " << e.which_tile() << std::endl;
+//             return CellLyt{};
+//         }
+//     };
+//
+//     SECTION("With sorting of designed gates")
+//     {
+//         design_gate_params.post_design_process = {
+//             std::make_unique<compare_by_minimum_ground_state_isolation<sidb_defect_surface<CellLyt>>>(),
+//             std::make_unique<compare_by_average_ground_state_isolation<sidb_defect_surface<CellLyt>>>()};
+//
+//         CellLyt cell_lyt = make_layout();
+//
+//         REQUIRE(!cell_lyt.is_empty());
+//
+//         CHECK(is_operational(cell_lyt, create_fan_out_tt(),
+//                              is_operational_params<cell<CellLyt>>{
+//                                  sidb_simulation_parameters{2, -0.32},
+//                                  sidb_simulation_engine::CLUSTERCOMPLETE,
+//                                  {},
+//                                  is_operational_params<cell<CellLyt>>::operational_condition_kinks::REJECT_KINKS,
+//                                  is_operational_params<
+//                                      cell<CellLyt>>::operational_condition_positive_charges::TOLERATE_POSITIVE_CHARGES})
+//                   .status == operational_status::OPERATIONAL);
+//     }
+//     SECTION("Without sorting of designed gates")
+//     {
+//         design_gate_params.post_design_process.clear();
+//
+//         CellLyt cell_lyt = make_layout();
+//
+//         REQUIRE(!cell_lyt.is_empty());
+//
+//         CHECK(is_operational(cell_lyt, create_fan_out_tt(),
+//                              is_operational_params<cell<CellLyt>>{
+//                                  sidb_simulation_parameters{2, -0.32},
+//                                  sidb_simulation_engine::CLUSTERCOMPLETE,
+//                                  {},
+//                                  is_operational_params<cell<CellLyt>>::operational_condition_kinks::REJECT_KINKS,
+//                                  is_operational_params<
+//                                      cell<CellLyt>>::operational_condition_positive_charges::TOLERATE_POSITIVE_CHARGES})
+//                   .status == operational_status::OPERATIONAL);
+//     }
+// }
