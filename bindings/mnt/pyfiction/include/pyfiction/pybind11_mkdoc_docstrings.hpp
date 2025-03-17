@@ -10316,6 +10316,8 @@ static const char *__doc_fiction_detail_search_space_graph_planar = R"doc(Create
 
 static const char *__doc_fiction_detail_skeleton_influence_bounds_impl = R"doc()doc";
 
+static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_cell_lyt_of_tiles_of_interest = R"doc()doc";
+
 static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_cell_lyt_with_all_skeletons = R"doc()doc";
 
 static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_cell_map1_lb = R"doc()doc";
@@ -10339,10 +10341,6 @@ static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_first_sid
 static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_fourth_sidb = R"doc()doc";
 
 static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_gate_lyt = R"doc()doc";
-
-static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_is_lower_in_wire = R"doc()doc";
-
-static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_is_upper_in_wire = R"doc()doc";
 
 static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_second_sidb = R"doc()doc";
 
