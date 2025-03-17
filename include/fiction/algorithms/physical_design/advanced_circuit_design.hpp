@@ -244,7 +244,7 @@ class advanced_circuit_design_impl
                 is_operational_params operational_params =
                     params.sidb_on_the_fly_gate_library_parameters.design_gate_params.operational_params;
 
-                operational_params.cc_map = skeleton_influence_bounds<CellLyt, sidb_skeleton_bestagon_library, GateLyt>(
+                operational_params.cc_map = skeleton_influence_bounds<CellLyt, SkeletonGateLibrary, GateLyt>(
                     gate_lyt, tiles_to_simulate_together,
                     skeleton_influence_bounds_params<cell<CellLyt>>{
                         params.sidb_on_the_fly_gate_library_parameters.design_gate_params.operational_params

@@ -335,7 +335,6 @@ class sidb_on_the_fly_mini_gate_library
                         parameters.design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params});
             std::cout << "done determining skeleton influence bounds; size = "
                       << parameters.design_gate_params.operational_params.cc_map.value().size() << std::endl;
-
         }
 
         try

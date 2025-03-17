@@ -56,10 +56,12 @@ class skeleton_influence_bounds_impl
             params{ps},
             gate_lyt{gate_layout},
             tiles_of_interest{ts},
-            cell_lyt_with_all_skeletons{apply_gate_library<CellLyt, SkeletonGateLibrary, GateLyt>(gate_lyt)}
-    // bdl_wires_of_designed_gates_current_tile_with_other_tile{
-    //     obtain_bdl_wires_for_all_tile_pairs(gate_layout, ts.front())}
-    {}
+            cell_lyt_with_all_skeletons{apply_gate_library<CellLyt, SkeletonGateLibrary, GateLyt>(gate_lyt)},
+            cell_lyt_of_tiles_of_interest{apply_gate_library<CellLyt, SkeletonGateLibrary, GateLyt>(
+                gate_lyt, std::set(tiles_of_interest.cbegin(), tiles_of_interest.cend()))}
+    {
+        std::cout << "Skeleton without tiles of interest looks like:" << std::endl;
+    }
 
     [[nodiscard]] std::unordered_map<cell<CellLyt>, std::array<double, 2>> run() noexcept
     {
@@ -93,7 +95,7 @@ class skeleton_influence_bounds_impl
                             gate_lyt, current_tile, {0, 0});
 
                     collect_influence_bounds_for_sidb(
-                        current_tile, {absolute_c.x - absolute_offset.x, absolute_c.y - absolute_offset.y}, absolute_c);
+                        {absolute_c.x - absolute_offset.x, absolute_c.y - absolute_offset.y}, absolute_c);
                 });
 
             third_sidb = relative_to_absolute_cell_position<SkeletonGateLibrary::gate_x_size(),
@@ -112,7 +114,7 @@ class skeleton_influence_bounds_impl
                     relative_to_absolute_cell_position<SkeletonGateLibrary::gate_x_size(),
                                                        SkeletonGateLibrary::gate_y_size(), GateLyt, CellLyt>(
                         gate_lyt, current_tile, relative_c);
-                collect_influence_bounds_for_sidb(current_tile, relative_c, absolute_c);
+                collect_influence_bounds_for_sidb(relative_c, absolute_c);
             }
 
             for (const auto& [cell_maps, sidb] :
@@ -189,7 +191,7 @@ class skeleton_influence_bounds_impl
     }
 
   private:
-    void collect_influence_bounds_for_sidb(const tile<GateLyt>& tile_of_interest, const cell<CellLyt>& relative_sidb,
+    void collect_influence_bounds_for_sidb(const cell<CellLyt>& relative_sidb,
                                            const cell<CellLyt>& absolute_sidb) noexcept
     {
         if (absolute_sidb == first_sidb || absolute_sidb == second_sidb || absolute_sidb == third_sidb ||
@@ -201,8 +203,6 @@ class skeleton_influence_bounds_impl
         }
 
         std::array<double, 2> bounds{{0, 0}};
-
-        uint64_t node_counter = 0;
 
         gate_lyt.foreach_node(
             [&](const auto& n)
@@ -219,21 +219,29 @@ class skeleton_influence_bounds_impl
                     return;
                 }
 
+                if (absolute_sidb == first_sidb)
+                    std::cout << "\n\nstarting tile " << t << std::endl;
+
                 const CellLyt cell_lyt_of_other_tile =
                     apply_gate_library<CellLyt, SkeletonGateLibrary>(gate_lyt, std::set{t});
 
                 for (bdl_wire<CellLyt>& wire : detect_bdl_wires(cell_lyt_of_other_tile, params.bdl_wire_params))
                 {
+                    if (absolute_sidb == first_sidb)
+                        std::cout << "\nstarting wire" << std::endl;
+
                     std::array<double, 2> potential_from_wire{{0, 0}};
 
-                    std::vector<cell<CellLyt>> w1{}, w2{};  //, w11{}, w22{};
+                    std::vector<cell<CellLyt>> w1{}, w2{};
 
                     for (bdl_pair<cell<CellLyt>>& pair : wire.pairs)
                     {
-                        // todo replace with pair cell type?
+                        /// THIS IS A TODO GOTTA BE VERY CAREFUL
                         if (pair.type == sidb_technology::cell_type::INPUT ||
-                            is_contained_in_tile_of_interest(tile_of_interest, pair.lower))
+                            is_contained_in_tile_of_interest(pair.lower))
                         {
+                            if (absolute_sidb == first_sidb)
+                                std::cout << "skip" << std::endl;
                             continue;
                         }
 
@@ -255,27 +263,20 @@ class skeleton_influence_bounds_impl
                             w2.push_back(pair.upper);
                         }
 
-                        // if (tiles_of_interest.size() == 1)
-                        // {
-                        //     make_pair_sidbs_respect_io_connections(
-                        //         absolute_sidb,
-                        //         bdl_wires_of_designed_gates_current_tile_with_other_tile.at(node_counter), pair);
-                        // }
-
-                        // if (absolute_sidb == first_sidb || absolute_sidb == second_sidb ||
-                        //     absolute_sidb == third_sidb || absolute_sidb == fourth_sidb)
-                        // {
-                        //     w11.push_back(pair.lower);
-                        //     w22.push_back(pair.upper);
-                        // }
-
                         potential_from_wire[0] +=
-                            cds_with_c_and_pair.get_chargeless_potential_between_sidbs(absolute_sidb, pair.lower);
+                            -cds_with_c_and_pair.get_chargeless_potential_between_sidbs(absolute_sidb, pair.lower);
 
-                        if (!is_output_perturber_in_tile_of_interest(tile_of_interest, pair.upper))
+                        // the upper SiDB in a pair can be an output perturber, we need to check for it
+                        if (!is_output_perturber_in_tile_of_interest(pair.upper))
                         {
                             potential_from_wire[1] +=
-                                cds_with_c_and_pair.get_chargeless_potential_between_sidbs(absolute_sidb, pair.upper);
+                                -cds_with_c_and_pair.get_chargeless_potential_between_sidbs(absolute_sidb, pair.upper);
+                        }
+
+                        if (absolute_sidb == first_sidb)
+                        {
+                            std::cout << fmt::format("Adding pair bounds ({},{}) for {},{}\n", potential_from_wire[0],
+                                                     potential_from_wire[1], absolute_sidb.x, absolute_sidb.y);
                         }
                     }
 
@@ -292,63 +293,12 @@ class skeleton_influence_bounds_impl
                             continue;
                         }
 
-                        // bool found  = false;
-                        // bool w1_win = false;
-                        // for (uint8_t k = 0; k < w11.size(); ++k)
-                        // {
-                        //     if (!found && w11[k] == w22[k])
-                        //     {
-                        //         found = true;
-                        //
-                        //         if (w1[k] == w11[k])
-                        //         {
-                        //             std::cout << "lowers win" << std::endl;
-                        //             w1_win = true;
-                        //         }
-                        //         else
-                        //         {
-                        //             std::cout << "uppers win" << std::endl;
-                        //         }
-                        //     }
-                        // }
-                        //
-                        // if (found)
-                        // {
-                        //     std::cout << "CODE DOESN'T WORK" << std::endl;
-                        //     if (w1_win)
-                        //     {
-                        //         for (uint8_t k = 0; k < w2.size(); ++k)
-                        //         {
-                        //             cell_maps.first.insert({w2.at(k), sidb_charge_state::NEUTRAL});
-                        //             cell_maps.second.insert({w2.at(k), sidb_charge_state::NEUTRAL});
-                        //         }
-                        //         for (uint8_t k = 0; k < w1.size(); ++k)
-                        //         {
-                        //             cell_maps.first.insert({w1.at(k), sidb_charge_state::NEGATIVE});
-                        //             cell_maps.second.insert({w1.at(k), sidb_charge_state::NEGATIVE});
-                        //         }
-                        //     }
-                        //     else
-                        //     {
-                        //         for (uint8_t k = 0; k < w2.size(); ++k)
-                        //         {
-                        //             cell_maps.first.insert({w2.at(k), sidb_charge_state::NEGATIVE});
-                        //             cell_maps.second.insert({w2.at(k), sidb_charge_state::NEGATIVE});
-                        //         }
-                        //         for (uint8_t k = 0; k < w1.size(); ++k)
-                        //         {
-                        //             cell_maps.first.insert({w1.at(k), sidb_charge_state::NEUTRAL});
-                        //             cell_maps.second.insert({w1.at(k), sidb_charge_state::NEUTRAL});
-                        //         }
-                        //     }
-                        // }
-
                         if (potential_from_wire[0] > potential_from_wire[1])
                         {
                             // 0 orientation is stronger
                             for (uint8_t k = 0; k < w2.size(); ++k)
                             {
-                                if (!is_output_perturber_in_tile_of_interest(tile_of_interest, w2.at(k)))
+                                if (!is_output_perturber_in_tile_of_interest(w2.at(k)))
                                 {
                                     cell_maps.first.insert({w2.at(k), sidb_charge_state::NEGATIVE});
                                 }
@@ -376,7 +326,7 @@ class skeleton_influence_bounds_impl
                             for (uint8_t k = 0; k < w2.size(); ++k)
                             {
                                 cell_maps.first.insert({w2.at(k), sidb_charge_state::NEUTRAL});
-                                if (!is_output_perturber_in_tile_of_interest(tile_of_interest, w2.at(k)))
+                                if (!is_output_perturber_in_tile_of_interest(w2.at(k)))
                                 {
                                     cell_maps.second.insert({w2.at(k), sidb_charge_state::NEGATIVE});
                                 }
@@ -388,25 +338,31 @@ class skeleton_influence_bounds_impl
                         }
                     }
 
+                    if (absolute_sidb == first_sidb)
+                    {
+                        if (potential_from_wire[0] > potential_from_wire[1])
+                        {
+                            std::cout << "gotta swap it" << std::endl;
+                        }
+                        else
+                        {
+                            std::cout << "no swapping" << std::endl;
+                        }
+                    }
+
                     std::sort(potential_from_wire.begin(), potential_from_wire.end());
 
                     bounds[0] += potential_from_wire[0];
                     bounds[1] += potential_from_wire[1];
                 }
-
-                node_counter++;
             });
 
         // include influence from the output perturbers if they are part of a different tile
         cell_lyt_with_all_skeletons.foreach_cell(
             [&](const cell<CellLyt>& c)
             {
-                if (is_contained_in_tile_of_interest(tile_of_interest, c))
-                {
-                    return;
-                }
-
-                if (cell_lyt_with_all_skeletons.get_cell_type(c) == sidb_technology::OUTPUT_PERTURBER)
+                if (cell_lyt_with_all_skeletons.get_cell_type(c) == sidb_technology::OUTPUT_PERTURBER &&
+                    !is_contained_in_tile_of_interest(c))
                 {
                     CellLyt cell_lyt_with_c_and_bound_pair{};
 
@@ -417,8 +373,8 @@ class skeleton_influence_bounds_impl
                     const charge_distribution_surface<CellLyt> cds_with_c_and_pair{cell_lyt_with_c_and_bound_pair,
                                                                                    params.simulation_parameters};
 
-                    bounds[0] += cds_with_c_and_pair.get_chargeless_potential_between_sidbs(absolute_sidb, c);
-                    bounds[1] += cds_with_c_and_pair.get_chargeless_potential_between_sidbs(absolute_sidb, c);
+                    bounds[0] += -cds_with_c_and_pair.get_chargeless_potential_between_sidbs(absolute_sidb, c);
+                    bounds[1] += -cds_with_c_and_pair.get_chargeless_potential_between_sidbs(absolute_sidb, c);
 
                     for (const auto& [cell_maps, sidb] : std::array{
                              std::make_pair(std::make_pair(std::ref(cell_map1_lb), std::ref(cell_map1_ub)), first_sidb),
@@ -449,7 +405,8 @@ class skeleton_influence_bounds_impl
 
             for (bdl_pair<cell<CellLyt>>& pair : wire.pairs)
             {
-                if (is_contained_in_tile_of_interest(tile_of_interest, pair.lower))
+                if (cell_lyt_with_all_skeletons.get_cell_type(pair.upper) != sidb_technology::cell_type::INPUT ||
+                    is_contained_in_tile_of_interest(pair.lower))
                 {
                     continue;
                 }
@@ -472,9 +429,15 @@ class skeleton_influence_bounds_impl
                 }
 
                 potential_from_wire[0] +=
-                    cds_with_c_and_pair.get_chargeless_potential_between_sidbs(absolute_sidb, pair.lower);
+                    -cds_with_c_and_pair.get_chargeless_potential_between_sidbs(absolute_sidb, pair.lower);
                 potential_from_wire[1] +=
-                    cds_with_c_and_pair.get_chargeless_potential_between_sidbs(absolute_sidb, pair.upper);
+                    -cds_with_c_and_pair.get_chargeless_potential_between_sidbs(absolute_sidb, pair.upper);
+
+                if (absolute_sidb == first_sidb)
+                {
+                    std::cout << fmt::format("Adding inp pair bounds ({},{}) for {},{}\n", potential_from_wire[0],
+                                             potential_from_wire[1], absolute_sidb.x, absolute_sidb.y);
+                }
             }
 
             for (const auto& [cell_maps, sidb] : std::array{
@@ -493,7 +456,7 @@ class skeleton_influence_bounds_impl
                     // 0 orientation is stronger
                     for (uint8_t k = 0; k < w2.size(); ++k)
                     {
-                        if (!is_output_perturber_in_tile_of_interest(tile_of_interest, w2.at(k)))
+                        if (!is_output_perturber_in_tile_of_interest(w2.at(k)))
                         {
                             cell_maps.first.insert({w2.at(k), sidb_charge_state::NEGATIVE});
                         }
@@ -521,7 +484,7 @@ class skeleton_influence_bounds_impl
                     for (uint8_t k = 0; k < w2.size(); ++k)
                     {
                         cell_maps.first.insert({w2.at(k), sidb_charge_state::NEUTRAL});
-                        if (!is_output_perturber_in_tile_of_interest(tile_of_interest, w2.at(k)))
+                        if (!is_output_perturber_in_tile_of_interest(w2.at(k)))
                         {
                             cell_maps.second.insert({w2.at(k), sidb_charge_state::NEGATIVE});
                         }
@@ -530,6 +493,18 @@ class skeleton_influence_bounds_impl
                             cell_maps.second.insert({w2.at(k), sidb_charge_state::NEUTRAL});
                         }
                     }
+                }
+            }
+
+            if (absolute_sidb == first_sidb)
+            {
+                if (potential_from_wire[0] > potential_from_wire[1])
+                {
+                    std::cout << "inp gotta swap it" << std::endl;
+                }
+                else
+                {
+                    std::cout << "inp no swapping" << std::endl;
                 }
             }
 
@@ -550,48 +525,18 @@ class skeleton_influence_bounds_impl
                   << std::endl;
 
         skeleton_influence_bounds_map.insert(
-            {params.absolute_positions ? absolute_sidb : relative_sidb, std::move(bounds)});  // TODO: negate???
+            {params.absolute_positions ? absolute_sidb : relative_sidb, std::move(bounds)});
     }
 
-    void make_pair_sidbs_respect_io_connections(const cell<CellLyt>&                  absolute_sidb,
-                                                const std::vector<bdl_wire<CellLyt>>& bdl_wires_in_gates_together,
-                                                bdl_pair<cell<CellLyt>>&              pair) const noexcept
+    bool is_contained_in_tile_of_interest(const cell<CellLyt>& absolute_sidb) noexcept
     {
-        // check if the biggest wire is unique, otherwise the gates are not in connection
-        if (bdl_wires_in_gates_together.front().pairs.size() == bdl_wires_in_gates_together.at(1).pairs.size() ||
-            !is_upper_in_wire(pair.upper, bdl_wires_in_gates_together.front()))
-        {
-            return;
-        }
-
-        if (is_upper_in_wire(absolute_sidb, bdl_wires_in_gates_together.front()))
-        {
-            pair.lower = pair.upper;
-
-            return;
-        }
-
-        if (!is_lower_in_wire(absolute_sidb, bdl_wires_in_gates_together.front()))
-        {
-            return;
-        }
-
-        pair.upper = pair.lower;
-    }
-
-    bool is_contained_in_tile_of_interest(const tile<GateLyt>& tile_of_interest,
-                                          const cell<CellLyt>& absolute_sidb) noexcept
-    {
-        const CellLyt cell_lyt_of_tile_of_interest =
-            apply_gate_library<CellLyt, SkeletonGateLibrary, GateLyt>(gate_lyt, std::set{tile_of_interest});
-
         bool found = false;
 
-        cell_lyt_of_tile_of_interest.foreach_cell(
+        cell_lyt_of_tiles_of_interest.foreach_cell(
             [&](const cell<CellLyt>& sidb_in_tile_of_interest)
             {
                 if (!found && absolute_sidb == sidb_in_tile_of_interest &&
-                    cell_lyt_of_tile_of_interest.get_cell_type(sidb_in_tile_of_interest) !=
+                    cell_lyt_of_tiles_of_interest.get_cell_type(sidb_in_tile_of_interest) !=
                         sidb_technology::cell_type::EMPTY)
                 {
                     found = true;
@@ -601,19 +546,15 @@ class skeleton_influence_bounds_impl
         return found;
     }
 
-    bool is_output_perturber_in_tile_of_interest(const tile<GateLyt>& tile_of_interest,
-                                                 const cell<CellLyt>& absolute_sidb) noexcept
+    bool is_output_perturber_in_tile_of_interest(const cell<CellLyt>& absolute_sidb) noexcept
     {
-        const CellLyt cell_lyt_of_tile_of_interest =
-            apply_gate_library<CellLyt, SkeletonGateLibrary, GateLyt>(gate_lyt, std::set{tile_of_interest});
-
         bool found = false;
 
-        cell_lyt_of_tile_of_interest.foreach_cell(
+        cell_lyt_of_tiles_of_interest.foreach_cell(
             [&](const cell<CellLyt>& sidb_in_tile_of_interest)
             {
                 if (!found && absolute_sidb == sidb_in_tile_of_interest &&
-                    cell_lyt_of_tile_of_interest.get_cell_type(sidb_in_tile_of_interest) ==
+                    cell_lyt_of_tiles_of_interest.get_cell_type(sidb_in_tile_of_interest) ==
                         sidb_technology::cell_type::OUTPUT_PERTURBER)
                 {
                     found = true;
@@ -626,8 +567,8 @@ class skeleton_influence_bounds_impl
     const skeleton_influence_bounds_params<cell<CellLyt>>&   params;
     GateLyt                                                  gate_lyt{};
     const std::vector<tile<GateLyt>>&                        tiles_of_interest{};
-    // const std::vector<std::vector<bdl_wire<CellLyt>>> bdl_wires_of_designed_gates_current_tile_with_other_tile{};
     const CellLyt                                            cell_lyt_with_all_skeletons{};
+    const CellLyt                                            cell_lyt_of_tiles_of_interest{};
     std::unordered_map<cell<CellLyt>, std::array<double, 2>> skeleton_influence_bounds_map{};
 
     std::unordered_map<cell<CellLyt>, sidb_charge_state> cell_map1_lb{};
@@ -647,72 +588,6 @@ class skeleton_influence_bounds_impl
     cell<CellLyt>                                    third_sidb{};
     cell<CellLyt>                                    fourth_sidb{};
     std::unordered_map<cell<CellLyt>, cell<CellLyt>> to_rel_pos{};
-
-    // [[nodiscard]] static std::vector<std::vector<bdl_wire<CellLyt>>>
-    // obtain_bdl_wires_for_all_tile_pairs(const GateLyt& gate_lyt, const tile<GateLyt>& current_tile) noexcept
-    // {
-    //     std::vector<std::vector<bdl_wire<CellLyt>>> bdl_wires_of_designed_gates_current_tile_with_other_tile{};
-    //
-    //     gate_lyt.foreach_node(
-    //         [&](const auto& n)
-    //         {
-    //             if (gate_lyt.is_constant(n))
-    //             {
-    //                 return;
-    //             }
-    //
-    //             const tile<GateLyt>& t = gate_lyt.get_tile(n);
-    //
-    //             if (t == current_tile)
-    //             {
-    //                 return;
-    //             }
-    //
-    //             CellLyt designed_gates_together =
-    //                 apply_gate_library<CellLyt, SkeletonGateLibrary, GateLyt>(gate_lyt, std::set{current_tile, t});
-    //
-    //             std::vector<bdl_wire<CellLyt>> bdl_wires_of_designed_gates_together =
-    //                 detect_bdl_wires(designed_gates_together, params.bdl_wire_params);
-    //
-    //             // sort by wire length, first will be biggest
-    //             std::sort(bdl_wires_of_designed_gates_together.begin(), bdl_wires_of_designed_gates_together.end(),
-    //                       [](const bdl_wire<CellLyt>& lhs, const bdl_wire<CellLyt>& rhs)
-    //                       { return lhs.pairs.size() > rhs.pairs.size(); });
-    //
-    //             bdl_wires_of_designed_gates_current_tile_with_other_tile.push_back(
-    //                 std::move(bdl_wires_of_designed_gates_together));
-    //         });
-    //
-    //     return bdl_wires_of_designed_gates_current_tile_with_other_tile;
-    // }
-
-    [[nodiscard]] static bool is_upper_in_wire(const cell<CellLyt>& sidb, const bdl_wire<CellLyt>& wire) noexcept
-    {
-
-        for (const bdl_pair<cell<CellLyt>>& pair : wire.pairs)
-        {
-            if (pair.upper == sidb)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    [[nodiscard]] static bool is_lower_in_wire(const cell<CellLyt>& sidb, const bdl_wire<CellLyt>& wire) noexcept
-    {
-
-        for (const bdl_pair<cell<CellLyt>>& pair : wire.pairs)
-        {
-            if (pair.lower == sidb)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
 };
 
 }  // namespace detail
