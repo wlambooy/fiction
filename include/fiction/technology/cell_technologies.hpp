@@ -306,6 +306,10 @@ struct sidb_technology
          */
         OUTPUT = 'o',
         /**
+         *  Symbol used for output perturber SiDB cells.
+         */
+        OUTPUT_PERTURBER = 'p',
+        /**
          * Symbol used for logic SiDB cells (e.g. canvas SiDBs).
          */
         LOGIC = 'l'
@@ -324,6 +328,7 @@ struct sidb_technology
         EMPTY  = cell_type::EMPTY,
         INPUT  = cell_type::INPUT,
         OUTPUT = cell_type::OUTPUT,
+        OUTPUT_PERTURBER = cell_type::OUTPUT_PERTURBER,
         LOGIC  = cell_type::LOGIC
     };
 
@@ -345,6 +350,11 @@ struct sidb_technology
     [[nodiscard]] static constexpr bool is_output_cell(const cell_type& c) noexcept
     {
         return c == OUTPUT;
+    }
+
+    [[nodiscard]] static constexpr bool is_output_perturber_cell(const cell_type& c) noexcept
+    {
+        return c == OUTPUT_PERTURBER;
     }
 
     [[nodiscard]] static constexpr bool is_logic_cell(const cell_type& c) noexcept

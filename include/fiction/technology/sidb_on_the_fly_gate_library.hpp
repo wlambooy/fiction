@@ -170,7 +170,7 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, 60
             std::cout << "starting to determine skeleton influence bounds" << std::endl;
             parameters.design_gate_params.operational_params.cc_map =
                 skeleton_influence_bounds<CellLyt, sidb_skeleton_bestagon_library, GateLyt>(
-                    lyt, t,
+                    lyt, {t},
                     skeleton_influence_bounds_params<cell<CellLyt>>{
                         parameters.design_gate_params.operational_params.simulation_parameters,
                         // {{0, 0}, {gate_x_size(), gate_y_size()}},
@@ -437,7 +437,7 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, 60
             std::cout << "starting to determine skeleton influence bounds" << std::endl;
             parameters.design_gate_params.operational_params.cc_map =
                 skeleton_influence_bounds<CellLyt, sidb_skeleton_bestagon_library, GateLyt>(
-                    lyt, t,
+                    lyt, {t},
                     skeleton_influence_bounds_params<cell<CellLyt>>{
                         parameters.design_gate_params.operational_params.simulation_parameters,
                         // {{0, 0}, {gate_x_size(), gate_y_size()}},

@@ -81,7 +81,7 @@ class sidb_on_the_fly_mini_gate_library
             std::cout << "starting to determine skeleton influence bounds" << std::endl;
             parameters.design_gate_params.operational_params.cc_map =
                 skeleton_influence_bounds<CellLyt, sidb_skeleton_bestagon_mini_library, GateLyt>(
-                    lyt, t,
+                    lyt, {t},
                     skeleton_influence_bounds_params<cell<CellLyt>>{
                         parameters.design_gate_params.operational_params.simulation_parameters,
                         // {{0, 0}, {gate_x_size(), gate_y_size()}},
@@ -322,16 +322,20 @@ class sidb_on_the_fly_mini_gate_library
         if (parameters.use_skeleton_influence_bounds)
         {
             std::cout << "starting to determine skeleton influence bounds" << std::endl;
+
             parameters.design_gate_params.operational_params.cc_map =
                 skeleton_influence_bounds<CellLyt, sidb_skeleton_bestagon_mini_library, GateLyt>(
-                    lyt, t,
+                    lyt, {t},
                     skeleton_influence_bounds_params<cell<CellLyt>>{
                         parameters.design_gate_params.operational_params.simulation_parameters,
                         // {{0, 0}, {gate_x_size(), gate_y_size()}},
                         parameters.design_gate_params.canvas,
+                        // parameters.design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params,
+                        // true});
                         parameters.design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params});
             std::cout << "done determining skeleton influence bounds; size = "
                       << parameters.design_gate_params.operational_params.cc_map.value().size() << std::endl;
+
         }
 
         try
