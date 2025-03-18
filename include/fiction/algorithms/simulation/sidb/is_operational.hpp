@@ -1147,43 +1147,19 @@ class is_operational_impl
 
             if (parameters.cc_map.has_value())
             {
-                // if ((*bdl_iterator).num_cells() > 15)
-                // {
-                //     print_layout((*bdl_iterator));
-                // }
                 clustercomplete_params<cell<Lyt>> cc_params{
                     parameters.simulation_parameters,
                     typename clustercomplete_params<cell<Lyt>>::bounded_local_external_potential{}};
 
                 cc_params.available_threads = 1;
 
-                auto is_canvas_db = [](const auto& c) { return c.x >= 14 && c.x <= 21 && c.y >= 10 && c.y <= 19; };
-
                 for (const auto& [c, bounds] : parameters.cc_map.value())
                 {
                     if ((*bdl_iterator).get_cell_type(c) != sidb_technology::cell_type::EMPTY)
                     {
                         cc_params.insert_local_external_potential(c, bounds);
-                        // if ((*bdl_iterator).num_cells() > 15)
-                        // {
-                        //     std::cout << "applied LB = " << bounds[0] << ", UB = " << bounds[1] << " to " << (is_canvas_db(c) ? "CANVAS" : "") << " cell at " << c.x
-                        //               << ", " << c.y << std::endl;
-                        // }
                     }
-                    // else if ((*bdl_iterator).num_cells() > 15)
-                    //
-                    // {
-                    //     std::cout << "NOT applied to " << (is_canvas_db(c) ? "CANVAS" : "") << " cell at " << c.x
-                    //               << ", " << c.y << std::endl;
-                    // }
                 }
-                // if ((*bdl_iterator).num_cells() > 15)
-                // {
-                //     std::cout << std::endl;
-                //     (*bdl_iterator).foreach_cell([&](const auto& c){std::cout << (is_canvas_db(c) ? "CANVAS" : "") << "cell at " << c.x << ", " << c.y << std::endl;});
-                //     std::cout << "\n\n";
-                // }
-
                 const auto& res = clustercomplete(*bdl_iterator, cc_params);
                 if ((*bdl_iterator).num_cells() > 33)
                 {
@@ -1198,23 +1174,10 @@ class is_operational_impl
                 }
                 return res;
             }
-            else
-            {
-                clustercomplete_params<cell<Lyt>> cc_params{parameters.simulation_parameters};
-                const auto&                       res = clustercomplete(*bdl_iterator, cc_params);
-                if ((*bdl_iterator).num_cells() > 33)
-                {
-                    std::cout << std::endl;
-                    if (res.charge_distributions.empty())
-                    {
-                        std::cout << "NO CHARGE DISTRIBUTIONS FOUNDS" << std::endl;
-                        return res;
-                    }
-                    print_layout(groundstate_from_simulation_result(res).front());
-                    std::cout << std::endl;
-                }
-                return res;
-            }
+
+            clustercomplete_params<cell<Lyt>> cc_params{parameters.simulation_parameters};
+            const auto&                       res = clustercomplete(*bdl_iterator, cc_params);
+            return res;
 
 #else   // FICTION_ALGLIB_ENABLED
             assert(false && "ALGLIB must be enabled if ClusterComplete is to be used");
