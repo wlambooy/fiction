@@ -10348,33 +10348,9 @@ static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_cell_lyt_
 
 static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_cell_lyt_with_all_skeletons = R"doc()doc";
 
-static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_cell_map1_lb = R"doc()doc";
-
-static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_cell_map1_ub = R"doc()doc";
-
-static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_cell_map2_lb = R"doc()doc";
-
-static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_cell_map2_ub = R"doc()doc";
-
-static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_cell_map3_lb = R"doc()doc";
-
-static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_cell_map3_ub = R"doc()doc";
-
-static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_cell_map4_lb = R"doc()doc";
-
-static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_cell_map4_ub = R"doc()doc";
-
-static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_first_sidb = R"doc()doc";
-
-static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_fourth_sidb = R"doc()doc";
-
 static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_gate_lyt = R"doc()doc";
 
-static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_second_sidb = R"doc()doc";
-
 static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_skeleton_influence_bounds_impl = R"doc()doc";
-
-static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_third_sidb = R"doc()doc";
 
 static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_tiles_of_interest = R"doc()doc";
 
