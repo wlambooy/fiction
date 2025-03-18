@@ -151,12 +151,6 @@ class skeleton_influence_bounds_impl
                 cds_lb.assign_all_charge_states(sidb_charge_state::NEUTRAL);
                 cds_ub.assign_all_charge_states(sidb_charge_state::NEUTRAL);
 
-                for (const auto& cc : {first_sidb, second_sidb, third_sidb, fourth_sidb})
-                {
-                    cds_lb.assign_charge_state(cc, cc == sidb ? sidb_charge_state::POSITIVE : sidb_charge_state::NONE);
-                    cds_ub.assign_charge_state(cc, cc == sidb ? sidb_charge_state::POSITIVE : sidb_charge_state::NONE);
-                }
-
                 for (const auto& [c, cs] : cell_maps.first)
                 {
                     cds_lb.assign_charge_state(c, cs);
@@ -165,6 +159,29 @@ class skeleton_influence_bounds_impl
                 for (const auto& [c, cs] : cell_maps.second)
                 {
                     cds_ub.assign_charge_state(c, cs);
+                }
+
+                designed_gate.foreach_cell(
+                    [&](const cell<CellLyt>& absolute_c)
+                    {
+                        cds_lb.assign_charge_state(absolute_c, absolute_c == sidb ? sidb_charge_state::POSITIVE :
+                                                                                    sidb_charge_state::NONE);
+                        cds_ub.assign_charge_state(absolute_c, absolute_c == sidb ? sidb_charge_state::POSITIVE :
+                                                                                    sidb_charge_state::NONE);
+                    });
+
+                for (const cell<CellLyt>& relative_c :
+                     all_coordinates_in_spanned_area(params.canvas.first, params.canvas.second))
+                {
+                    const cell<CellLyt> absolute_c =
+                        relative_to_absolute_cell_position<SkeletonGateLibrary::gate_x_size(),
+                                                           SkeletonGateLibrary::gate_y_size(), GateLyt, CellLyt>(
+                            gate_lyt, current_tile, relative_c);
+
+                    cds_lb.assign_charge_state(absolute_c, absolute_c == sidb ? sidb_charge_state::POSITIVE :
+                                                                                sidb_charge_state::NONE);
+                    cds_ub.assign_charge_state(absolute_c, absolute_c == sidb ? sidb_charge_state::POSITIVE :
+                                                                                sidb_charge_state::NONE);
                 }
 
                 std::cout << "\n\nLOWER BOUND (" << sidb.x << "," << sidb.y << ")" << std::endl;
@@ -517,6 +534,15 @@ class skeleton_influence_bounds_impl
         if (skeleton_influence_bounds_map.count(params.absolute_positions ? absolute_sidb : relative_sidb) != 0)
         {
             std::cout << "HELP IT'S OVERWRITING" << std::endl;
+            std::cout << fmt::format(
+                             "storing ({}, {}) at {},{}",
+                             skeleton_influence_bounds_map.at(params.absolute_positions ? absolute_sidb : relative_sidb)
+                                 .front(),
+                             skeleton_influence_bounds_map.at(params.absolute_positions ? absolute_sidb : relative_sidb)
+                                 .back(),
+                             (params.absolute_positions ? absolute_sidb : relative_sidb).x,
+                             (params.absolute_positions ? absolute_sidb : relative_sidb).y)
+                      << std::endl;
         }
 
         std::cout << fmt::format("storing ({}, {}) at {},{}", bounds.front(), bounds.back(),

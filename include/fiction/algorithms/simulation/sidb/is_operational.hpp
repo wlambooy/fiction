@@ -1155,6 +1155,8 @@ class is_operational_impl
                     parameters.simulation_parameters,
                     typename clustercomplete_params<cell<Lyt>>::bounded_local_external_potential{}};
 
+                cc_params.available_threads = 1;
+
                 auto is_canvas_db = [](const auto& c) { return c.x >= 14 && c.x <= 21 && c.y >= 10 && c.y <= 19; };
 
                 for (const auto& [c, bounds] : parameters.cc_map.value())
