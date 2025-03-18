@@ -314,7 +314,14 @@ Parameter ``lyt``:
 
 Parameter ``whitelist``:
     A whitelist for the tiles to which gates are assigned. When
-    `std::nullopt` (default), all tiles are considered.
+    `std::nullopt` (default), all tiles are considered that are not
+    blacklisted.
+
+Parameter ``blacklist``:
+    A blacklist for the tiles to which gates are not assigned. When
+    `std::nullopt` (default), all tiles are considered (unless a
+    whitelist is given). The blacklist has priority over the
+    whitelist.
 
 Returns:
     A cell-level layout that implements `lyt`'s gate types with
@@ -349,7 +356,14 @@ Parameter ``params``:
 
 Parameter ``whitelist``:
     A whitelist for the tiles to which gates are assigned. When
-    `std::nullopt` (default), all tiles are considered.
+    `std::nullopt` (default), all tiles are considered that are not
+    blacklisted.
+
+Parameter ``blacklist``:
+    A blacklist for the tiles to which gates are not assigned. When
+    `std::nullopt` (default), all tiles are considered (unless a
+    whitelist is given). The blacklist has priority over the
+    whitelist.
 
 Returns:
     A cell-level layout that implements `lyt`'s gate types with
@@ -5117,7 +5131,14 @@ Parameter ``params``:
 
 Parameter ``whitelist``:
     A whitelist for the tiles to which gates are assigned. When
-    `std::nullopt` (default), all tiles are considered.
+    `std::nullopt` (default), all tiles are considered that are not
+    blacklisted.
+
+Parameter ``blacklist``:
+    A blacklist for the tiles to which gates are not assigned. When
+    `std::nullopt` (default), all tiles are considered (unless a
+    whitelist is given). The blacklist has priority over the
+    whitelist.
 
 Returns:
     A `CellLyt` object representing the generated cell layout.)doc";
@@ -5138,7 +5159,14 @@ Returns:
 
 Parameter ``whitelist``:
     A whitelist for the tiles to which gates are assigned. When
-    `std::nullopt` (default), all tiles are considered.)doc";
+    `std::nullopt` (default), all tiles are considered that are not
+    blacklisted.
+
+Parameter ``blacklist``:
+    A blacklist for the tiles to which gates are not assigned. When
+    `std::nullopt` (default), all tiles are considered (unless a
+    whitelist is given). The blacklist has priority over the
+    whitelist.)doc";
 
 static const char *__doc_fiction_detail_calculate_offset_matrix =
 R"doc(Calculate an offset matrix based on a to-delete list in a
@@ -5241,33 +5269,6 @@ population stability check. In the latter case, the configuration
 stability check is performed before the associated charge distribution
 is added to the simulation results.
 
-Parameter ``clustering_state``:
-    A clustering state that holds a specific combination of multiset
-    charge configurations as projector states of which the
-    respectively associated clusters form a clustering in the cluster
-    hierarchy.)doc";
-
-static const char *__doc_fiction_detail_clustercomplete_impl_add_physically_valid_charge_configurations_2 =
-R"doc(This recursive function is the heart of the *ClusterComplete*
-destruction. The given clustering state is dissected at the largest
-cluster to each possible specialization of it, which then enters the
-recursive call with the clustering state modified to have a set of
-sibling children replacing their direct parent. For each
-specialization, appropriate updates are made to the potential bounds
-store that is part of the clustering state. After a specialization has
-been handled completely, i.e., when the recursive call for this
-specialization returns, the specialization to the potential bounds
-store is undone so that a new specialization may be applied.
-
-The two base cases to the recursion are as follows: (1) the charge
-distributions implied by the given clustering state do not meet the
-population stability, meaning that this branch of the search space may
-be pruned through terminating the recursion at this level, and, (2)
-the clustering state hold only singleton clusters and passes the
-population stability check. In the latter case, the configuration
-stability check is performed before the associated charge distribution
-is added to the simulation results.
-
 Parameter ``w``:
     The worker running on the current thread. It has a clustering
     state that holds a specific combination of multiset charge
@@ -5301,18 +5302,6 @@ Parameter ``lyt``:
 Parameter ``params``:
     Parameter required for both the invocation of *Ground State
     Space*, and the simulation following.)doc";
-
-static const char *__doc_fiction_detail_clustercomplete_impl_collect_physically_valid_charge_distributions_single_threaded =
-R"doc(After the *Ground State Space* construction was completed and the top
-cluster was returned, this function splits the charge space of the top
-cluster into sections for the individual threads to handle. Each are
-decomposed recursively to generate physically valid charge
-distributions that emerge from increasingly specializing multiset
-charge configurations.
-
-Parameter ``top_cluster``:
-    The top cluster that is returned by the *Ground State Space
-    construction; it contains the entire cluster hierarchy construct.)doc";
 
 static const char *__doc_fiction_detail_clustercomplete_impl_extract_work_from_top_cluster =
 R"doc(Work in the form of compositions of charge space elements of the top
@@ -10355,6 +10344,8 @@ static const char *__doc_fiction_detail_search_space_graph_planar = R"doc(Create
 
 static const char *__doc_fiction_detail_skeleton_influence_bounds_impl = R"doc()doc";
 
+static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_cell_lyt_of_tiles_of_interest = R"doc()doc";
+
 static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_cell_lyt_with_all_skeletons = R"doc()doc";
 
 static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_cell_map1_lb = R"doc()doc";
@@ -10378,10 +10369,6 @@ static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_first_sid
 static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_fourth_sidb = R"doc()doc";
 
 static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_gate_lyt = R"doc()doc";
-
-static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_is_lower_in_wire = R"doc()doc";
-
-static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_is_upper_in_wire = R"doc()doc";
 
 static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_second_sidb = R"doc()doc";
 
