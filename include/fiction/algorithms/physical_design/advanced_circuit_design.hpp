@@ -661,12 +661,6 @@ class advanced_circuit_design_impl
             lower_n_outputs.emplace_back(kitty::compose_truth_table<tt, tt>(lower_tt, input_to_lower_n));
         }
 
-        for (const auto& x : lower_n_outputs)
-        {
-            kitty::print_binary(x);
-            std::cout << std::endl;
-        }
-
         return lower_n_outputs;
     }
 
