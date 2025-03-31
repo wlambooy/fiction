@@ -59,19 +59,34 @@ class skeleton_influence_bounds_impl
             cell_lyt_with_all_skeletons{apply_gate_library<CellLyt, SkeletonGateLibrary, GateLyt>(gate_lyt)},
             cell_lyt_of_tiles_of_interest{apply_gate_library<CellLyt, SkeletonGateLibrary, GateLyt>(
                 gate_lyt, std::set(tiles_of_interest.cbegin(), tiles_of_interest.cend()))}
-    {
-    }
+    {}
 
     [[nodiscard]] std::unordered_map<cell<CellLyt>, std::array<double, 2>> run() noexcept
     {
         for (const tile<GateLyt>& current_tile : tiles_of_interest)
         {
-            if (current_tile.y == 0 && tiles_of_interest.size() == 1)
-            {
-                std::cout << "Skeleton looks like:" << std::endl;
-                print_layout(apply_gate_library<CellLyt, SkeletonGateLibrary, GateLyt>(gate_lyt));
-                std::cout << std::endl;
-            }
+            bool first_one_passed = false;
+            gate_lyt.foreach_node(
+                [&](const auto& n)
+                {
+                    if (first_one_passed)
+                    {
+                        return;
+                    }
+
+                    if (!(gate_lyt.is_constant(n) || gate_lyt.is_pi(n) || gate_lyt.is_po(n)) &&
+                        tiles_of_interest.size() == 1)
+                    {
+                        if (tiles_of_interest.size() == 1 && tiles_of_interest.front() == gate_lyt.get_tile(n))
+                        {
+                            std::cout << "Skeleton looks like:" << std::endl;
+                            print_layout(apply_gate_library<CellLyt, SkeletonGateLibrary, GateLyt>(gate_lyt));
+                            std::cout << std::endl;
+                        }
+
+                        first_one_passed = true;
+                    }
+                });
 
             const CellLyt designed_gate =
                 apply_gate_library<CellLyt, SkeletonGateLibrary, GateLyt>(gate_lyt, std::set{current_tile});

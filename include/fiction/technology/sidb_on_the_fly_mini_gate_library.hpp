@@ -303,7 +303,8 @@ class sidb_on_the_fly_mini_gate_library
      * @return Bestagon gate representation of `t` including mirroring.
      */
     template <typename GateLyt, typename CellLyt, typename Params>
-    static std::vector<fcn_gate> set_up_gates(const GateLyt& lyt, const tile<GateLyt>& t, Params parameters = Params{})
+    static std::pair<std::vector<tt>, std::vector<fcn_gate>> set_up_gates(const GateLyt& lyt, const tile<GateLyt>& t,
+                                                                          Params parameters = Params{})
     {
         static_assert(is_gate_level_layout_v<GateLyt>, "GateLyt must be a gate-level layout");
         static_assert(has_cube_coord_v<CellLyt>, "CellLyt must be based on cube coordinates");
@@ -383,7 +384,7 @@ class sidb_on_the_fly_mini_gate_library
                         const auto cell_list = ONE_IN_ONE_OUT_MAP.at(p);
                         if (cell_list == EMPTY_GATE)
                         {
-                            return {EMPTY_GATE};
+                            return {{f}, {EMPTY_GATE}};
                         }
                         const auto layout = add_defect_to_skeleton(cell_list_to_cell_level_layout<CellLyt>(cell_list),
                                                                    center_cell, absolute_cell, parameters);
@@ -391,7 +392,7 @@ class sidb_on_the_fly_mini_gate_library
                         return design_gates<decltype(layout), tt, CellLyt, GateLyt>(layout, std::vector<tt>{f},
                                                                                     parameters, p, t);
                     }
-                    return {EMPTY_GATE};
+                    return {{f}, {EMPTY_GATE}};
                 }
             }
             if constexpr (fiction::has_is_inv_v<GateLyt>)
@@ -678,6 +679,8 @@ class sidb_on_the_fly_mini_gate_library
 
         if (spec == create_crossing_wire_tt() || spec == create_double_wire_tt())
         {
+            std::cout << "starting gate design for 2I2O tile " << tile << std::endl;
+
             if (is_sidb_gate_design_impossible(skeleton, spec, params))
             {
                 throw gate_design_exception<tt, GateLyt>(tile, create_id_tt(), p);
@@ -697,7 +700,7 @@ class sidb_on_the_fly_mini_gate_library
             throw gate_design_exception<tt, GateLyt>(tile, spec.front(), p);
         }
 
-        std::cout << "starting gate design" << std::endl;
+        std::cout << "starting gate design for tile " << tile << std::endl;
 
         const auto found_gate_layouts = design_sidb_gates(skeleton, spec, parameters.design_gate_params);
 
@@ -728,7 +731,7 @@ class sidb_on_the_fly_mini_gate_library
      * @return An `fcn_gate` object.
      */
     template <typename LytSkeleton, typename TT, typename CellLyt, typename GateLyt>
-    [[nodiscard]] static std::vector<fcn_gate>
+    [[nodiscard]] static std::pair<std::vector<TT>, std::vector<fcn_gate>>
     design_gates(const LytSkeleton& skeleton, const std::vector<TT>& spec,
                  const sidb_on_the_fly_gate_library_params<CellLyt>& parameters, const port_list<port_direction>& p,
                  const tile<GateLyt>& tile)
@@ -737,7 +740,7 @@ class sidb_on_the_fly_mini_gate_library
         static_assert(has_sidb_technology_v<CellLyt>, "CellLyt is not an SiDB layout");
         static_assert(has_cube_coord_v<CellLyt>, "CellLyt is not based on cube coordinates");
 
-        const auto create_fcn_gates = [](const auto& found_gate_layouts)
+        const auto create_fcn_gates = [&spec](const auto& found_gate_layouts)
         {
             std::vector<fcn_gate> gates{};
             gates.reserve(found_gate_layouts.size());
@@ -747,7 +750,7 @@ class sidb_on_the_fly_mini_gate_library
                 gates.emplace_back(cell_list_to_gate<char>(cell_level_layout_to_list(std::move(gate), false)));
             }
 
-            return gates;
+            return std::make_pair(spec, gates);
         };
 
         const auto params = is_sidb_gate_design_impossible_params{
@@ -755,6 +758,8 @@ class sidb_on_the_fly_mini_gate_library
 
         if (spec == create_crossing_wire_tt() || spec == create_double_wire_tt())
         {
+            std::cout << "starting gate design for 2I2O tile " << tile << std::endl;
+
             if (is_sidb_gate_design_impossible(skeleton, spec, params))
             {
                 throw gate_design_exception<tt, GateLyt>(tile, create_id_tt(), p);
@@ -774,7 +779,7 @@ class sidb_on_the_fly_mini_gate_library
             throw gate_design_exception<tt, GateLyt>(tile, spec.front(), p);
         }
 
-        std::cout << "starting gate design" << std::endl;
+        std::cout << "starting gate design for tile " << tile << std::endl;
 
         const auto found_gate_layouts = design_sidb_gates(skeleton, spec, parameters.design_gate_params);
 

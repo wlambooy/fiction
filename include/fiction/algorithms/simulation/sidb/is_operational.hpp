@@ -179,6 +179,7 @@ struct is_operational_params
     simulation_results_mode simulation_results_retention = simulation_results_mode::DISCARD_SIMULATION_RESULTS;
     // TODO
     std::optional<typename clustercomplete_params<CellLyt>::bounded_local_external_potential> cc_map{};
+    bool                                                                                      print = false;
 };
 
 /**
@@ -1161,22 +1162,24 @@ class is_operational_impl
                     }
                 }
                 const auto& res = clustercomplete(*bdl_iterator, cc_params);
-                if ((*bdl_iterator).num_cells() > 33)
-                {
-                    std::cout << std::endl;
-                    if (res.charge_distributions.empty())
-                    {
-                        std::cout << "NO CHARGE DISTRIBUTIONS FOUNDS" << std::endl;
-                        return res;
-                    }
-                    print_layout(groundstate_from_simulation_result(res).front());
-                    std::cout << std::endl;
-                }
                 return res;
             }
 
             clustercomplete_params<cell<Lyt>> cc_params{parameters.simulation_parameters};
             const auto&                       res = clustercomplete(*bdl_iterator, cc_params);
+
+            if (parameters.print)
+            {
+                std::cout << std::endl;
+                if (res.charge_distributions.empty())
+                {
+                    std::cout << "NO CHARGE DISTRIBUTIONS FOUNDS" << std::endl;
+                    return res;
+                }
+                print_layout(groundstate_from_simulation_result(res).front());
+                std::cout << std::endl;
+            }
+
             return res;
 
 #else   // FICTION_ALGLIB_ENABLED
@@ -1347,7 +1350,7 @@ template <typename Lyt, typename TT>
 
     const auto [assessment_result, non_op_reason] = p.run();
 
-    if (lyt.num_cells() > 33)
+    if (params.print)
     {
         switch (non_op_reason)
         {

@@ -12,7 +12,6 @@
 
 namespace fiction
 {
-
 /**
  * This function assigns a given FCN gate implementation to the total cell layout.
  *
@@ -28,6 +27,11 @@ template <typename CellLyt, typename GateLibrary, typename GateLyt>
 void assign_gate(CellLyt& cell_lyt, const cell<CellLyt>& c, const typename GateLibrary::fcn_gate& g,
                  const GateLyt& gate_lyt, const mockturtle::node<GateLyt>& n)
 {
+    if (gate_lyt.is_pi(n) || gate_lyt.is_po(n))
+    {
+        return;
+    }
+
     const auto start_x = c.x;
     const auto start_y = c.y;
     const auto layer   = c.z;
