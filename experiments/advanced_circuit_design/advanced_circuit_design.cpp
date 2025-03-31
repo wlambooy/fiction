@@ -83,7 +83,7 @@ int main(int argc, char* argv[])  // NOLINT
     // needs to be changed if a different skeleton is used.
     if constexpr (std::is_same_v<gate_lib, fiction::sidb_on_the_fly_mini_gate_library>)
     {
-        design_gate_params.canvas = {{14, 10}, {21, 19}};  // smaller canvas
+        design_gate_params.canvas = {{14, 10}, {21, 18}};  // smaller canvas
     }
     else
     {
@@ -238,8 +238,8 @@ int main(int argc, char* argv[])  // NOLINT
         params.sidb_on_the_fly_gate_library_parameters.defect_surface                = surface_lattice;
         params.sidb_on_the_fly_gate_library_parameters.use_skeleton_influence_bounds = true;
         params.sidb_on_the_fly_gate_library_parameters.design_gate_params            = design_gate_params;
-        params.sidb_on_the_fly_gate_library_parameters.canvas_sidb_complex_gates = // 5;//
-            params.sidb_on_the_fly_gate_library_parameters.design_gate_params.number_of_sidbs;
+        params.sidb_on_the_fly_gate_library_parameters.canvas_sidb_complex_gates     =  5;//
+            // params.sidb_on_the_fly_gate_library_parameters.design_gate_params.number_of_sidbs;
 
         fiction::advanced_circuit_design_stats<gate_lyt> st{};
 
