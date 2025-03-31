@@ -523,8 +523,6 @@ class advanced_circuit_design_impl
         const tile<GateLyt> t            = {gate_lyt.get_tile(n).x, gate_lyt.get_tile(n).y, 0};
         const tile<GateLyt> connecting_t = {gate_lyt.get_tile(connecting_n).x, gate_lyt.get_tile(connecting_n).y, 0};
 
-        std::cout << fmt::format("t {}\t t connect {}\n", t, connecting_t);
-
         bool connecting_n_is_incoming = false;
 
         for (const auto& incoming_t : gate_lyt.incoming_data_flow(t))
