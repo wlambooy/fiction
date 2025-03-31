@@ -245,7 +245,23 @@ class advanced_circuit_design_impl
                     }
                 }
 
+                for (const auto& in_t : gate_lyt.incoming_data_flow(gate_lyt.above(t)))
+                {
+                    if (!gate_lyt.is_pi(gate_lyt.get_node(in_t)))
+                    {
+                        connecting_to_n.emplace_back(gate_lyt.get_node(in_t));
+                    }
+                }
+
                 for (const auto& out_t : gate_lyt.outgoing_data_flow(t))
+                {
+                    if (!gate_lyt.is_po(gate_lyt.get_node(out_t)))
+                    {
+                        connecting_to_n.emplace_back(gate_lyt.get_node(out_t));
+                    }
+                }
+
+                for (const auto& out_t : gate_lyt.outgoing_data_flow(gate_lyt.above(t)))
                 {
                     if (!gate_lyt.is_po(gate_lyt.get_node(out_t)))
                     {
