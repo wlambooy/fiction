@@ -238,8 +238,9 @@ int main(int argc, char* argv[])  // NOLINT
         params.sidb_on_the_fly_gate_library_parameters.defect_surface                = surface_lattice;
         params.sidb_on_the_fly_gate_library_parameters.use_skeleton_influence_bounds = true;
         params.sidb_on_the_fly_gate_library_parameters.design_gate_params            = design_gate_params;
-        params.sidb_on_the_fly_gate_library_parameters.canvas_sidb_complex_gates     =  5;//
-            // params.sidb_on_the_fly_gate_library_parameters.design_gate_params.number_of_sidbs;
+        params.sidb_on_the_fly_gate_library_parameters.canvas_sidb_complex_gates =
+            4;  //
+                // params.sidb_on_the_fly_gate_library_parameters.design_gate_params.number_of_sidbs;
 
         fiction::advanced_circuit_design_stats<gate_lyt> st{};
 

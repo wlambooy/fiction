@@ -766,10 +766,11 @@ class sidb_on_the_fly_mini_gate_library
             }
 
             const auto found_gate_layouts = design_sidb_gates(skeleton, spec, parameters.design_gate_params);
+
+            std::cout << "number of gate layouts found: " << found_gate_layouts.size() << std::endl;
+
             if (found_gate_layouts.empty())
             {
-                std::cout << "could not find an operational gate design" << std::endl;
-
                 throw gate_design_exception<tt, GateLyt>(tile, create_id_tt(), p);
             }
 

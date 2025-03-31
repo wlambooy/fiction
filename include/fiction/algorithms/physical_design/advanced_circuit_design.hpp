@@ -374,8 +374,6 @@ class advanced_circuit_design_impl
                                                 operational_gate_designs.at(connecting_n).second.at(distrib(gen)),
                                                 gate_lyt, connecting_n);
 
-                                            print_layout(cell_lyt_clone);
-
                                             if (is_operational(cell_lyt_clone,
                                                                spec_and_operational_params_for_joint_simulation.at(n)
                                                                    .at(connecting_n)
@@ -522,8 +520,8 @@ class advanced_circuit_design_impl
                                              const std::vector<tt>& spec_n, const mockturtle::node<Ntk>& connecting_n,
                                              const std::vector<tt>& spec_connecting_n) noexcept
     {
-        const tile<GateLyt> t            = gate_lyt.get_tile(n);
-        const tile<GateLyt> connecting_t = gate_lyt.get_tile(connecting_n);
+        const tile<GateLyt> t            = {gate_lyt.get_tile(n).x, gate_lyt.get_tile(n).y, 0};
+        const tile<GateLyt> connecting_t = {gate_lyt.get_tile(connecting_n).x, gate_lyt.get_tile(connecting_n).y, 0};
 
         std::cout << fmt::format("t {}\t t connect {}\n", t, connecting_t);
 
@@ -531,7 +529,15 @@ class advanced_circuit_design_impl
 
         for (const auto& incoming_t : gate_lyt.incoming_data_flow(t))
         {
-            if (!connecting_n_is_incoming && connecting_t == incoming_t)
+            if (!connecting_n_is_incoming && connecting_t.x == incoming_t.x && connecting_t.y == incoming_t.y)
+            {
+                connecting_n_is_incoming = true;
+            }
+        }
+
+        for (const auto& incoming_t : gate_lyt.incoming_data_flow(gate_lyt.above(t)))
+        {
+            if (!connecting_n_is_incoming && connecting_t.x == incoming_t.x && connecting_t.y == incoming_t.y)
             {
                 connecting_n_is_incoming = true;
             }
@@ -559,8 +565,9 @@ class advanced_circuit_design_impl
         //                                                                      {connecting_n, num_in_connecting_t}};
 
         const std::unordered_map<mockturtle::node<Ntk>, uint32_t> num_fan_in{
-            {n, gate_lyt.incoming_data_flow(t).size()},
-            {connecting_n, gate_lyt.incoming_data_flow(connecting_t).size()}};
+            {n, gate_lyt.incoming_data_flow(t).size() + gate_lyt.incoming_data_flow(gate_lyt.above(t)).size()},
+            {connecting_n, gate_lyt.incoming_data_flow(connecting_t).size() +
+                               gate_lyt.incoming_data_flow(gate_lyt.above(connecting_t)).size()}};
 
         const uint32_t num_fan_in_combined = num_fan_in.at(n) + num_fan_in.at(connecting_n) - 1;
 
@@ -604,7 +611,8 @@ class advanced_circuit_design_impl
         //     }
         // }
 
-        if (gate_lyt.outgoing_data_flow(upper_t).size() == 2)
+        if (gate_lyt.outgoing_data_flow(upper_t).size() + gate_lyt.outgoing_data_flow(gate_lyt.above(upper_t)).size() ==
+            2)
         {
             // for R->L, the direct output is determined by the second truth table in the spec; for L->R, the first
             upper_n_direct_output.emplace(kitty::compose_truth_table<tt, tt>(
