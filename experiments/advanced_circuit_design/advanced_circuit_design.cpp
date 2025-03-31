@@ -83,7 +83,7 @@ int main(int argc, char* argv[])  // NOLINT
     // needs to be changed if a different skeleton is used.
     if constexpr (std::is_same_v<gate_lib, fiction::sidb_on_the_fly_mini_gate_library>)
     {
-        design_gate_params.canvas = {{14, 10}, {21, 18}};  // smaller canvas
+        design_gate_params.canvas = {{14, 10}, {21, 19}};  // smaller canvas
     }
     else
     {
