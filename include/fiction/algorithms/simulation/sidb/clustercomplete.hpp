@@ -127,7 +127,8 @@ struct clustercomplete_params
     /**
      * Number of threads to make available to *ClusterComplete* for the unfolding stage.
      */
-    uint64_t available_threads = std::thread::hardware_concurrency();
+    uint64_t available_threads = 20;//std::thread::hardware_concurrency();
+    // uint64_t available_threads = std::thread::hardware_concurrency();
     /**
      * Option to decide if the *Ground State Space* statistics are reported to the standard output. By default, this
      * option is disabled.

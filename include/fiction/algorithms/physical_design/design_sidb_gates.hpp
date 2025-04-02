@@ -442,7 +442,7 @@ class design_sidb_gates_impl
     /**
      * Number of threads to be used for the design process.
      */
-    std::size_t number_of_threads{std::thread::hardware_concurrency()};
+    std::size_t number_of_threads{20};//std::thread::hardware_concurrency()};
 
     [[nodiscard]] std::vector<Lyt> extract_gate_designs(std::vector<Lyt>& gate_candidates) const noexcept
     {

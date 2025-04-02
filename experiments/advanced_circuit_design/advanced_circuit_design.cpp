@@ -174,8 +174,7 @@ int main(int argc, char* argv[])  // NOLINT
         return std::vector{xor5_tb};
     };
 
-    const auto create_supertile_tt =
-        []
+    const auto create_supertile_tt = []
     {
         static constexpr const char* or_not_tt_string = "1110";  // Output 1
         kitty::dynamic_truth_table   or_not_tb{2};
@@ -183,10 +182,10 @@ int main(int argc, char* argv[])  // NOLINT
         return std::vector{fiction::create_and_tt(), or_not_tb};
     };
 
-    std::map<std::string, std::vector<kitty::dynamic_truth_table>>
-        tt_map{{"TEST/fo", fiction::create_fan_out_tt()}, {"TEST/and3", create_and3_tt()},
-               {"TEST/xor3", create_xor3_tt()},           {"fontes18/xor5_r1", create_xor5_tt()},
-               {"fontes18/xor5Maj", create_xor5_tt()},    {"TEST/supertile", create_supertile_tt()}};
+    std::map<std::string, std::vector<kitty::dynamic_truth_table>> tt_map{
+        {"TEST/fo", fiction::create_fan_out_tt()}, {"TEST/and3", create_and3_tt()},
+        {"TEST/xor3", create_xor3_tt()},           {"fontes18/xor5_r1", create_xor5_tt()},
+        {"fontes18/xor5Maj", create_xor5_tt()},    {"TEST/supertile", create_supertile_tt()}};
 
     for (const auto& benchmark : fiction_experiments::all_benchmarks(bench_select))
     {

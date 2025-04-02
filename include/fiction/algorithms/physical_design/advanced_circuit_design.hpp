@@ -199,7 +199,8 @@ class advanced_circuit_design_impl
     using tt = kitty::dynamic_truth_table;
     static bool skip_physical_design_for_node(const GateLyt& gate_lyt, const mockturtle::node<Ntk>& n) noexcept
     {
-        return gate_lyt.is_constant(n) || gate_lyt.is_pi(n) || gate_lyt.is_po(n) || gate_lyt.is_constant(n) || (gate_lyt.is_buf(n) && !gate_lyt.is_ground_layer(gate_lyt.get_tile(n)));
+        return gate_lyt.is_constant(n) || gate_lyt.is_pi(n) || gate_lyt.is_po(n) || gate_lyt.is_constant(n) ||
+               (gate_lyt.is_buf(n) && !gate_lyt.is_ground_layer(gate_lyt.get_tile(n)));
     }
     /**
      *
@@ -321,7 +322,8 @@ class advanced_circuit_design_impl
                     std::vector<std::pair<double, uint64_t>> successful_trial_ratio_per_gate_implementation{};
                     std::mutex                               mutex_to_protect_successful_trial_ratios;
 
-                    const uint64_t num_threads = std::min(static_cast<uint64_t>(std::thread::hardware_concurrency()),
+                    // const uint64_t num_threads = std::min(static_cast<uint64_t>(std::thread::hardware_concurrency()),
+                    const uint64_t num_threads = std::min(20,
                                                           operational_gate_designs.at(n).second.size());
 
                     const uint64_t chunk_size = (operational_gate_designs.at(n).second.size() + num_threads - 1) /
