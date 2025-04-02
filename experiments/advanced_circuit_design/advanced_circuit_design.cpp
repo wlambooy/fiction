@@ -50,7 +50,7 @@
 // J. Drewniok, M. Walter, S. S. H. Ng, K. Walus, and R. Wille in IEEE NANO 2024
 // (https://ieeexplore.ieee.org/abstract/document/10628962).
 
-// #define USE_MINI
+#define USE_MINI
 
 int main(int argc, char* argv[])  // NOLINT
 {
@@ -246,7 +246,7 @@ int main(int argc, char* argv[])  // NOLINT
         params.sidb_on_the_fly_gate_library_parameters.use_skeleton_influence_bounds = true;
         params.sidb_on_the_fly_gate_library_parameters.design_gate_params            = design_gate_params;
         params.sidb_on_the_fly_gate_library_parameters.canvas_sidb_complex_gates =
-            4;  //
+            5;  //
                 // params.sidb_on_the_fly_gate_library_parameters.design_gate_params.number_of_sidbs;
 
         fiction::advanced_circuit_design_stats<gate_lyt> st{};
