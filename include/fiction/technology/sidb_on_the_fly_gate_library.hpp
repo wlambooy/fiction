@@ -416,7 +416,8 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, 60
      * @return Bestagon gate representation of `t` including mirroring.
      */
     template <typename GateLyt, typename CellLyt, typename Params>
-    static std::vector<fcn_gate> set_up_gates(const GateLyt& lyt, const tile<GateLyt>& t, Params& parameters = Params{})
+    static std::pair<std::vector<tt>, std::vector<fcn_gate>> set_up_gates(const GateLyt& lyt, const tile<GateLyt>& t,
+                                                                          Params parameters = Params{})
     {
         static_assert(is_gate_level_layout_v<GateLyt>, "GateLyt must be a gate-level layout");
         static_assert(has_cube_coord_v<CellLyt>, "CellLyt must be based on cube coordinates");
@@ -435,6 +436,7 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, 60
         if (parameters.use_skeleton_influence_bounds)
         {
             std::cout << "starting to determine skeleton influence bounds" << std::endl;
+
             parameters.design_gate_params.operational_params.cc_map =
                 skeleton_influence_bounds<CellLyt, sidb_skeleton_bestagon_library, GateLyt>(
                     lyt, {t},
@@ -442,6 +444,8 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, 60
                         parameters.design_gate_params.operational_params.simulation_parameters,
                         // {{0, 0}, {gate_x_size(), gate_y_size()}},
                         parameters.design_gate_params.canvas,
+                        // parameters.design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params,
+                        // true});
                         parameters.design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params});
             std::cout << "done determining skeleton influence bounds; size = "
                       << parameters.design_gate_params.operational_params.cc_map.value().size() << std::endl;
@@ -458,7 +462,6 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, 60
                         const auto layout =
                             add_defect_to_skeleton(cell_list_to_cell_level_layout<CellLyt>(ONE_IN_TWO_OUT_MAP.at(p)),
                                                    center_cell, absolute_cell, parameters);
-
                         return design_gates<decltype(layout), tt, CellLyt, GateLyt>(layout, create_fan_out_tt(),
                                                                                     parameters, p, t);
                     }
@@ -476,48 +479,25 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, 60
                             // two possible options: actual crossover and (parallel) hourglass wire
                             const auto pa = determine_port_routing(lyt, at);
 
-                            if (auto cell_list = TWO_IN_TWO_OUT_MAP.at({p, pa}); cell_list == DOUBLE_WIRE)
-                            {
-                                const auto layout =
-                                    add_defect_to_skeleton(cell_list_to_cell_level_layout<CellLyt>(TWO_IN_TWO_OUT),
-                                                           center_cell, absolute_cell, parameters);
-
-                                if (is_bestagon_gate_applicable(cell_list_to_cell_level_layout<CellLyt>(DOUBLE_WIRE),
-                                                                create_double_wire_tt(), parameters))
-                                {
-                                    return {DOUBLE_WIRE};
-                                }
-
-                                auto complex_gate_param = parameters;
-                                complex_gate_param.design_gate_params.number_of_sidbs =
-                                    parameters.canvas_sidb_complex_gates;
-
-                                return design_gates<decltype(layout), tt, CellLyt, GateLyt>(
-                                    layout, create_double_wire_tt(), complex_gate_param, p, t);
-                            }
-
                             const auto layout =
                                 add_defect_to_skeleton(cell_list_to_cell_level_layout<CellLyt>(TWO_IN_TWO_OUT),
                                                        center_cell, absolute_cell, parameters);
-
-                            if (is_bestagon_gate_applicable(cell_list_to_cell_level_layout<CellLyt>(CROSSING),
-                                                            create_crossing_wire_tt(), parameters))
-                            {
-                                return {CROSSING};
-                            }
 
                             auto complex_gate_param = parameters;
                             complex_gate_param.design_gate_params.number_of_sidbs =
                                 parameters.canvas_sidb_complex_gates;
 
                             return design_gates<decltype(layout), tt, CellLyt, GateLyt>(
-                                layout, create_crossing_wire_tt(), complex_gate_param, p, t);
+                                layout,
+                                TWO_IN_TWO_OUT_MAP.at({p, pa}) == DOUBLE_WIRE ? create_double_wire_tt() :
+                                                                                create_crossing_wire_tt(),
+                                complex_gate_param, p, t);
                         }
 
                         const auto cell_list = ONE_IN_ONE_OUT_MAP.at(p);
                         if (cell_list == EMPTY_GATE)
                         {
-                            return {EMPTY_GATE};
+                            return {{f}, {EMPTY_GATE}};
                         }
                         const auto layout = add_defect_to_skeleton(cell_list_to_cell_level_layout<CellLyt>(cell_list),
                                                                    center_cell, absolute_cell, parameters);
@@ -525,7 +505,7 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, 60
                         return design_gates<decltype(layout), tt, CellLyt, GateLyt>(layout, std::vector<tt>{f},
                                                                                     parameters, p, t);
                     }
-                    return {EMPTY_GATE};
+                    return {{f}, {EMPTY_GATE}};
                 }
             }
             if constexpr (fiction::has_is_inv_v<GateLyt>)
@@ -688,6 +668,7 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, 60
     [[nodiscard]] static bool is_bestagon_gate_applicable(const Lyt& bestagon_lyt, const std::vector<TT>& truth_table,
                                                           const Params& parameters)
     {
+        return false;
         auto       defect_copy               = parameters.defect_surface.clone();
         const auto sidbs_affected_by_defects = defect_copy.all_affected_sidbs(std::pair(0, 0));
 
@@ -701,11 +682,12 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, 60
                     return;
                 }
                 bestagon_lyt.foreach_cell(
-                    [&is_bestagon_gate_applicable, &sidbs_affected_by_defects](const auto& c)
+                    [&cd, &is_bestagon_gate_applicable, &sidbs_affected_by_defects](const auto& c)
                     {
                         if (sidbs_affected_by_defects.count(c))
                         {
                             is_bestagon_gate_applicable = false;
+                            return;
                         }
                     });
             });
@@ -715,11 +697,11 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, 60
         }
         bestagon_lyt.foreach_cell([&defect_copy, &bestagon_lyt](const auto& c)
                                   { defect_copy.assign_cell_type(c, bestagon_lyt.get_cell_type(c)); });
-        const auto status = is_operational(defect_copy, truth_table,
-                                           is_operational_params<cell<Lyt>>{
-                                               parameters.design_gate_params.operational_params.simulation_parameters,
-                                               parameters.design_gate_params.operational_params.sim_engine})
-                                .status;
+        const auto status =
+            is_operational(defect_copy, truth_table,
+                           is_operational_params{parameters.design_gate_params.operational_params.simulation_parameters,
+                                                 parameters.design_gate_params.operational_params.sim_engine})
+                .first;
         return static_cast<bool>(status == operational_status::OPERATIONAL);
     }
     /**
@@ -810,6 +792,8 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, 60
 
         if (spec == create_crossing_wire_tt() || spec == create_double_wire_tt())
         {
+            std::cout << "starting gate design for 2I2O tile " << tile << std::endl;
+
             if (is_sidb_gate_design_impossible(skeleton, spec, params))
             {
                 throw gate_design_exception<tt, GateLyt>(tile, create_id_tt(), p);
@@ -829,7 +813,7 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, 60
             throw gate_design_exception<tt, GateLyt>(tile, spec.front(), p);
         }
 
-        std::cout << "starting gate design" << std::endl;
+        std::cout << "starting gate design for tile " << tile << std::endl;
 
         const auto found_gate_layouts = design_sidb_gates(skeleton, spec, parameters.design_gate_params);
 
@@ -842,7 +826,6 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, 60
 
         return cell_list_to_gate<char>(cell_level_layout_to_list(found_gate_layouts.front()));
     }
-
     /**
      * This function designs an SiDB gate for a given Boolean function at a given tile and a given rotation. If atomic
      * defects exist, they are incorporated into the design process.
@@ -861,7 +844,7 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, 60
      * @return An `fcn_gate` object.
      */
     template <typename LytSkeleton, typename TT, typename CellLyt, typename GateLyt>
-    [[nodiscard]] static std::vector<fcn_gate>
+    [[nodiscard]] static std::pair<std::vector<TT>, std::vector<fcn_gate>>
     design_gates(const LytSkeleton& skeleton, const std::vector<TT>& spec,
                  const sidb_on_the_fly_gate_library_params<CellLyt>& parameters, const port_list<port_direction>& p,
                  const tile<GateLyt>& tile)
@@ -870,7 +853,7 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, 60
         static_assert(has_sidb_technology_v<CellLyt>, "CellLyt is not an SiDB layout");
         static_assert(has_cube_coord_v<CellLyt>, "CellLyt is not based on cube coordinates");
 
-        const auto create_fcn_gates = [](const auto& found_gate_layouts)
+        const auto create_fcn_gates = [&spec](const auto& found_gate_layouts)
         {
             std::vector<fcn_gate> gates{};
             gates.reserve(found_gate_layouts.size());
@@ -880,7 +863,7 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, 60
                 gates.emplace_back(cell_list_to_gate<char>(cell_level_layout_to_list(std::move(gate), false)));
             }
 
-            return gates;
+            return std::make_pair(spec, gates);
         };
 
         const auto params = is_sidb_gate_design_impossible_params{
@@ -888,12 +871,17 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, 60
 
         if (spec == create_crossing_wire_tt() || spec == create_double_wire_tt())
         {
+            std::cout << "starting gate design for 2I2O tile " << tile << std::endl;
+
             if (is_sidb_gate_design_impossible(skeleton, spec, params))
             {
                 throw gate_design_exception<tt, GateLyt>(tile, create_id_tt(), p);
             }
 
             const auto found_gate_layouts = design_sidb_gates(skeleton, spec, parameters.design_gate_params);
+
+            std::cout << "number of gate layouts found: " << found_gate_layouts.size() << std::endl;
+
             if (found_gate_layouts.empty())
             {
                 throw gate_design_exception<tt, GateLyt>(tile, create_id_tt(), p);
@@ -907,7 +895,7 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, 60
             throw gate_design_exception<tt, GateLyt>(tile, spec.front(), p);
         }
 
-        std::cout << "starting gate design" << std::endl;
+        std::cout << "starting gate design for tile " << tile << std::endl;
 
         const auto found_gate_layouts = design_sidb_gates(skeleton, spec, parameters.design_gate_params);
 
