@@ -2949,9 +2949,7 @@ static const char *__doc_fiction_clustercomplete_params =
 R"doc(The struct containing the parameters both passed on to pre-simulator
 Ground State Space, and used during simulation.)doc";
 
-static const char *__doc_fiction_clustercomplete_params_available_threads =
-R"doc(Number of threads to make available to *ClusterComplete* for the
-unfolding stage.)doc";
+static const char *__doc_fiction_clustercomplete_params_available_threads = R"doc()doc";
 
 static const char *__doc_fiction_clustercomplete_params_global_potential =
 R"doc(Global external electrostatic potential. Value is applied on each cell
@@ -6165,7 +6163,7 @@ static const char *__doc_fiction_detail_design_sidb_gates_impl_number_of_input_w
 
 static const char *__doc_fiction_detail_design_sidb_gates_impl_number_of_output_wires = R"doc(Number of output BDL wires.)doc";
 
-static const char *__doc_fiction_detail_design_sidb_gates_impl_number_of_threads = R"doc(Number of threads to be used for the design process.)doc";
+static const char *__doc_fiction_detail_design_sidb_gates_impl_number_of_threads = R"doc()doc";
 
 static const char *__doc_fiction_detail_design_sidb_gates_impl_output_bdl_wires = R"doc(Output BDL wires.)doc";
 
