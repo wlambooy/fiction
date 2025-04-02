@@ -50,7 +50,7 @@
 // J. Drewniok, M. Walter, S. S. H. Ng, K. Walus, and R. Wille in IEEE NANO 2024
 // (https://ieeexplore.ieee.org/abstract/document/10628962).
 
-#define USE_MINI
+// #define USE_MINI
 
 int main(int argc, char* argv[])  // NOLINT
 {
@@ -144,7 +144,7 @@ int main(int argc, char* argv[])  // NOLINT
     // constexpr const uint64_t bench_select = fiction_experiments::fo;
     // constexpr const uint64_t bench_select = fiction_experiments::and3;
     // constexpr const uint64_t bench_select = fiction_experiments::xor3;
-    constexpr const uint64_t bench_select = fiction_experiments::xor5_maj;
+    constexpr const uint64_t bench_select = fiction_experiments::supertile;
     // fiction_experiments::all & ~fiction_experiments::parity & ~fiction_experiments::two_bit_add_maj &
     // ~fiction_experiments::b1_r2 & ~fiction_experiments::clpl & ~fiction_experiments::iscas85 &
     // ~fiction_experiments::epfl & ~fiction_experiments::half_adder & ~fiction_experiments::full_adder &
@@ -174,11 +174,19 @@ int main(int argc, char* argv[])  // NOLINT
         return std::vector{xor5_tb};
     };
 
-    std::map<std::string, std::vector<kitty::dynamic_truth_table>> tt_map{{"TEST/fo", fiction::create_fan_out_tt()},
-                                                                          {"TEST/and3", create_and3_tt()},
-                                                                          {"TEST/xor3", create_xor3_tt()},
-                                                                          {"fontes18/xor5_r1", create_xor5_tt()},
-                                                                          {"fontes18/xor5Maj", create_xor5_tt()}};
+    const auto create_supertile_tt =
+        []
+    {
+        static constexpr const char* or_not_tt_string = "1110";  // Output 1
+        kitty::dynamic_truth_table   or_not_tb{2};
+        kitty::create_from_binary_string(or_not_tb, or_not_tt_string);
+        return std::vector{fiction::create_and_tt(), or_not_tb};
+    };
+
+    std::map<std::string, std::vector<kitty::dynamic_truth_table>>
+        tt_map{{"TEST/fo", fiction::create_fan_out_tt()}, {"TEST/and3", create_and3_tt()},
+               {"TEST/xor3", create_xor3_tt()},           {"fontes18/xor5_r1", create_xor5_tt()},
+               {"fontes18/xor5Maj", create_xor5_tt()},    {"TEST/supertile", create_supertile_tt()}};
 
     for (const auto& benchmark : fiction_experiments::all_benchmarks(bench_select))
     {

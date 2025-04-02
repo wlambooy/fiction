@@ -199,7 +199,7 @@ class advanced_circuit_design_impl
     using tt = kitty::dynamic_truth_table;
     static bool skip_physical_design_for_node(const GateLyt& gate_lyt, const mockturtle::node<Ntk>& n) noexcept
     {
-        return gate_lyt.is_constant(n) || gate_lyt.is_pi(n) || gate_lyt.is_po(n);
+        return gate_lyt.is_constant(n) || gate_lyt.is_pi(n) || gate_lyt.is_po(n) || gate_lyt.is_constant(n) || (gate_lyt.is_buf(n) && !gate_lyt.is_ground_layer(gate_lyt.get_tile(n)));
     }
     /**
      *
@@ -239,15 +239,7 @@ class advanced_circuit_design_impl
 
                 for (const auto& in_t : gate_lyt.incoming_data_flow(t))
                 {
-                    if (!gate_lyt.is_pi(gate_lyt.get_node(in_t)))
-                    {
-                        connecting_to_n.emplace_back(gate_lyt.get_node(in_t));
-                    }
-                }
-
-                for (const auto& in_t : gate_lyt.incoming_data_flow(gate_lyt.above(t)))
-                {
-                    if (!gate_lyt.is_pi(gate_lyt.get_node(in_t)))
+                    if (!skip_physical_design_for_node(gate_lyt, gate_lyt.get_node(in_t)))
                     {
                         connecting_to_n.emplace_back(gate_lyt.get_node(in_t));
                     }
@@ -255,17 +247,28 @@ class advanced_circuit_design_impl
 
                 for (const auto& out_t : gate_lyt.outgoing_data_flow(t))
                 {
-                    if (!gate_lyt.is_po(gate_lyt.get_node(out_t)))
+                    if (!skip_physical_design_for_node(gate_lyt, gate_lyt.get_node(out_t)))
                     {
                         connecting_to_n.emplace_back(gate_lyt.get_node(out_t));
                     }
                 }
 
-                for (const auto& out_t : gate_lyt.outgoing_data_flow(gate_lyt.above(t)))
+                if (gate_lyt.is_buf(n))
                 {
-                    if (!gate_lyt.is_po(gate_lyt.get_node(out_t)))
+                    for (const auto& in_t : gate_lyt.incoming_data_flow(gate_lyt.above(t)))
                     {
-                        connecting_to_n.emplace_back(gate_lyt.get_node(out_t));
+                        if (!skip_physical_design_for_node(gate_lyt, gate_lyt.get_node(in_t)))
+                        {
+                            connecting_to_n.emplace_back(gate_lyt.get_node(in_t));
+                        }
+                    }
+
+                    for (const auto& out_t : gate_lyt.outgoing_data_flow(gate_lyt.above(t)))
+                    {
+                        if (!skip_physical_design_for_node(gate_lyt, gate_lyt.get_node(out_t)))
+                        {
+                            connecting_to_n.emplace_back(gate_lyt.get_node(out_t));
+                        }
                     }
                 }
 

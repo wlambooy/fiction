@@ -826,7 +826,8 @@ class is_operational_impl
         while (canvas_charge_index <= max_index)
         {
             cds_canvas_copy.foreach_cell(
-                [&cds_layout, &cds_canvas_copy](const auto& c) {
+                [&cds_layout, &cds_canvas_copy](const auto& c)
+                {
                     cds_layout.assign_charge_state(c, cds_canvas_copy.get_charge_state(c),
                                                    charge_index_mode::KEEP_CHARGE_INDEX);
                 });
@@ -1165,10 +1166,22 @@ class is_operational_impl
                 return res;
             }
 
+            if ((*bdl_iterator).num_cells() > 60)
+            {
+                std::cout << "starting large exact simulation task (#SiDBs: " << (*bdl_iterator).num_cells() << ")"
+                          << std::endl;
+            }
+
             clustercomplete_params<cell<Lyt>> cc_params{parameters.simulation_parameters};
             const auto&                       res = clustercomplete(*bdl_iterator, cc_params);
 
-            if (parameters.print)
+            if ((*bdl_iterator).num_cells() > 60)
+            {
+                std::cout << "exact simulation terminated in " << res.simulation_runtime.count() << " seconds"
+                          << std::endl;
+            }
+
+            if ((*bdl_iterator).num_cells() > 60 || parameters.print)
             {
                 std::cout << std::endl;
                 if (res.charge_distributions.empty())
