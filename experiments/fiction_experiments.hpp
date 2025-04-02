@@ -85,10 +85,11 @@ inline constexpr uint64_t epfl             = 0b000000000000011111111111111111000
 
 /* TEST benchmarks */
 inline constexpr uint64_t fo               = 0b0000000000001000000000000000000000000000000000000000000000000000;
-inline constexpr uint64_t and3             = 0b0000000000010000000000000000000000000000000000000000000000000000;
-inline constexpr uint64_t xor3             = 0b0000000000100000000000000000000000000000000000000000000000000000;
-inline constexpr uint64_t supertile        = 0b0000000001000000000000000000000000000000000000000000000000000000;
-inline constexpr uint64_t test             = 0b0000000001111000000000000000000000000000000000000000000000000000;
+inline constexpr uint64_t cx               = 0b0000000000010000000000000000000000000000000000000000000000000000;
+inline constexpr uint64_t and3             = 0b0000000000100000000000000000000000000000000000000000000000000000;
+inline constexpr uint64_t xor3             = 0b0000000001000000000000000000000000000000000000000000000000000000;
+inline constexpr uint64_t supertile        = 0b0000000010000000000000000000000000000000000000000000000000000000;
+inline constexpr uint64_t test             = 0b0000000011111000000000000000000000000000000000000000000000000000;
 
 inline constexpr uint64_t all              = 0b000000000111111111111111111111111111111111111111111111111111111;
 
@@ -110,7 +111,7 @@ static constexpr const std::array benchmarks {
     "EPFL/int2float", "EPFL/priority", "EPFL/router", "EPFL/arbiter", "EPFL/voter", "EPFL/square", "EPFL/log2",
     "EPFL/sqrt", "EPFL/multiplier",
 
-    "TEST/fo", "TEST/and3", "TEST/xor3", "TEST/supertile"
+    "TEST/fo", "TEST/cx", "TEST/and3", "TEST/xor3", "TEST/supertile"
     };
 
 // clang-format on
@@ -175,7 +176,7 @@ inline std::vector<std::string> epfl_benchmarks(uint64_t selection = epfl)
 inline std::vector<std::string> test_benchmarks(uint64_t selection = test)
 {
     std::vector<std::string> result{};
-    for (uint64_t i = 51u; i < 55u; ++i)
+    for (uint64_t i = 51u; i < 56u; ++i)
     {
         if (((selection >> i) & 1u) != 0u)
         {
@@ -189,7 +190,7 @@ inline std::vector<std::string> test_benchmarks(uint64_t selection = test)
 inline std::vector<std::string> all_benchmarks(uint64_t selection = all)
 {
     std::vector<std::string> result{};
-    for (uint64_t i = 0u; i < 55u; ++i)
+    for (uint64_t i = 0u; i < 56u; ++i)
     {
         if (((selection >> i) & 1u) != 0u)
         {

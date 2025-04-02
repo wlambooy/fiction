@@ -322,8 +322,10 @@ class advanced_circuit_design_impl
                     std::vector<std::pair<double, uint64_t>> successful_trial_ratio_per_gate_implementation{};
                     std::mutex                               mutex_to_protect_successful_trial_ratios;
 
-                    // const uint64_t num_threads = std::min(static_cast<uint64_t>(std::thread::hardware_concurrency()),
-                    const uint64_t num_threads = std::min(uint64_t{20}, operational_gate_designs.at(n).second.size());
+                    const uint64_t num_threads = std::min(static_cast<uint64_t>(std::thread::hardware_concurrency()),
+                                                          operational_gate_designs.at(n).second.size());
+                    // const uint64_t num_threads = std::min(uint64_t{20},
+                    // operational_gate_designs.at(n).second.size());
 
                     const uint64_t chunk_size = (operational_gate_designs.at(n).second.size() + num_threads - 1) /
                                                 num_threads;  // Ceiling division

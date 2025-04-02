@@ -202,27 +202,10 @@ class design_sidb_gates_impl
             return std::vector<Lyt>{};
         }
 
-        const std::vector<Lyt>& all_canvas_layouts = create_all_possible_canvas_layouts();
+        std::vector<Lyt> gate_candidates = create_all_possible_canvas_layouts();
 
-        std::vector<Lyt> gate_candidates{};
-        gate_candidates.reserve(all_canvas_layouts.size());
-
-        std::mutex mutex_to_protect_gate_candidates{};  // used to control access to shared resources
-
-        // The canvas layouts are to be inserted in the skeleton to create all gate candidates; this is done in parallel
-        auto insert_canvas_sidbs = [&](const Lyt& canvas_lyt)
-        {
-            Lyt gate_candidate = skeleton_layout.clone();
-
-            canvas_lyt.foreach_cell([&gate_candidate](const auto& c)
-                                    { gate_candidate.assign_cell_type(c, Lyt::technology::cell_type::LOGIC); });
-
-            const std::lock_guard lock{mutex_to_protect_gate_candidates};
-            gate_candidates.emplace_back(gate_candidate);
-        };
-
-        const std::size_t num_threads = std::min(number_of_threads, all_canvas_layouts.size());
-        const std::size_t chunk_size  = (all_canvas_layouts.size() + num_threads - 1) / num_threads;
+        const std::size_t num_threads = std::min(number_of_threads, gate_candidates.size());
+        const std::size_t chunk_size  = (gate_candidates.size() + num_threads - 1) / num_threads;
 
         std::vector<std::thread> threads{};
         threads.reserve(num_threads);
@@ -230,14 +213,17 @@ class design_sidb_gates_impl
         for (std::size_t i = 0; i < num_threads; ++i)
         {
             threads.emplace_back(
-                [i, chunk_size, &insert_canvas_sidbs, &all_canvas_layouts]
+                [this, i, chunk_size, &gate_candidates]
                 {
                     const std::size_t start_index = i * chunk_size;
-                    const std::size_t end_index   = std::min(start_index + chunk_size, all_canvas_layouts.size());
+                    const std::size_t end_index   = std::min(start_index + chunk_size, gate_candidates.size());
 
                     for (std::size_t j = start_index; j < end_index; ++j)
                     {
-                        insert_canvas_sidbs(all_canvas_layouts.at(j));
+                        skeleton_layout.foreach_cell(
+                            [this, &gate_candidates, &j](const auto& c)
+                            { gate_candidates[j].assign_cell_type(c, skeleton_layout.get_cell_type(c)); });
+
                     }
                 });
         }
@@ -249,6 +235,8 @@ class design_sidb_gates_impl
                 thread.join();
             }
         }
+
+        print_layout(gate_candidates.front());
 
         return extract_gate_designs(gate_candidates);
     }
@@ -442,7 +430,8 @@ class design_sidb_gates_impl
     /**
      * Number of threads to be used for the design process.
      */
-    std::size_t number_of_threads{20};  // std::thread::hardware_concurrency()};
+    // std::size_t number_of_threads{20};  // std::thread::hardware_concurrency()};
+    std::size_t number_of_threads{std::thread::hardware_concurrency()};
 
     [[nodiscard]] std::vector<Lyt> extract_gate_designs(std::vector<Lyt>& gate_candidates) const noexcept
     {

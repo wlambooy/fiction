@@ -142,6 +142,7 @@ int main(int argc, char* argv[])  // NOLINT
         "sidb_circuits_with_defects", "benchmark", "runtime", "number of aspect ratios", "equivalent"};
 
     // constexpr const uint64_t bench_select = fiction_experiments::fo;
+    // constexpr const uint64_t bench_select = fiction_experiments::cx;
     // constexpr const uint64_t bench_select = fiction_experiments::and3;
     // constexpr const uint64_t bench_select = fiction_experiments::xor3;
     constexpr const uint64_t bench_select = fiction_experiments::supertile;
@@ -183,7 +184,7 @@ int main(int argc, char* argv[])  // NOLINT
     };
 
     std::map<std::string, std::vector<kitty::dynamic_truth_table>> tt_map{
-        {"TEST/fo", fiction::create_fan_out_tt()}, {"TEST/and3", create_and3_tt()},
+        {"TEST/fo", fiction::create_fan_out_tt()}, {"TEST/cx", fiction::create_crossing_wire_tt()}, {"TEST/and3", create_and3_tt()},
         {"TEST/xor3", create_xor3_tt()},           {"fontes18/xor5_r1", create_xor5_tt()},
         {"fontes18/xor5Maj", create_xor5_tt()},    {"TEST/supertile", create_supertile_tt()}};
 
@@ -246,7 +247,7 @@ int main(int argc, char* argv[])  // NOLINT
         params.sidb_on_the_fly_gate_library_parameters.use_skeleton_influence_bounds = true;
         params.sidb_on_the_fly_gate_library_parameters.design_gate_params            = design_gate_params;
         params.sidb_on_the_fly_gate_library_parameters.canvas_sidb_complex_gates =
-            5;  //
+            4;  //
                 // params.sidb_on_the_fly_gate_library_parameters.design_gate_params.number_of_sidbs;
 
         fiction::advanced_circuit_design_stats<gate_lyt> st{};
