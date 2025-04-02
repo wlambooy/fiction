@@ -223,7 +223,6 @@ class design_sidb_gates_impl
                         skeleton_layout.foreach_cell(
                             [this, &gate_candidates, &j](const auto& c)
                             { gate_candidates[j].assign_cell_type(c, skeleton_layout.get_cell_type(c)); });
-
                     }
                 });
         }
@@ -235,8 +234,6 @@ class design_sidb_gates_impl
                 thread.join();
             }
         }
-
-        print_layout(gate_candidates.front());
 
         return extract_gate_designs(gate_candidates);
     }
