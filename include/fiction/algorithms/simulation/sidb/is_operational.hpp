@@ -1152,13 +1152,13 @@ class is_operational_impl
 
                 cc_params.available_threads = 1;
 
-                // for (const auto& [c, bounds] : parameters.cc_map.value())
-                // {
-                //     if ((*bdl_iterator).get_cell_type(c) != sidb_technology::cell_type::EMPTY)
-                //     {
-                //         cc_params.insert_local_external_potential(c, bounds);
-                //     }
-                // }
+                for (const auto& [c, bounds] : parameters.cc_map.value())
+                {
+                    if ((*bdl_iterator).get_cell_type(c) != sidb_technology::cell_type::EMPTY)
+                    {
+                        cc_params.insert_local_external_potential(c, bounds);
+                    }
+                }
                 const auto& res = clustercomplete(*bdl_iterator, cc_params);
                 return res;
             }

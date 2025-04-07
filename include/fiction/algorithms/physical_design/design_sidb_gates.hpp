@@ -380,7 +380,7 @@ class design_sidb_gates_impl
                             // #if (PROGRESS_BARS)
                             //                             // update the progress bar
                             //                             bar(num_solutions_found.load());
-// #endif
+                            // #endif
                         }
                     }
                 });
