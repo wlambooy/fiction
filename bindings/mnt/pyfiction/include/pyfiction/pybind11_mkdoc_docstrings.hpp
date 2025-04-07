@@ -5087,8 +5087,6 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl_params = R"
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_prune_gate_designs = R"doc()doc";
 
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_skip_physical_design_for_node = R"doc()doc";
-
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_stats = R"doc(Statistics for the on-the-fly circuit design.)doc";
 
 static const char *__doc_fiction_detail_any_to_string =
@@ -15750,6 +15748,8 @@ Returns:
 
 static const char *__doc_fiction_is_clocked_layout = R"doc()doc";
 
+static const char *__doc_fiction_is_complex_gate = R"doc()doc";
+
 static const char *__doc_fiction_is_coordinate_layout = R"doc()doc";
 
 static const char *__doc_fiction_is_crossable_wire =
@@ -16342,6 +16342,8 @@ Parameter ``lyt``:
 
 Returns:
     Number of magnets as counted by MagCAD.)doc";
+
+static const char *__doc_fiction_make_gate_design_params_for_complex_gates = R"doc()doc";
 
 static const char *__doc_fiction_manhattan_distance =
 R"doc(The Manhattan distance :math:`D` between two layout coordinates
@@ -20884,6 +20886,8 @@ static const char *__doc_fiction_skeleton_influence_bounds_params_canvas = R"doc
 static const char *__doc_fiction_skeleton_influence_bounds_params_simulation_parameters =
 R"doc(The simulation parameters for the physical simulation of the ground
 state.)doc";
+
+static const char *__doc_fiction_skip_physical_design_for_node = R"doc()doc";
 
 static const char *__doc_fiction_smart_distance_cache_functor =
 R"doc(A distance functor that internally uses a `sparse_distance_map` as a
