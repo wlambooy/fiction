@@ -59,7 +59,7 @@ enum class operational_status : uint8_t
 /**
  * Parameters for the `is_operational` algorithm. TODO
  */
-template <typename CellLyt>
+template <typename CellType>
 struct is_operational_params
 {
     /**
@@ -178,7 +178,7 @@ struct is_operational_params
      */
     simulation_results_mode simulation_results_retention = simulation_results_mode::DISCARD_SIMULATION_RESULTS;
     // TODO
-    std::optional<typename clustercomplete_params<CellLyt>::bounded_local_external_potential> cc_map{};
+    std::optional<typename clustercomplete_params<CellType>::bounded_local_external_potential> cc_map{};
     bool                                                                                      print = false;
 };
 
@@ -483,24 +483,21 @@ class is_operational_impl
                     }
                 }
             }
-        }
+            // if the layout is not discarded during the three filtering steps, it is considered operational.
+            // This is only an approximation.
+            if (parameters.strategy_to_analyze_operational_status ==
+                is_operational_params<cell<Lyt>>::operational_analysis_strategy::FILTER_ONLY)
+            {
+                return {operational_assessment<Lyt>{operational_status::OPERATIONAL}, non_operationality_reason::NONE};
+            }
 
-        // if the layout is not discarded during the three filtering steps, it is considered operational.
-        // This is only an approximation.
-        if (parameters.strategy_to_analyze_operational_status ==
-                is_operational_params<cell<Lyt>>::operational_analysis_strategy::FILTER_ONLY &&
-            !canvas_lyt.is_empty())
-        {
-            return {operational_assessment<Lyt>{operational_status::OPERATIONAL}, non_operationality_reason::NONE};
-        }
-
-        if (parameters.strategy_to_analyze_operational_status !=
-                is_operational_params<cell<Lyt>>::operational_analysis_strategy::SIMULATION_ONLY &&
-            parameters.strategy_to_analyze_operational_status !=
-                is_operational_params<cell<Lyt>>::operational_analysis_strategy::FILTER_THEN_SIMULATION &&
-            !canvas_lyt.is_empty())
-        {
-            return {operational_assessment<Lyt>{operational_status::OPERATIONAL}, non_operationality_reason::NONE};
+            if (parameters.strategy_to_analyze_operational_status !=
+                    is_operational_params<cell<Lyt>>::operational_analysis_strategy::SIMULATION_ONLY &&
+                parameters.strategy_to_analyze_operational_status !=
+                    is_operational_params<cell<Lyt>>::operational_analysis_strategy::FILTER_THEN_SIMULATION)
+            {
+                return {operational_assessment<Lyt>{operational_status::OPERATIONAL}, non_operationality_reason::NONE};
+            }
         }
 
         operational_assessment<Lyt> assessment_results{operational_status::OPERATIONAL};
@@ -1155,13 +1152,13 @@ class is_operational_impl
 
                 cc_params.available_threads = 1;
 
-                for (const auto& [c, bounds] : parameters.cc_map.value())
-                {
-                    if ((*bdl_iterator).get_cell_type(c) != sidb_technology::cell_type::EMPTY)
-                    {
-                        cc_params.insert_local_external_potential(c, bounds);
-                    }
-                }
+                // for (const auto& [c, bounds] : parameters.cc_map.value())
+                // {
+                //     if ((*bdl_iterator).get_cell_type(c) != sidb_technology::cell_type::EMPTY)
+                //     {
+                //         cc_params.insert_local_external_potential(c, bounds);
+                //     }
+                // }
                 const auto& res = clustercomplete(*bdl_iterator, cc_params);
                 return res;
             }

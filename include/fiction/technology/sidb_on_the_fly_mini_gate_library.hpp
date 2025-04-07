@@ -123,9 +123,16 @@ class sidb_on_the_fly_mini_gate_library
                                 add_defect_to_skeleton(cell_list_to_cell_level_layout<CellLyt>(TWO_IN_TWO_OUT),
                                                        center_cell, absolute_cell, parameters);
 
-                            auto complex_gate_param = parameters;
-                            complex_gate_param.design_gate_params.number_of_sidbs =
-                                parameters.canvas_sidb_complex_gates;
+                            sidb_on_the_fly_gate_library_params<CellLyt> complex_gate_param = parameters;
+                            complex_gate_param.design_gate_params =
+                                make_gate_design_params_for_complex_gates<design_sidb_gates_params<CellLyt>, CellLyt>(
+                                    parameters.canvas_sidb_complex_gates);
+
+                            complex_gate_param.design_gate_params.max_num_solutions =
+                                parameters.design_gate_params.max_num_solutions;
+
+                            // complex_gate_param.design_gate_params.operational_params.cc_map =
+                            //     parameters.design_gate_params.operational_params.cc_map;
 
                             return design_gate<decltype(layout), tt, CellLyt, GateLyt>(
                                 layout,
@@ -324,16 +331,18 @@ class sidb_on_the_fly_mini_gate_library
         {
             std::cout << "starting to determine skeleton influence bounds" << std::endl;
 
-            parameters.design_gate_params.operational_params.cc_map =
-                skeleton_influence_bounds<CellLyt, sidb_skeleton_bestagon_mini_library, GateLyt>(
-                    lyt, {t},
-                    skeleton_influence_bounds_params<cell<CellLyt>>{
-                        parameters.design_gate_params.operational_params.simulation_parameters,
-                        // {{0, 0}, {gate_x_size(), gate_y_size()}},
+            parameters.design_gate_params.operational_params
+                .cc_map = skeleton_influence_bounds<CellLyt, sidb_skeleton_bestagon_mini_library, GateLyt>(
+                lyt, {t},
+                skeleton_influence_bounds_params<cell<CellLyt>>{
+                    parameters.design_gate_params.operational_params.simulation_parameters,
+                    // {{0, 0}, {gate_x_size(), gate_y_size()}},
+                    is_complex_gate<GateLyt>(lyt, n) ?
+                        make_gate_design_params_for_complex_gates<design_sidb_gates_params<CellLyt>, CellLyt>().canvas :
                         parameters.design_gate_params.canvas,
-                        // parameters.design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params,
-                        // true});
-                        parameters.design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params});
+                    // parameters.design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params,
+                    // true});
+                    parameters.design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params});
             std::cout << "done determining skeleton influence bounds; size = "
                       << parameters.design_gate_params.operational_params.cc_map.value().size() << std::endl;
         }
@@ -370,9 +379,16 @@ class sidb_on_the_fly_mini_gate_library
                                 add_defect_to_skeleton(cell_list_to_cell_level_layout<CellLyt>(TWO_IN_TWO_OUT),
                                                        center_cell, absolute_cell, parameters);
 
-                            auto complex_gate_param = parameters;
-                            complex_gate_param.design_gate_params.number_of_sidbs =
-                                parameters.canvas_sidb_complex_gates;
+                            sidb_on_the_fly_gate_library_params<CellLyt> complex_gate_param = parameters;
+                            complex_gate_param.design_gate_params = make_gate_design_params_for_complex_gates<
+                                design_sidb_gates_params<sidb_defect_surface<CellLyt>>, sidb_defect_surface<CellLyt>>(
+                                parameters.canvas_sidb_complex_gates);
+
+                            complex_gate_param.design_gate_params.max_num_solutions =
+                                parameters.design_gate_params.max_num_solutions;
+
+                            complex_gate_param.design_gate_params.operational_params.cc_map =
+                                parameters.design_gate_params.operational_params.cc_map;
 
                             return design_gates<decltype(layout), tt, CellLyt, GateLyt>(
                                 layout,

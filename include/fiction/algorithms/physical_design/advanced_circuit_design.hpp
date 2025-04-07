@@ -125,6 +125,7 @@ class advanced_circuit_design_impl
             if (!gate_lyt.has_value())
             {
                 // P&R was unsuccessful
+                std::cout << "UNSUCCESS" << std::endl;
                 break;
             }
 
@@ -135,8 +136,10 @@ class advanced_circuit_design_impl
                 gate_lyt->foreach_node(
                     [&, this](const auto& n, [[maybe_unused]] auto i)
                     {
+                        std::cout << "yes " << gate_lyt->get_tile(n) << std::endl;
                         if (!skip_physical_design_for_node(*gate_lyt, n))
                         {
+                            std::cout << "wa" << std::endl;
                             const auto t = gate_lyt->get_tile(n);
 
                             operational_gate_designs[n] =
@@ -197,11 +200,7 @@ class advanced_circuit_design_impl
     advanced_circuit_design_stats<GateLyt>& stats;
 
     using tt = kitty::dynamic_truth_table;
-    static bool skip_physical_design_for_node(const GateLyt& gate_lyt, const mockturtle::node<Ntk>& n) noexcept
-    {
-        return gate_lyt.is_constant(n) || gate_lyt.is_pi(n) || gate_lyt.is_po(n) || gate_lyt.is_constant(n) ||
-               (gate_lyt.is_buf(n) && !gate_lyt.is_ground_layer(gate_lyt.get_tile(n)));
-    }
+
     /**
      *
      */
@@ -240,17 +239,17 @@ class advanced_circuit_design_impl
 
                 for (const auto& in_t : gate_lyt.incoming_data_flow(t))
                 {
-                    if (!skip_physical_design_for_node(gate_lyt, gate_lyt.get_node(in_t)))
+                    if (!gate_lyt.is_pi(gate_lyt.get_node(in_t)))
                     {
-                        connecting_to_n.emplace_back(gate_lyt.get_node(in_t));
+                        connecting_to_n.emplace_back(gate_lyt.get_node(gate_lyt.below(in_t)));
                     }
                 }
 
                 for (const auto& out_t : gate_lyt.outgoing_data_flow(t))
                 {
-                    if (!skip_physical_design_for_node(gate_lyt, gate_lyt.get_node(out_t)))
+                    if (!gate_lyt.is_po(gate_lyt.get_node(out_t)))
                     {
-                        connecting_to_n.emplace_back(gate_lyt.get_node(out_t));
+                        connecting_to_n.emplace_back(gate_lyt.get_node(gate_lyt.below(out_t)));
                     }
                 }
 
@@ -258,17 +257,17 @@ class advanced_circuit_design_impl
                 {
                     for (const auto& in_t : gate_lyt.incoming_data_flow(gate_lyt.above(t)))
                     {
-                        if (!skip_physical_design_for_node(gate_lyt, gate_lyt.get_node(in_t)))
+                        if (!gate_lyt.is_pi(gate_lyt.get_node(in_t)))
                         {
-                            connecting_to_n.emplace_back(gate_lyt.get_node(in_t));
+                            connecting_to_n.emplace_back(gate_lyt.get_node(gate_lyt.below(in_t)));
                         }
                     }
 
                     for (const auto& out_t : gate_lyt.outgoing_data_flow(gate_lyt.above(t)))
                     {
-                        if (!skip_physical_design_for_node(gate_lyt, gate_lyt.get_node(out_t)))
+                        if (!gate_lyt.is_po(gate_lyt.get_node(out_t)))
                         {
-                            connecting_to_n.emplace_back(gate_lyt.get_node(out_t));
+                            connecting_to_n.emplace_back(gate_lyt.get_node(gate_lyt.below(out_t)));
                         }
                     }
                 }
@@ -545,6 +544,30 @@ class advanced_circuit_design_impl
         const tile<GateLyt> t            = {gate_lyt.get_tile(n).x, gate_lyt.get_tile(n).y, 0};
         const tile<GateLyt> connecting_t = {gate_lyt.get_tile(connecting_n).x, gate_lyt.get_tile(connecting_n).y, 0};
 
+        std::cout << "orig t: " << gate_lyt.get_tile(n) << "\tnode f:";
+        kitty::print_binary(gate_lyt.node_function(n));
+        std::cout << std::endl;
+        std::cout << "orig connecting_t: " << gate_lyt.get_tile(connecting_n) << "\tnode f:";
+        kitty::print_binary(gate_lyt.node_function(connecting_n));
+        std::cout << std::endl;
+        std::cout << "t: " << t << "\tnode f:";
+        kitty::print_binary(gate_lyt.node_function(gate_lyt.get_node(t)));
+        if (!gate_lyt.is_dead(gate_lyt.get_node(gate_lyt.above(t))))
+        {
+            std::cout << "\tnode f above:";
+            kitty::print_binary(gate_lyt.node_function(gate_lyt.get_node(gate_lyt.above(t))));
+        }
+        std::cout << std::endl;
+
+        std::cout << "connecting_t: " << connecting_t << "\tnode f:";
+        kitty::print_binary(gate_lyt.node_function(gate_lyt.get_node(connecting_t)));
+        if (!gate_lyt.is_dead(gate_lyt.get_node(gate_lyt.above(connecting_t))))
+        {
+            std::cout << "\tnode f above:";
+            kitty::print_binary(gate_lyt.node_function(gate_lyt.get_node(gate_lyt.above(connecting_t))));
+        }
+        std::cout << std::endl;
+
         bool connecting_n_is_incoming = false;
 
         for (const auto& incoming_t : gate_lyt.incoming_data_flow(t))
@@ -666,6 +689,13 @@ class advanced_circuit_design_impl
         {
             lower_n_outputs.emplace_back(kitty::compose_truth_table<tt, tt>(lower_tt, input_to_lower_n));
         }
+
+        for (const tt& lower_tt : lower_n_outputs)
+        {
+            kitty::print_binary(lower_tt);
+            std::cout << std::endl;
+        }
+        std::cout << std::endl;
 
         return lower_n_outputs;
     }

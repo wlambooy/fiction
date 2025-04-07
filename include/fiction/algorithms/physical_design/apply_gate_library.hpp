@@ -15,6 +15,7 @@
 
 #include <cstdint>
 #endif
+#include <kitty/print.hpp>
 #include <mockturtle/traits.hpp>
 
 #include <algorithm>
@@ -90,6 +91,11 @@ class apply_gate_library_impl
             {
                 if (!gate_lyt.is_constant(n))
                 {
+                    // std::cout << "what now" << gate_lyt.get_tile(n) << std::endl;
+                    // std::cout << "what now is ";
+                    // kitty::print_binary(gate_lyt.node_function(n));
+                    // std::cout << std::endl;
+
                     if (const auto t = gate_lyt.get_tile(n);
                         (!blacklist.has_value() || blacklist.value().count(t) == 0) &&
                         (!whitelist.has_value() || whitelist.value().count(t) != 0))

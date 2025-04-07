@@ -19,6 +19,7 @@
 
 #include <fmt/format.h>
 #include <kitty/traits.hpp>
+#include <mockturtle/utils/progress_bar.hpp>
 #include <mockturtle/utils/stopwatch.hpp>
 
 #include <algorithm>
@@ -311,11 +312,25 @@ class design_sidb_gates_impl
 
         const uint64_t max_number_of_solutions = std::min(params.max_num_solutions, stats.number_of_layouts);
 
+// #if (PROGRESS_BARS)
+        //         // initialize a progress bar
+        //         mockturtle::progress_bar bar{
+        //             static_cast<uint32_t>(max_number_of_solutions),
+        //             fmt::format("[i] looking for {} random operational gate designs: ", max_number_of_solutions) +
+        //             "|{0}|"};
+        // #endif
+
+        const auto str =
+            fmt::format("[i] looking for {} random operational gate designs\t|\tfound: ", max_number_of_solutions);
+
+        std::cout << str + '0';
+        std::fflush(stdout);
+
         for (uint64_t z = 0u; z < number_of_threads; z++)
         {
             threads.emplace_back(
                 [this, &num_solutions_found, &max_number_of_solutions, &mutex_to_protect_designed_gate_layouts,
-                 &check_if_gate_design_is_already_present, &parameter, &randomly_designed_gate_layouts]
+                 &check_if_gate_design_is_already_present, &parameter, &randomly_designed_gate_layouts, &str]
                 {
                     while (num_solutions_found < max_number_of_solutions)
                     {
@@ -358,6 +373,14 @@ class design_sidb_gates_impl
 
                             randomly_designed_gate_layouts.push_back(std::move(result_lyt));
                             ++num_solutions_found;
+
+                            std::cout << '\r' + str + std::to_string(num_solutions_found);
+                            std::fflush(stdout);
+
+                            // #if (PROGRESS_BARS)
+                            //                             // update the progress bar
+                            //                             bar(num_solutions_found.load());
+// #endif
                         }
                     }
                 });

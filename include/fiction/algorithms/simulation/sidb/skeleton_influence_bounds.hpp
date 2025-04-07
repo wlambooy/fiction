@@ -14,6 +14,8 @@
 #include "fiction/traits.hpp"
 #include "fiction/utils/layout_utils.hpp"
 
+#include <fiction/algorithms/physical_design/design_sidb_gates.hpp>
+
 #include <algorithm>
 #include <array>
 #include <cstdint>
@@ -74,13 +76,40 @@ class skeleton_influence_bounds_impl
                         return;
                     }
 
-                    if (!(gate_lyt.is_constant(n) || gate_lyt.is_pi(n) || gate_lyt.is_po(n)) &&
-                        tiles_of_interest.size() == 1)
+                    if (!skip_physical_design_for_node(gate_lyt, n) && tiles_of_interest.size() == 1)
                     {
                         if (tiles_of_interest.size() == 1 && tiles_of_interest.front() == gate_lyt.get_tile(n))
                         {
                             std::cout << "Skeleton looks like:" << std::endl;
-                            print_layout(apply_gate_library<CellLyt, SkeletonGateLibrary, GateLyt>(gate_lyt));
+                            CellLyt lyt = apply_gate_library<CellLyt, SkeletonGateLibrary, GateLyt>(gate_lyt);
+                            gate_lyt.foreach_node(
+                                [&](const auto& nn)
+                                {
+                                    if (skip_physical_design_for_node(gate_lyt, nn))
+                                    {
+                                        return;
+                                    }
+                                    const auto& t = gate_lyt.get_tile(nn);
+                                    const auto  canvas =
+                                        is_complex_gate<GateLyt>(gate_lyt, nn) ?
+                                             make_gate_design_params_for_complex_gates<design_sidb_gates_params<CellLyt>,
+                                                                                       CellLyt>()
+                                                .canvas :
+                                             params.canvas;
+
+                                    for (const cell<CellLyt>& relative_c :
+                                         all_coordinates_in_spanned_area(canvas.first, canvas.second))
+                                    {
+                                        const cell<CellLyt> absolute_c =
+                                            relative_to_absolute_cell_position<SkeletonGateLibrary::gate_x_size(),
+                                                                               SkeletonGateLibrary::gate_y_size(),
+                                                                               GateLyt, CellLyt>(gate_lyt, t,
+                                                                                                 relative_c);
+                                        lyt.assign_cell_type(absolute_c, sidb_technology::cell_type::LOGIC);
+                                    }
+                                });
+
+                            print_layout(lyt);
                             std::cout << std::endl;
                         }
 
@@ -128,7 +157,7 @@ class skeleton_influence_bounds_impl
         gate_lyt.foreach_node(
             [&](const auto& n)
             {
-                if (gate_lyt.is_constant(n))
+                if (skip_physical_design_for_node(gate_lyt, n))
                 {
                     return;
                 }

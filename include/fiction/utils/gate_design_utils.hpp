@@ -24,8 +24,8 @@ namespace fiction
  * @param n Corresponding node in the gate-level layout.
  */
 template <typename CellLyt, typename GateLibrary, typename GateLyt>
-void assign_gate(CellLyt& cell_lyt, const cell<CellLyt>& c, const typename GateLibrary::fcn_gate& g,
-                 const GateLyt& gate_lyt, const mockturtle::node<GateLyt>& n)
+static void assign_gate(CellLyt& cell_lyt, const cell<CellLyt>& c, const typename GateLibrary::fcn_gate& g,
+                        const GateLyt& gate_lyt, const mockturtle::node<GateLyt>& n)
 {
     if (gate_lyt.is_pi(n) || gate_lyt.is_po(n))
     {
@@ -65,6 +65,39 @@ void assign_gate(CellLyt& cell_lyt, const cell<CellLyt>& c, const typename GateL
             }
         }
     }
+}
+
+template <typename GateLyt>
+static bool skip_physical_design_for_node(const GateLyt& gate_lyt, const mockturtle::node<GateLyt>& n) noexcept
+{
+    return gate_lyt.is_constant(n) || gate_lyt.is_pi(n) || gate_lyt.is_po(n) || gate_lyt.is_constant(n) ||
+           (gate_lyt.is_buf(n) && !gate_lyt.is_ground_layer(gate_lyt.get_tile(n)));
+}
+
+template <typename GateLyt>
+static bool is_complex_gate(const GateLyt& gate_lyt, const mockturtle::node<GateLyt>& n) noexcept
+{
+    const auto t  = gate_lyt.get_tile(n);
+    const auto at = gate_lyt.above(t);
+
+    return gate_lyt.is_buf(n) && t != at && gate_lyt.is_wire_tile(at);
+}
+
+template <typename Params, typename CellLyt>
+static Params make_gate_design_params_for_complex_gates(const uint64_t canvas_sidb_complex_gates = 0) noexcept
+{
+    Params design_gate_params{};
+    design_gate_params.number_of_sidbs = canvas_sidb_complex_gates;
+    design_gate_params.design_mode     = design_sidb_gates_params<CellLyt>::design_sidb_gates_mode::RANDOM;
+    design_gate_params.canvas          = {{10, 9}, {24, 19}};
+    // design_gate_params.operational_params.op_condition_kinks =
+    // is_operational_params<cell<CellLyt>>::operational_condition_kinks::TOLERATE_KINKS;
+    design_gate_params.operational_params.op_condition_kinks =
+        is_operational_params<cell<CellLyt>>::operational_condition_kinks::REJECT_KINKS;
+    design_gate_params.operational_params.strategy_to_analyze_operational_status =
+        is_operational_params<cell<CellLyt>>::operational_analysis_strategy::FILTER_THEN_SIMULATION;
+
+    return design_gate_params;
 }
 
 }  // namespace fiction

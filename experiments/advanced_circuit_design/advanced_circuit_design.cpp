@@ -83,7 +83,7 @@ int main(int argc, char* argv[])  // NOLINT
     // needs to be changed if a different skeleton is used.
     if constexpr (std::is_same_v<gate_lib, fiction::sidb_on_the_fly_mini_gate_library>)
     {
-        design_gate_params.canvas = {{14, 10}, {21, 19}};  // smaller canvas
+        design_gate_params.canvas = {{14, 9}, {20, 19}};  // smaller canvas
     }
     else
     {
@@ -185,8 +185,9 @@ int main(int argc, char* argv[])  // NOLINT
 
     std::map<std::string, std::vector<kitty::dynamic_truth_table>> tt_map{
         {"TEST/fo", fiction::create_fan_out_tt()}, {"TEST/cx", fiction::create_crossing_wire_tt()},
-        {"TEST/and3", create_and3_tt()},           {"TEST/xor3", create_xor3_tt()},           {"fontes18/xor5_r1", create_xor5_tt()},
-        {"fontes18/xor5Maj", create_xor5_tt()},    {"TEST/supertile", create_supertile_tt()}};
+        {"TEST/and3", create_and3_tt()},           {"TEST/xor3", create_xor3_tt()},
+        {"fontes18/xor5_r1", create_xor5_tt()},    {"fontes18/xor5Maj", create_xor5_tt()},
+        {"TEST/supertile", create_supertile_tt()}};
 
     for (const auto& benchmark : fiction_experiments::all_benchmarks(bench_select))
     {
@@ -200,7 +201,7 @@ int main(int argc, char* argv[])  // NOLINT
         // compute depth
         const mockturtle::depth_view depth_xag{xag};
 
-        const fiction::technology_mapping_params tech_map_params = fiction::all_2_input_functions();
+        const fiction::technology_mapping_params tech_map_params = fiction::all_standard_2_input_functions();
 
         // parameters for cut rewriting
         mockturtle::cut_rewriting_params cut_params{};
@@ -247,7 +248,7 @@ int main(int argc, char* argv[])  // NOLINT
         params.sidb_on_the_fly_gate_library_parameters.use_skeleton_influence_bounds = true;
         params.sidb_on_the_fly_gate_library_parameters.design_gate_params            = design_gate_params;
         params.sidb_on_the_fly_gate_library_parameters.canvas_sidb_complex_gates =
-            5;  //
+            6;  //
                 // params.sidb_on_the_fly_gate_library_parameters.design_gate_params.number_of_sidbs;
 
         fiction::advanced_circuit_design_stats<gate_lyt> st{};
