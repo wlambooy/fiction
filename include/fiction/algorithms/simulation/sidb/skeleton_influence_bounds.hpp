@@ -93,11 +93,11 @@ class skeleton_influence_bounds_impl
                                     const auto& t = gate_lyt.get_tile(nn);
                                     const auto  canvas =
                                         is_complex_gate<GateLyt>(gate_lyt, nn) ?
-                                            params.canvas_complex_gates :
-                                        //      make_gate_design_params_for_complex_gates<design_sidb_gates_params<CellLyt>,
-                                        //                                                CellLyt>()
-                                        //         .canvas :
-                                             params.canvas;
+                                             params.canvas_complex_gates :
+                                             //      make_gate_design_params_for_complex_gates<design_sidb_gates_params<CellLyt>,
+                                            //                                                CellLyt>()
+                                            //         .canvas :
+                                            params.canvas;
 
                                     for (const cell<CellLyt>& relative_c :
                                          all_coordinates_in_spanned_area(canvas.first, canvas.second))

@@ -22,7 +22,7 @@ namespace fiction
 template <typename TT, typename GateLyt>
 class gate_design_exception : public std::exception
 {
-public:
+  public:
     /**
      * Constructor for the gate_design_exception class.
      *
@@ -59,7 +59,7 @@ public:
         return p;
     }
 
-private:
+  private:
     /**
      * The tile associated with the error.
      */

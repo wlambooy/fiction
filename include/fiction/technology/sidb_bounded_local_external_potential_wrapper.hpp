@@ -17,8 +17,7 @@ namespace fiction
  * This struct stores parameters for the `sidb_bounded_local_external_potential_wrapper`
  */
 struct sidb_bounded_local_external_potential_wrapper_params
-{
-};
+{};
 
 /**
  * A layout type to layer on top of any SiDB cell-level layout. It implements an interface to store and access
@@ -35,8 +34,10 @@ class sidb_bounded_local_external_potential_wrapper : public Lyt
 template <typename Lyt>
 class sidb_bounded_local_external_potential_wrapper<Lyt, true> : public Lyt
 {
-public:
-    explicit sidb_bounded_local_external_potential_wrapper(const Lyt& lyt, [[maybe_unused]] const sidb_bounded_local_external_potential_wrapper_params& ps = {}) : Lyt(lyt)
+  public:
+    explicit sidb_bounded_local_external_potential_wrapper(
+        const Lyt& lyt, [[maybe_unused]] const sidb_bounded_local_external_potential_wrapper_params& ps = {}) :
+            Lyt(lyt)
     {}
 };
 
@@ -46,7 +47,10 @@ class sidb_bounded_local_external_potential_wrapper<Lyt, false> : public Lyt
   public:
     struct sidb_bounded_local_external_potential_wrapper_storage
     {
-        explicit sidb_bounded_local_external_potential_wrapper_storage(sidb_bounded_local_external_potential_wrapper_params ps = {}) : params(std::move(ps)) {}
+        explicit sidb_bounded_local_external_potential_wrapper_storage(
+            sidb_bounded_local_external_potential_wrapper_params ps = {}) :
+                params(std::move(ps))
+        {}
 
         sidb_bounded_local_external_potential_wrapper_params params{};
 
@@ -60,7 +64,8 @@ class sidb_bounded_local_external_potential_wrapper<Lyt, false> : public Lyt
      *
      * @param ps SiDB defect surface parameters.
      */
-    explicit sidb_bounded_local_external_potential_wrapper(const sidb_bounded_local_external_potential_wrapper_params& ps = {}) :
+    explicit sidb_bounded_local_external_potential_wrapper(
+        const sidb_bounded_local_external_potential_wrapper_params& ps = {}) :
             Lyt(),
             strg{std::make_shared<sidb_bounded_local_external_potential_wrapper_storage>(ps)}
     {
@@ -75,7 +80,8 @@ class sidb_bounded_local_external_potential_wrapper<Lyt, false> : public Lyt
      * @param ar aspect ratio of the layout.
      * @param ps SiDB defect surface parameters.
      */
-    explicit sidb_bounded_local_external_potential_wrapper(const typename Lyt::aspect_ratio& ar, const sidb_bounded_local_external_potential_wrapper_params& ps = {}) :
+    explicit sidb_bounded_local_external_potential_wrapper(
+        const typename Lyt::aspect_ratio& ar, const sidb_bounded_local_external_potential_wrapper_params& ps = {}) :
             Lyt(ar),
             strg{std::make_shared<sidb_bounded_local_external_potential_wrapper_storage>(ps)}
     {
@@ -90,7 +96,8 @@ class sidb_bounded_local_external_potential_wrapper<Lyt, false> : public Lyt
      * @param lyt Existing layout that is to be extended by an SiDB defect interface.
      * @param ps SiDB defect surface parameters.
      */
-    explicit sidb_bounded_local_external_potential_wrapper(const Lyt& lyt, const sidb_bounded_local_external_potential_wrapper_params& ps = {}) :
+    explicit sidb_bounded_local_external_potential_wrapper(
+        const Lyt& lyt, const sidb_bounded_local_external_potential_wrapper_params& ps = {}) :
             Lyt(lyt),
             strg{std::make_shared<sidb_bounded_local_external_potential_wrapper_storage>(ps)}
     {
@@ -120,4 +127,4 @@ sidb_bounded_local_external_potential_wrapper(const T&) -> sidb_bounded_local_ex
 
 }  // namespace fiction
 
-#endif //SIDB_BOUNDED_LOCAL_EXTERNAL_POTENTIAL_WRAPPER_HPP
+#endif  // SIDB_BOUNDED_LOCAL_EXTERNAL_POTENTIAL_WRAPPER_HPP

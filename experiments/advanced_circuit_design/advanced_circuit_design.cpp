@@ -4,9 +4,9 @@
 
 #include <fiction/algorithms/simulation/sidb/compare_by_ground_state_isolation.hpp>
 #include <fiction/io/print_layout.hpp>
+#include <fiction/technology/sidb_bounded_local_external_potential_wrapper.hpp>
 #include <fiction/technology/sidb_on_the_fly_gate_library.hpp>
 #include <fiction/technology/sidb_on_the_fly_mini_gate_library.hpp>
-#include <fiction/technology/sidb_bounded_local_external_potential_wrapper.hpp>
 #include <fiction/technology/sidb_skeleton_bestagon_library.hpp>
 #include <fiction/technology/sidb_skeleton_bestagon_mini_library.hpp>
 #if (FICTION_Z3_SOLVER)
@@ -57,7 +57,7 @@ int main(int argc, char* argv[])  // NOLINT
 {
     using gate_lyt = fiction::hex_even_row_gate_clk_lyt;
     using cell_lyt = fiction::sidb_cell_clk_lyt_cube;
-    using lyt_t = fiction::sidb_bounded_local_external_potential_wrapper<fiction::sidb_defect_surface<cell_lyt>>;
+    using lyt_t    = fiction::sidb_bounded_local_external_potential_wrapper<fiction::sidb_defect_surface<cell_lyt>>;
 
 #ifdef USE_MINI
     using gate_lib          = fiction::sidb_on_the_fly_mini_gate_library;
@@ -75,16 +75,16 @@ int main(int argc, char* argv[])  // NOLINT
 
     design_gate_params.operational_params.simulation_parameters = fiction::sidb_simulation_parameters{3, -0.26};
     // design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params.threshold_bdl_interdistance = 3;
-    // design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params.bdl_pairs_params.minimum_distance = 0.5;
-    // design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params.bdl_pairs_params.maximum_distance = 1.7;
+    // design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params.bdl_pairs_params.minimum_distance
+    // = 0.5;
+    // design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params.bdl_pairs_params.maximum_distance
+    // = 1.7;
     // =; fiction::sidb_simulation_parameters{2, -0.32};
-    design_gate_params.operational_params.op_condition_positive_charges =
-        fiction::is_operational_params<fiction::cell<lyt_t>>::
+    design_gate_params.operational_params.op_condition_positive_charges = fiction::is_operational_params<
+        fiction::cell<lyt_t>>::
             operational_condition_positive_charges::TOLERATE_POSITIVE_CHARGES;
-    design_gate_params.operational_params.op_condition_kinks = fiction::is_operational_params<
-        fiction::cell<lyt_t>>::operational_condition_kinks::REJECT_KINKS;
-    design_gate_params.design_mode =
-        fiction::design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::RANDOM;
+    design_gate_params.operational_params.op_condition_kinks = fiction::is_operational_params<fiction::cell<lyt_t>>::operational_condition_kinks::REJECT_KINKS;
+    design_gate_params.design_mode = fiction::design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::RANDOM;
 
     // design_gate_params.post_design_process = {
     //     std::make_unique<fiction::compare_by_minimum_ground_state_isolation<lyt_t>>(),
@@ -102,8 +102,7 @@ int main(int argc, char* argv[])  // NOLINT
 
     design_gate_params.number_of_sidbs               = 4;
     design_gate_params.operational_params.sim_engine = fiction::sidb_simulation_engine::CLUSTERCOMPLETE;
-    design_gate_params.termination_cond              = fiction::design_sidb_gates_params<
-                     lyt_t>::termination_condition::OBTAINED_N_SOLUTIONS;
+    design_gate_params.termination_cond              = fiction::design_sidb_gates_params<lyt_t>::termination_condition::OBTAINED_N_SOLUTIONS;
     design_gate_params.max_num_solutions = 1000;
     // design_gate_params.design_mode = fiction::design_sidb_gates_params<
     //     lyt_t>::design_sidb_gates_mode::EXHAUSTIVE_GATE_DESIGNER;
@@ -111,23 +110,27 @@ int main(int argc, char* argv[])  // NOLINT
     /// COMPLEX DESIGN GATE PARAMS
 
     fiction::design_sidb_gates_params<lyt_t> design_gate_params_complex_gates{};
-    design_gate_params_complex_gates.operational_params.simulation_parameters = design_gate_params.operational_params.simulation_parameters;
+    design_gate_params_complex_gates.operational_params.simulation_parameters =
+        design_gate_params.operational_params.simulation_parameters;
     design_gate_params_complex_gates.number_of_sidbs = 6;
     design_gate_params_complex_gates.design_mode =
         fiction::design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::RANDOM;
-    design_gate_params_complex_gates.termination_cond = fiction::design_sidb_gates_params<
-        lyt_t>::termination_condition::OBTAINED_N_SOLUTIONS;
+    design_gate_params_complex_gates.termination_cond =
+        fiction::design_sidb_gates_params<lyt_t>::termination_condition::OBTAINED_N_SOLUTIONS;
     design_gate_params_complex_gates.canvas = {{11, 12}, {24, 23}};
     // design_gate_params.operational_params.op_condition_kinks =
     // is_operational_params<cell<CellLyt>>::operational_condition_kinks::TOLERATE_KINKS;
 
-    // design_gate_params_complex_gates.operational_params.input_bdl_iterator_params.bdl_wire_params.threshold_bdl_interdistance = 3;
-    // design_gate_params_complex_gates.operational_params.input_bdl_iterator_params.bdl_wire_params.bdl_pairs_params.minimum_distance = 0.5;
-    // design_gate_params_complex_gates.operational_params.input_bdl_iterator_params.bdl_wire_params.bdl_pairs_params.maximum_distance = 1.7;
+    // design_gate_params_complex_gates.operational_params.input_bdl_iterator_params.bdl_wire_params.threshold_bdl_interdistance
+    // = 3;
+    // design_gate_params_complex_gates.operational_params.input_bdl_iterator_params.bdl_wire_params.bdl_pairs_params.minimum_distance
+    // = 0.5;
+    // design_gate_params_complex_gates.operational_params.input_bdl_iterator_params.bdl_wire_params.bdl_pairs_params.maximum_distance
+    // = 1.7;
     design_gate_params_complex_gates.operational_params.op_condition_kinks =
         fiction::is_operational_params<fiction::cell<cell_lyt>>::operational_condition_kinks::REJECT_KINKS;
     design_gate_params_complex_gates.operational_params.strategy_to_analyze_operational_status =
-    // fiction::is_operational_params<fiction::cell<cell_lyt>>::operational_analysis_strategy::FILTER_THEN_SIMULATION;
+        // fiction::is_operational_params<fiction::cell<cell_lyt>>::operational_analysis_strategy::FILTER_THEN_SIMULATION;
         fiction::is_operational_params<fiction::cell<cell_lyt>>::operational_analysis_strategy::SIMULATION_ONLY;
     design_gate_params_complex_gates.max_num_solutions             = 1000;
     design_gate_params_complex_gates.operational_params.sim_engine = fiction::sidb_simulation_engine::CLUSTERCOMPLETE;
@@ -272,9 +275,8 @@ int main(int argc, char* argv[])  // NOLINT
         }
         else if (argc == 3)
         {
-            design_gate_params.number_of_sidbs = atoi(argv[1]);
+            design_gate_params.number_of_sidbs               = atoi(argv[1]);
             design_gate_params_complex_gates.number_of_sidbs = atoi(argv[2]);
-
         }
         else if (argc != 1)
         {

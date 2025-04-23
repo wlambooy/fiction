@@ -11,10 +11,11 @@
 #include "fiction/technology/sidb_defect_surface.hpp"
 #include "fiction/technology/sidb_on_the_fly_gate_library.hpp"
 #include "fiction/technology/sidb_surface_analysis.hpp"
-#include <fiction/io/write_svg_layout.hpp>
 #include "fiction/traits.hpp"
 #include "fiction/types.hpp"
 #include "fiction/utils/gate_design_utils.hpp"
+
+#include <fiction/io/write_svg_layout.hpp>
 
 #include <mutex>
 #include <thread>
