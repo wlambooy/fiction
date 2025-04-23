@@ -214,6 +214,13 @@ class sidb_skeleton_bestagon_library
     }
 
   private:
+    /**
+     * Determines the port directions of a given tile.
+     *
+     * @tparam GateLyt Pointy-top hexagonal gate-level layout type.
+     * @param lyt Given tile `t` for which the port directions are determined.
+     * @return port directions of the given tile are returned as `port_list`.
+     */
     template <typename Lyt>
     [[nodiscard]] static port_list<port_direction> determine_port_routing(const Lyt& lyt, const tile<Lyt>& t) noexcept
     {

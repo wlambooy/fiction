@@ -12,7 +12,6 @@
 
 #include <fiction/algorithms/physical_design/apply_gate_library.hpp>
 #include <fiction/algorithms/simulation/sidb/clustercomplete.hpp>
-#include <fiction/algorithms/simulation/sidb/groundstate_from_simulation_result.hpp>
 #include <fiction/algorithms/simulation/sidb/minimum_energy.hpp>
 #include <fiction/algorithms/simulation/sidb/quickexact.hpp>
 #include <fiction/algorithms/simulation/sidb/sidb_simulation_result.hpp>
@@ -213,7 +212,7 @@ TEMPLATE_TEST_CASE(
         {
             const auto simulation_results = clustercomplete<TestType>(lyt, params);
             auto&      charge_lyt_first   = simulation_results.charge_distributions.front();
-            ground_state.insert(round_to_n_decimal_places(charge_lyt_first.get_system_energy(), 6));
+            ground_state.insert(round_to_n_decimal_places(charge_lyt_first.get_electrostatic_potential_energy(), 6));
             charge_lyt_first.charge_distribution_to_index_general();
             charge_index.insert(charge_lyt_first.get_charge_index_and_base().first);
         }
@@ -231,7 +230,8 @@ TEMPLATE_TEST_CASE(
         // find the ground state, which is the charge distribution with the lowest energy
         const auto ground_state = std::min_element(
             simulation_results.charge_distributions.cbegin(), simulation_results.charge_distributions.cend(),
-            [](const auto& lhs, const auto& rhs) { return lhs.get_system_energy() < rhs.get_system_energy(); });
+            [](const auto& lhs, const auto& rhs)
+            { return lhs.get_electrostatic_potential_energy() < rhs.get_electrostatic_potential_energy(); });
 
         CHECK(ground_state->num_positive_sidbs() > 0);
     }
@@ -252,7 +252,7 @@ TEMPLATE_TEST_CASE(
         CHECK(charge_lyt_first.get_charge_state({14, 2, 0}) == sidb_charge_state::NEUTRAL);
         CHECK(charge_lyt_first.get_charge_state({8, 3, 0}) == sidb_charge_state::NEUTRAL);
 
-        CHECK_THAT(charge_lyt_first.get_system_energy(),
+        CHECK_THAT(charge_lyt_first.get_electrostatic_potential_energy(),
                    Catch::Matchers::WithinAbs(0.4662582096, constants::ERROR_MARGIN));
     }
 
@@ -274,7 +274,7 @@ TEMPLATE_TEST_CASE(
         CHECK(charge_lyt_first.get_charge_state({14, 2, 0}) == sidb_charge_state::NEUTRAL);
         CHECK(charge_lyt_first.get_charge_state({8, 3, 0}) == sidb_charge_state::NEUTRAL);
 
-        CHECK_THAT(charge_lyt_first.get_system_energy(),
+        CHECK_THAT(charge_lyt_first.get_electrostatic_potential_energy(),
                    Catch::Matchers::WithinAbs(0.061037632, constants::ERROR_MARGIN));
     }
 
@@ -296,7 +296,7 @@ TEMPLATE_TEST_CASE(
         CHECK(charge_lyt_first.get_charge_state({14, 2, 0}) == sidb_charge_state::NEGATIVE);
         CHECK(charge_lyt_first.get_charge_state({8, 3, 0}) == sidb_charge_state::NEGATIVE);
 
-        CHECK_THAT(charge_lyt_first.get_system_energy(),
+        CHECK_THAT(charge_lyt_first.get_electrostatic_potential_energy(),
                    Catch::Matchers::WithinAbs(2.069954113, constants::ERROR_MARGIN));
     }
 
@@ -318,7 +318,7 @@ TEMPLATE_TEST_CASE(
         CHECK(charge_lyt_first.get_charge_state({14, 2, 0}) == sidb_charge_state::NEGATIVE);
         CHECK(charge_lyt_first.get_charge_state({8, 3, 0}) == sidb_charge_state::NEGATIVE);
 
-        CHECK_THAT(charge_lyt_first.get_system_energy(),
+        CHECK_THAT(charge_lyt_first.get_electrostatic_potential_energy(),
                    Catch::Matchers::WithinAbs(0.5432404075, constants::ERROR_MARGIN));
     }
 
@@ -340,7 +340,7 @@ TEMPLATE_TEST_CASE(
         CHECK(charge_lyt_first.get_charge_state({14, 2, 0}) == sidb_charge_state::NEUTRAL);
         CHECK(charge_lyt_first.get_charge_state({8, 3, 0}) == sidb_charge_state::NEUTRAL);
 
-        CHECK_THAT(charge_lyt_first.get_system_energy(),
+        CHECK_THAT(charge_lyt_first.get_electrostatic_potential_energy(),
                    Catch::Matchers::WithinAbs(0.2930574885, constants::ERROR_MARGIN));
     }
 
@@ -362,7 +362,7 @@ TEMPLATE_TEST_CASE(
         CHECK(charge_lyt_first.get_charge_state({14, 2, 0}) == sidb_charge_state::NEUTRAL);
         CHECK(charge_lyt_first.get_charge_state({8, 3, 0}) == sidb_charge_state::NEGATIVE);
 
-        CHECK_THAT(charge_lyt_first.get_system_energy(),
+        CHECK_THAT(charge_lyt_first.get_electrostatic_potential_energy(),
                    Catch::Matchers::WithinAbs(0.505173434, constants::ERROR_MARGIN));
     }
 }
@@ -657,7 +657,8 @@ TEMPLATE_TEST_CASE("ClusterComplete simulation of a two-pair BDL wire with one p
     CHECK(charge_lyt_first.get_charge_state({17, 0, 0}) == sidb_charge_state::NEUTRAL);
     CHECK(charge_lyt_first.get_charge_state({19, 0, 0}) == sidb_charge_state::NEGATIVE);
 
-    CHECK_THAT(charge_lyt_first.get_system_energy(), Catch::Matchers::WithinAbs(0.2460493219, constants::ERROR_MARGIN));
+    CHECK_THAT(charge_lyt_first.get_electrostatic_potential_energy(),
+               Catch::Matchers::WithinAbs(0.2460493219, constants::ERROR_MARGIN));
 }
 
 TEST_CASE("ClusterComplete simulation of a one-pair BDL wire with two perturbers", "[clustercomplete]")
@@ -693,7 +694,8 @@ TEST_CASE("ClusterComplete simulation of a one-pair BDL wire with two perturbers
     CHECK(charge_lyt_first.get_charge_state({7, 0, 0}) == sidb_charge_state::NEGATIVE);
     CHECK(charge_lyt_first.get_charge_state({15, 0, 0}) == sidb_charge_state::NEGATIVE);
 
-    CHECK_THAT(charge_lyt_first.get_system_energy(), Catch::Matchers::WithinAbs(0.1152677452, constants::ERROR_MARGIN));
+    CHECK_THAT(charge_lyt_first.get_electrostatic_potential_energy(),
+               Catch::Matchers::WithinAbs(0.1152677452, constants::ERROR_MARGIN));
 }
 
 TEMPLATE_TEST_CASE("ClusterComplete simulation of a Y-shape SiDB arrangement", "[clustercomplete]",
@@ -727,7 +729,8 @@ TEMPLATE_TEST_CASE("ClusterComplete simulation of a Y-shape SiDB arrangement", "
     CHECK(charge_lyt_first.get_charge_state({-7, 1, 1}) == sidb_charge_state::NEUTRAL);
     CHECK(charge_lyt_first.get_charge_state({-7, 3, 0}) == sidb_charge_state::NEGATIVE);
 
-    CHECK_THAT(charge_lyt_first.get_system_energy(), Catch::Matchers::WithinAbs(0.3191788254, constants::ERROR_MARGIN));
+    CHECK_THAT(charge_lyt_first.get_electrostatic_potential_energy(),
+               Catch::Matchers::WithinAbs(0.3191788254, constants::ERROR_MARGIN));
 }
 
 TEMPLATE_TEST_CASE("ClusterComplete simulation of a Y-shape SiDB OR gate with input 01, check energy and charge "
@@ -765,7 +768,8 @@ TEMPLATE_TEST_CASE("ClusterComplete simulation of a Y-shape SiDB OR gate with in
     CHECK(charge_lyt_first.get_charge_state({8, 3, 0}) == sidb_charge_state::NEUTRAL);
     CHECK(charge_lyt_first.get_charge_state({6, 2, 0}) == sidb_charge_state::NEGATIVE);
 
-    CHECK_THAT(charge_lyt_first.get_system_energy(), Catch::Matchers::WithinAbs(0.4662582096, constants::ERROR_MARGIN));
+    CHECK_THAT(charge_lyt_first.get_electrostatic_potential_energy(),
+               Catch::Matchers::WithinAbs(0.4662582096, constants::ERROR_MARGIN));
 }
 
 TEMPLATE_TEST_CASE("ClusterComplete simulation of a Y-shape SiDB OR gate with input 01, check energy and charge "
@@ -820,7 +824,8 @@ TEMPLATE_TEST_CASE("ClusterComplete simulation of a Y-shape SiDB OR gate with in
     CHECK(charge_lyt_first.get_charge_state(siqad::to_fiction_coord<offset::ucoord_t>(siqad::coord_t{6, 2, 0})) ==
           sidb_charge_state::NEGATIVE);
 
-    CHECK_THAT(charge_lyt_first.get_system_energy(), Catch::Matchers::WithinAbs(0.4662582096, constants::ERROR_MARGIN));
+    CHECK_THAT(charge_lyt_first.get_electrostatic_potential_energy(),
+               Catch::Matchers::WithinAbs(0.4662582096, constants::ERROR_MARGIN));
 }
 
 TEMPLATE_TEST_CASE("ClusterComplete simulation of a Y-shape SiDB OR gate with input 01, check energy and charge "
@@ -867,7 +872,8 @@ TEMPLATE_TEST_CASE("ClusterComplete simulation of a Y-shape SiDB OR gate with in
     CHECK(charge_lyt_first.get_charge_state(siqad::to_fiction_coord<cube::coord_t>(siqad::coord_t{6, 2, 0})) ==
           sidb_charge_state::NEGATIVE);
 
-    CHECK_THAT(charge_lyt_first.get_system_energy(), Catch::Matchers::WithinAbs(0.4662582096, constants::ERROR_MARGIN));
+    CHECK_THAT(charge_lyt_first.get_electrostatic_potential_energy(),
+               Catch::Matchers::WithinAbs(0.4662582096, constants::ERROR_MARGIN));
 }
 
 TEMPLATE_TEST_CASE("ClusterComplete simulation of a Y-shape SiDB OR gate with input 01 and local external potential at "
@@ -1217,7 +1223,8 @@ TEMPLATE_TEST_CASE("three DBs next to each other", "[clustercomplete]", (sidb_10
 
     const auto ground_state = std::min_element(
         simulation_results.charge_distributions.cbegin(), simulation_results.charge_distributions.cend(),
-        [](const auto& lhs, const auto& rhs) { return lhs.get_system_energy() < rhs.get_system_energy(); });
+        [](const auto& lhs, const auto& rhs)
+        { return lhs.get_electrostatic_potential_energy() < rhs.get_electrostatic_potential_energy(); });
 
     CHECK(ground_state->get_charge_state({-1, 3, 0}) == sidb_charge_state::NEGATIVE);
     CHECK(ground_state->get_charge_state({1, 3, 0}) == sidb_charge_state::POSITIVE);
@@ -1265,8 +1272,10 @@ TEMPLATE_TEST_CASE("four DBs next to each other, small mu-", "[clustercomplete]"
 
     const auto excited_state = *std::max_element(
         simulation_results.charge_distributions.cbegin(), simulation_results.charge_distributions.cend(),
-        [](const auto& lhs, const auto& rhs) { return lhs.get_system_energy() < rhs.get_system_energy(); });
-    CHECK_THAT(excited_state.get_system_energy(), Catch::Matchers::WithinAbs(0, constants::ERROR_MARGIN));
+        [](const auto& lhs, const auto& rhs)
+        { return lhs.get_electrostatic_potential_energy() < rhs.get_electrostatic_potential_energy(); });
+    CHECK_THAT(excited_state.get_electrostatic_potential_energy(),
+               Catch::Matchers::WithinAbs(0, constants::ERROR_MARGIN));
 }
 
 TEMPLATE_TEST_CASE("seven DBs next to each other, small mu-", "[clustercomplete]", (sidb_100_cell_clk_lyt_siqad),
@@ -1288,8 +1297,8 @@ TEMPLATE_TEST_CASE("seven DBs next to each other, small mu-", "[clustercomplete]
 
     REQUIRE(simulation_results.charge_distributions.size() == 10);
     const auto& charge_lyt_first = simulation_results.charge_distributions.front();
-    CHECK(charge_lyt_first.get_system_energy() < 0.08);
-    CHECK(charge_lyt_first.get_system_energy() > -2.74);
+    CHECK(charge_lyt_first.get_electrostatic_potential_energy() < 0.08);
+    CHECK(charge_lyt_first.get_electrostatic_potential_energy() > -2.74);
 }
 
 TEMPLATE_TEST_CASE("7 DBs next to each other (positively charged DBs occur)", "[clustercomplete]",
@@ -1408,7 +1417,7 @@ TEMPLATE_TEST_CASE("3 DBs next to each other (positively charged DBs occur)", "[
 
     for (const auto& layout : simulation_results.charge_distributions)
     {
-        CHECK(round_to_n_decimal_places(layout.get_system_energy(), 1) <= 0);
+        CHECK(round_to_n_decimal_places(layout.get_electrostatic_potential_energy(), 1) <= 0);
     }
 }
 
@@ -1485,7 +1494,8 @@ TEMPLATE_TEST_CASE("ClusterComplete simulation of a 3 DB Wire", "[clustercomplet
         // find the ground state, which is the charge distribution with the lowest energy
         const auto ground_state = std::min_element(
             simulation_results.charge_distributions.cbegin(), simulation_results.charge_distributions.cend(),
-            [](const auto& lhs, const auto& rhs) { return lhs.get_system_energy() < rhs.get_system_energy(); });
+            [](const auto& lhs, const auto& rhs)
+            { return lhs.get_electrostatic_potential_energy() < rhs.get_electrostatic_potential_energy(); });
 
         CHECK(ground_state->num_negative_sidbs() == 5);
         CHECK(ground_state->num_neutral_sidbs() == 4);
@@ -1502,7 +1512,8 @@ TEMPLATE_TEST_CASE("ClusterComplete simulation of a 3 DB Wire", "[clustercomplet
         CHECK(ground_state->get_charge_state({26, 0, 0}) == sidb_charge_state::NEUTRAL);
         CHECK(ground_state->get_charge_state({29, 0, 0}) == sidb_charge_state::NEGATIVE);
 
-        CHECK_THAT(ground_state->get_system_energy(), Catch::Matchers::WithinAbs(0.274134844, constants::ERROR_MARGIN));
+        CHECK_THAT(ground_state->get_electrostatic_potential_energy(),
+                   Catch::Matchers::WithinAbs(0.274134844, constants::ERROR_MARGIN));
     }
 
     SECTION("Increased mu_minus")
@@ -1517,7 +1528,8 @@ TEMPLATE_TEST_CASE("ClusterComplete simulation of a 3 DB Wire", "[clustercomplet
         // find the ground state, which is the charge distribution with the lowest energy
         const auto ground_state = std::min_element(
             simulation_results.charge_distributions.cbegin(), simulation_results.charge_distributions.cend(),
-            [](const auto& lhs, const auto& rhs) { return lhs.get_system_energy() < rhs.get_system_energy(); });
+            [](const auto& lhs, const auto& rhs)
+            { return lhs.get_electrostatic_potential_energy() < rhs.get_electrostatic_potential_energy(); });
 
         // check charge distribution of the ground state; BDL wire no longer works as intended
         CHECK(ground_state->get_charge_state({0, 0, 0}) == sidb_charge_state::NEGATIVE);
@@ -1530,7 +1542,7 @@ TEMPLATE_TEST_CASE("ClusterComplete simulation of a 3 DB Wire", "[clustercomplet
         CHECK(ground_state->get_charge_state({26, 0, 0}) == sidb_charge_state::NEUTRAL);
         CHECK(ground_state->get_charge_state({29, 0, 0}) == sidb_charge_state::NEGATIVE);
 
-        CHECK_THAT(ground_state->get_system_energy(),
+        CHECK_THAT(ground_state->get_electrostatic_potential_energy(),
                    Catch::Matchers::WithinAbs(0.0329179963, constants::ERROR_MARGIN));
     }
 
@@ -1546,7 +1558,8 @@ TEMPLATE_TEST_CASE("ClusterComplete simulation of a 3 DB Wire", "[clustercomplet
         // find the ground state, which is the charge distribution with the lowest energy
         const auto ground_state = std::min_element(
             simulation_results.charge_distributions.cbegin(), simulation_results.charge_distributions.cend(),
-            [](const auto& lhs, const auto& rhs) { return lhs.get_system_energy() < rhs.get_system_energy(); });
+            [](const auto& lhs, const auto& rhs)
+            { return lhs.get_electrostatic_potential_energy() < rhs.get_electrostatic_potential_energy(); });
 
         // Due to the set µ-value, all SiDBs are negatively charged (electrostatic interaction is not strong enough to
         // change the charge state of individual SiDBs).
@@ -1560,7 +1573,7 @@ TEMPLATE_TEST_CASE("ClusterComplete simulation of a 3 DB Wire", "[clustercomplet
         CHECK(ground_state->get_charge_state({26, 0, 0}) == sidb_charge_state::NEGATIVE);
         CHECK(ground_state->get_charge_state({29, 0, 0}) == sidb_charge_state::NEGATIVE);
 
-        CHECK_THAT(ground_state->get_system_energy(),
+        CHECK_THAT(ground_state->get_electrostatic_potential_energy(),
                    Catch::Matchers::WithinAbs(1.8649862557, constants::ERROR_MARGIN));
     }
 
@@ -1575,7 +1588,8 @@ TEMPLATE_TEST_CASE("ClusterComplete simulation of a 3 DB Wire", "[clustercomplet
 
         const auto ground_state = std::min_element(
             simulation_results.charge_distributions.cbegin(), simulation_results.charge_distributions.cend(),
-            [](const auto& lhs, const auto& rhs) { return lhs.get_system_energy() < rhs.get_system_energy(); });
+            [](const auto& lhs, const auto& rhs)
+            { return lhs.get_electrostatic_potential_energy() < rhs.get_electrostatic_potential_energy(); });
 
         // Due to the small lambda value, the electrostatic interaction is small. Hence, all SiDBs are negatively
         // charged.
@@ -1589,7 +1603,7 @@ TEMPLATE_TEST_CASE("ClusterComplete simulation of a 3 DB Wire", "[clustercomplet
         CHECK(ground_state->get_charge_state({26, 0, 0}) == sidb_charge_state::NEGATIVE);
         CHECK(ground_state->get_charge_state({29, 0, 0}) == sidb_charge_state::NEGATIVE);
 
-        CHECK_THAT(ground_state->get_system_energy(),
+        CHECK_THAT(ground_state->get_electrostatic_potential_energy(),
                    Catch::Matchers::WithinAbs(0.4606785472, constants::ERROR_MARGIN));
     }
 
@@ -1605,7 +1619,8 @@ TEMPLATE_TEST_CASE("ClusterComplete simulation of a 3 DB Wire", "[clustercomplet
         // find the ground state, which is the charge distribution with the lowest energy
         const auto ground_state = std::min_element(
             simulation_results.charge_distributions.cbegin(), simulation_results.charge_distributions.cend(),
-            [](const auto& lhs, const auto& rhs) { return lhs.get_system_energy() < rhs.get_system_energy(); });
+            [](const auto& lhs, const auto& rhs)
+            { return lhs.get_electrostatic_potential_energy() < rhs.get_electrostatic_potential_energy(); });
 
         // check charge distribution of the ground state; BDL wire works as intended
         CHECK(ground_state->get_charge_state({0, 0, 0}) == sidb_charge_state::NEGATIVE);
@@ -1618,7 +1633,7 @@ TEMPLATE_TEST_CASE("ClusterComplete simulation of a 3 DB Wire", "[clustercomplet
         CHECK(ground_state->get_charge_state({26, 0, 0}) == sidb_charge_state::NEUTRAL);
         CHECK(ground_state->get_charge_state({29, 0, 0}) == sidb_charge_state::NEGATIVE);
 
-        CHECK_THAT(ground_state->get_system_energy(),
+        CHECK_THAT(ground_state->get_electrostatic_potential_energy(),
                    Catch::Matchers::WithinAbs(0.3967750406, constants::ERROR_MARGIN));
     }
 
@@ -1633,7 +1648,8 @@ TEMPLATE_TEST_CASE("ClusterComplete simulation of a 3 DB Wire", "[clustercomplet
 
         const auto ground_state = std::min_element(
             simulation_results.charge_distributions.cbegin(), simulation_results.charge_distributions.cend(),
-            [](const auto& lhs, const auto& rhs) { return lhs.get_system_energy() < rhs.get_system_energy(); });
+            [](const auto& lhs, const auto& rhs)
+            { return lhs.get_electrostatic_potential_energy() < rhs.get_electrostatic_potential_energy(); });
 
         // The electrostatic interaction is small, due to the large relative permittivity.
         // Therefore, all SiDBs are negatively charged.
@@ -1647,7 +1663,7 @@ TEMPLATE_TEST_CASE("ClusterComplete simulation of a 3 DB Wire", "[clustercomplet
         CHECK(ground_state->get_charge_state({26, 0, 0}) == sidb_charge_state::NEGATIVE);
         CHECK(ground_state->get_charge_state({29, 0, 0}) == sidb_charge_state::NEGATIVE);
 
-        CHECK_THAT(ground_state->get_system_energy(),
+        CHECK_THAT(ground_state->get_electrostatic_potential_energy(),
                    Catch::Matchers::WithinAbs(1.0443923032, constants::ERROR_MARGIN));
     }
 
@@ -1662,7 +1678,8 @@ TEMPLATE_TEST_CASE("ClusterComplete simulation of a 3 DB Wire", "[clustercomplet
 
         const auto ground_state = std::min_element(
             simulation_results.charge_distributions.cbegin(), simulation_results.charge_distributions.cend(),
-            [](const auto& lhs, const auto& rhs) { return lhs.get_system_energy() < rhs.get_system_energy(); });
+            [](const auto& lhs, const auto& rhs)
+            { return lhs.get_electrostatic_potential_energy() < rhs.get_electrostatic_potential_energy(); });
 
         // The electrostatic interaction is strong, due to the small relative permittivity.
         // Therefore, SiDBs can even be positively charged.
@@ -1676,7 +1693,7 @@ TEMPLATE_TEST_CASE("ClusterComplete simulation of a 3 DB Wire", "[clustercomplet
         CHECK(ground_state->get_charge_state({26, 0, 0}) == sidb_charge_state::POSITIVE);
         CHECK(ground_state->get_charge_state({29, 0, 0}) == sidb_charge_state::NEGATIVE);
 
-        CHECK_THAT(ground_state->get_system_energy(),
+        CHECK_THAT(ground_state->get_electrostatic_potential_energy(),
                    Catch::Matchers::WithinAbs(-5.0592576221, constants::ERROR_MARGIN));
     }
 }
@@ -1892,7 +1909,8 @@ TEMPLATE_TEST_CASE("Special test cases", "[clustercomplete]", (sidb_100_cell_clk
         sidb_simulation_result<TestType> cc_res = clustercomplete(lyt, clustercomplete_params<cell<TestType>>{params});
 
         std::sort(cc_res.charge_distributions.begin(), cc_res.charge_distributions.end(),
-                  [](const auto& lhs, const auto& rhs) { return lhs.get_system_energy() < rhs.get_system_energy(); });
+                  [](const auto& lhs, const auto& rhs)
+                  { return lhs.get_electrostatic_potential_energy() < rhs.get_electrostatic_potential_energy(); });
 
         REQUIRE(cc_res.charge_distributions.size() == 2);
 
@@ -1972,7 +1990,8 @@ TEMPLATE_TEST_CASE("Special test cases", "[clustercomplete]", (sidb_100_cell_clk
         sidb_simulation_result<TestType> cc_res = clustercomplete(lyt, clustercomplete_params<cell<TestType>>{params});
 
         std::sort(cc_res.charge_distributions.begin(), cc_res.charge_distributions.end(),
-                  [](const auto& lhs, const auto& rhs) { return lhs.get_system_energy() < rhs.get_system_energy(); });
+                  [](const auto& lhs, const auto& rhs)
+                  { return lhs.get_electrostatic_potential_energy() < rhs.get_electrostatic_potential_energy(); });
 
         CHECK(cc_res.charge_distributions.size() == 2);
     }
@@ -1999,7 +2018,7 @@ TEMPLATE_TEST_CASE("ClusterComplete gate simulation of Si-111 surface", "[cluste
 
     const auto simulation_results = clustercomplete<TestType>(lyt, params);
 
-    const auto ground_state = groundstate_from_simulation_result(simulation_results);
+    const auto ground_state = simulation_results.groundstates();
     REQUIRE(ground_state.size() == 1);
 
     CHECK(ground_state.front().get_charge_state({0, 0, 0}) == sidb_charge_state::NEGATIVE);
@@ -2023,7 +2042,7 @@ TEMPLATE_TEST_CASE("ClusterComplete AND gate simulation of Si-111 surface", "[cl
 
         const auto simulation_results = clustercomplete<TestType>(lyt, params);
 
-        const auto ground_state = groundstate_from_simulation_result(simulation_results);
+        const auto ground_state = simulation_results.groundstates();
         REQUIRE(ground_state.size() == 1);
 
         CHECK(ground_state.front().get_charge_state({0, 0, 0}) == sidb_charge_state::NEGATIVE);
@@ -2064,7 +2083,7 @@ TEMPLATE_TEST_CASE("ClusterComplete AND gate simulation of Si-111 surface", "[cl
         const auto simulation_results = clustercomplete<TestType>(lyt, params);
         CHECK(simulation_results.charge_distributions.size() == 7);
 
-        const auto ground_state = groundstate_from_simulation_result(simulation_results);
+        const auto ground_state = simulation_results.groundstates();
 
         REQUIRE(ground_state.size() == 1);
 

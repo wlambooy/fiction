@@ -153,63 +153,6 @@ static const char *__doc_fiction_a_star_params_crossings =
 R"doc(Allow paths to cross over obstructed tiles if they are occupied by
 wire segments.)doc";
 
-static const char *__doc_fiction_advanced_circuit_design =
-R"doc(Template parameter ``Ntk``:
-    The type of the input network.
-
-Template parameter ``CellLyt``:
-    SiDB cell-level layout type.
-
-Template parameter ``GateLyt``:
-    Gate-level layout type. todo
-
-Parameter ``ntk``:
-    The input network to be mapped onto the defective surface.
-
-Parameter ``lattice_tiling``:
-    The lattice tiling used for the circuit design.
-
-Parameter ``params``:
-    The parameters used for designing the circuit, encapsulated in an
-    `advanced_circuit_design_params` object.
-
-Parameter ``stats``:
-    Pointer to a structure for collecting statistics. If nullptr,
-    statistics are not collected.
-
-Returns:
-    A `sidb_defect_surface<CellLyt>` representing the designed circuit
-    on the defective surface.)doc";
-
-static const char *__doc_fiction_advanced_circuit_design_params =
-R"doc(This struct stores the parameters to design an SiDB circuit on a
-defective surface.
-
-Template parameter ``CellLyt``:
-    SiDB cell-level layout type.)doc";
-
-static const char *__doc_fiction_advanced_circuit_design_params_exact_design_parameters = R"doc(Parameters for the *exact* placement and routing algorithm.)doc";
-
-static const char *__doc_fiction_advanced_circuit_design_params_num_trials = R"doc()doc";
-
-static const char *__doc_fiction_advanced_circuit_design_params_num_trials_for_global_scope = R"doc()doc";
-
-static const char *__doc_fiction_advanced_circuit_design_params_selectivity = R"doc()doc";
-
-static const char *__doc_fiction_advanced_circuit_design_params_selectivity_for_global_scope = R"doc()doc";
-
-static const char *__doc_fiction_advanced_circuit_design_params_sidb_on_the_fly_gate_library_parameters = R"doc(Parameters for the SiDB on-the-fly gate library.)doc";
-
-static const char *__doc_fiction_advanced_circuit_design_params_spec = R"doc()doc";
-
-static const char *__doc_fiction_advanced_circuit_design_stats = R"doc(Statistics for the on-the-fly defect-aware circuit design.)doc";
-
-static const char *__doc_fiction_advanced_circuit_design_stats_duration = R"doc(The total runtime of the operational domain computation.)doc";
-
-static const char *__doc_fiction_advanced_circuit_design_stats_exact_stats = R"doc(The `stats` of the *exact* algorithm.)doc";
-
-static const char *__doc_fiction_advanced_circuit_design_stats_gate_layout = R"doc(The gate-level layout after P&R.)doc";
-
 static const char *__doc_fiction_all_2_input_functions =
 R"doc(Auxiliary function to create technology mapping parameters for AND,
 OR, NAND, NOR, XOR, XNOR, LE, GE, LT, GT, and NOT gates.
@@ -318,16 +261,33 @@ Template parameter ``GateLyt``:
 Parameter ``lyt``:
     The gate-level layout.
 
-Parameter ``whitelist``:
-    A whitelist for the tiles to which gates are assigned. When
-    `std::nullopt` (default), all tiles are considered that are not
-    blacklisted.
+Returns:
+    A cell-level layout that implements `lyt`'s gate types with
+    building blocks defined in `GateLibrary`.)doc";
 
-Parameter ``blacklist``:
-    A blacklist for the tiles to which gates are not assigned. When
-    `std::nullopt` (default), all tiles are considered (unless a
-    whitelist is given). The blacklist has priority over the
-    whitelist.
+static const char *__doc_fiction_apply_gate_library_to_defective_surface =
+R"doc(Applies a gate library to a given gate-level layout and maps the SiDB
+and defect locations onto a defect surface. The gate library type
+should provide all functions specified in fcn_gate_library. It is,
+thus, easiest to extend fcn_gate_library to implement a new gate
+library. Examples are `qca_one_library`, `inml_topolinano_library`,
+and `sidb_bestagon_library`.
+
+May pass through, and thereby throw, an
+`unsupported_gate_type_exception` or an
+`unsupported_gate_orientation_exception`.
+
+Template parameter ``CellLyt``:
+    Type of the returned cell-level layout.
+
+Template parameter ``GateLibrary``:
+    Type of the gate library to apply.
+
+Template parameter ``GateLyt``:
+    Type of the gate-level layout to apply the library to.
+
+Parameter ``lyt``:
+    The gate-level layout.
 
 Returns:
     A cell-level layout that implements `lyt`'s gate types with
@@ -360,16 +320,39 @@ Parameter ``lyt``:
 Parameter ``params``:
     Parameter for the gate library.
 
-Parameter ``whitelist``:
-    A whitelist for the tiles to which gates are assigned. When
-    `std::nullopt` (default), all tiles are considered that are not
-    blacklisted.
+Returns:
+    A cell-level layout that implements `lyt`'s gate types with
+    building blocks defined in `GateLibrary`.)doc";
 
-Parameter ``blacklist``:
-    A blacklist for the tiles to which gates are not assigned. When
-    `std::nullopt` (default), all tiles are considered (unless a
-    whitelist is given). The blacklist has priority over the
-    whitelist.
+static const char *__doc_fiction_apply_parameterized_gate_library_to_defective_surface =
+R"doc(Applies a defect-aware parameterized gate library to a given gate-
+level layout and, thereby, creates and returns a cell-level layout.
+
+May pass through, and thereby throw, an
+`unsupported_gate_type_exception`, an
+`unsupported_gate_orientation_exception` and any further custom
+exceptions of the gate libraries.
+
+Template parameter ``DefectLyt``:
+    Type of the returned cell-level layout.
+
+Template parameter ``GateLibrary``:
+    Type of the gate library to apply.
+
+Template parameter ``GateLyt``:
+    Type of the gate-level layout to apply the library to.
+
+Template parameter ``Params``:
+    Type of the parameter used for SiDB on-the-fly gate library.
+
+Parameter ``lyt``:
+    The gate-level layout.
+
+Parameter ``params``:
+    Parameter for the gate library.
+
+Parameter ``defect_surface``:
+    Defect surface.
 
 Returns:
     A cell-level layout that implements `lyt`'s gate types with
@@ -554,28 +537,6 @@ static const char *__doc_fiction_aspect_ratio_iterator_operator_mul = R"doc()doc
 static const char *__doc_fiction_aspect_ratio_iterator_operator_ne = R"doc()doc";
 
 static const char *__doc_fiction_aspect_ratio_iterator_operator_ne_2 = R"doc()doc";
-
-static const char *__doc_fiction_assign_gate =
-R"doc(This function assigns a given FCN gate implementation to the total
-cell layout.
-
-Template parameter ``CellLyt``:
-    Type of the returned cell-level layout.
-
-Template parameter ``GateLibrary``:
-    Type of the gate library to apply.
-
-Template parameter ``GateLyt``:
-    Type of the gate-level layout to apply the library to. todo
-
-Parameter ``c``:
-    Top-left cell of the tile where the gate is placed.
-
-Parameter ``g``:
-    Gate implementation.
-
-Parameter ``n``:
-    Corresponding node in the gate-level layout.)doc";
 
 static const char *__doc_fiction_bancs_clocking =
 R"doc(Returns the BANCS clocking as defined in \"BANCS: Bidirectional
@@ -888,12 +849,13 @@ R"doc(This enum defines how BDL inputs are manipulated within the algorithm.
 According to existing literature, there are two main approaches for
 handling BDL inputs:
 
-1. A perturber is used to set the input to `1`, while the absence of a
-perturber represents a `0` (as described in
-https://ieeexplore.ieee.org/abstract/document/8963859). 2. An input of
-`1` is generated by placing a perturber closer to the target, whereas
-a `0` is produced by positioning the perturber farther away (as
-described in https://dl.acm.org/doi/10.1145/3489517.3530525).)doc";
+1. Distance Encoding, in which an input of `1` is generated by placing
+a perturber closer to the target, whereas a `0` is produced by
+positioning the perturber farther away (as described in
+https://dl.acm.org/doi/10.1145/3489517.3530525). 2. Absence Encoding,
+in which a perturber is used to set the input to `1`, while the
+absence of a perturber represents a `0` (as described in
+https://ieeexplore.ieee.org/abstract/document/8963859).)doc";
 
 static const char *__doc_fiction_bdl_input_iterator_params_input_bdl_configuration_PERTURBER_ABSENCE_ENCODED =
 R"doc(A perturber is used to set the input to `1`, while the absence of a
@@ -1313,6 +1275,22 @@ Parameter ``ntk_node``:
 Parameter ``lyt_signal``:
     New signal pointing to the end of the branch.)doc";
 
+static const char *__doc_fiction_calculate_boltzmann_factor =
+R"doc(This function computes the Boltzmann factor for a given energy, the
+minimal energy, and the temperature.
+
+Parameter ``energy``:
+    Boltzmann factor for the given energy is calculated.
+
+Parameter ``min_energy``:
+    Minimum energy of the system.
+
+Parameter ``temperature``:
+    Temperature of the system (unit: K).
+
+Returns:
+    Boltzmann factor.)doc";
+
 static const char *__doc_fiction_calculate_defect_clearance =
 R"doc(Computes the defect clearance for a given SiDB layout based on a
 defect influence domain. The defect clearance is the maximum distance
@@ -1381,9 +1359,6 @@ Parameter ``energy_distribution``:
 Parameter ``valid_charge_distributions``:
     Physically valid charge distributions.
 
-Parameter ``output_bdl_pairs``:
-    Output BDL pairs.
-
 Parameter ``spec``:
     Expected Boolean function of the layout given as a multi-output
     truth table.
@@ -1400,6 +1375,23 @@ Parameter ``output_bdl_wires``:
 Returns:
     Electrostatic potential energy of all charge distributions with
     state type.)doc";
+
+static const char *__doc_fiction_calculate_energy_distribution =
+R"doc(This function takes in a vector of `charge_distribution_surface`
+objects and returns a map containing the system energy and the number
+of occurrences of that energy in the input vector. To compare two
+energy values for equality, the comparison uses a tolerance specified
+by `constants::ERROR_MARGIN`.
+
+Template parameter ``Lyt``:
+    SiDB cell-level layout type.
+
+Parameter ``charge_distributions``:
+    A vector of `charge_distribution_surface` objects for which the
+    energy distribution is computed.
+
+Returns:
+    Energy distribution.)doc";
 
 static const char *__doc_fiction_can_positive_charges_occur =
 R"doc(This algorithm determines if positively charged SiDBs can occur in a
@@ -2405,6 +2397,15 @@ layout.
 Returns:
     Number of non-empty cell types in the layout.)doc";
 
+static const char *__doc_fiction_cell_level_layout_num_cells_of_given_type =
+R"doc(Returns the numbers of cells of the given type.
+
+Parameter ``type``:
+    Type of cells which are counted.
+
+Returns:
+    Number of the cells with the given type.)doc";
+
 static const char *__doc_fiction_cell_level_layout_num_pis =
 R"doc(Returns the number of primary input cells in the layout.
 
@@ -2949,7 +2950,9 @@ static const char *__doc_fiction_clustercomplete_params =
 R"doc(The struct containing the parameters both passed on to pre-simulator
 Ground State Space, and used during simulation.)doc";
 
-static const char *__doc_fiction_clustercomplete_params_available_threads = R"doc()doc";
+static const char *__doc_fiction_clustercomplete_params_available_threads =
+R"doc(Number of threads to make available to *ClusterComplete* for the
+unfolding stage.)doc";
 
 static const char *__doc_fiction_clustercomplete_params_global_potential =
 R"doc(Global external electrostatic potential. Value is applied on each cell
@@ -2972,13 +2975,9 @@ static const char *__doc_fiction_clustercomplete_params_ground_state_space_repor
 R"doc(Enabling this option will output *Ground State Space* statistics to
 the standard output.)doc";
 
-static const char *__doc_fiction_clustercomplete_params_insert_local_external_potential =
-R"doc(Parameter ``c``:
-    Cell to assign TODO)doc";
-
 static const char *__doc_fiction_clustercomplete_params_local_external_potential =
 R"doc(Local external electrostatic potentials (e.g., locally applied
-electrodes). Either single-valued per cell, or double valued (bounds).)doc";
+electrodes).)doc";
 
 static const char *__doc_fiction_clustercomplete_params_num_overlapping_witnesses_limit_gss =
 R"doc(The complexity is of validity witness partitioning bounded by a
@@ -3120,25 +3119,107 @@ Parameter ``n``:
 Returns:
     Columnar clocking scheme.)doc";
 
-static const char *__doc_fiction_compare_by_average_ground_state_isolation = R"doc()doc";
+static const char *__doc_fiction_compare_by_average_ground_state_isolation =
+R"doc(This comparator for designed SiDB gates implements comparison by
+average ground state isolation over all input combinations.
 
-static const char *__doc_fiction_compare_by_average_ground_state_isolation_average_ground_state_isolation_over_all_inputs = R"doc()doc";
+Template parameter ``Lyt``:
+    SiDB cell-level layout type.)doc";
 
-static const char *__doc_fiction_compare_by_average_ground_state_isolation_compare_by_average_ground_state_isolation = R"doc()doc";
+static const char *__doc_fiction_compare_by_average_ground_state_isolation_average_ground_state_isolation_over_all_inputs =
+R"doc(Obtains the average ground state isolation over all input for the
+given SiDB gate design.
 
-static const char *__doc_fiction_compare_by_average_ground_state_isolation_equals = R"doc()doc";
+Parameter ``gate_design``:
+    The SiDB gate design object with simulation results for each input
+    to obtain the average ground state isolation over all inputs of.
 
-static const char *__doc_fiction_compare_by_average_ground_state_isolation_operator_call = R"doc()doc";
+Returns:
+    The average ground state isolation over all inputs.)doc";
 
-static const char *__doc_fiction_compare_by_minimum_ground_state_isolation = R"doc()doc";
+static const char *__doc_fiction_compare_by_average_ground_state_isolation_compare_by_average_ground_state_isolation =
+R"doc(Standard constructor.
 
-static const char *__doc_fiction_compare_by_minimum_ground_state_isolation_compare_by_minimum_ground_state_isolation = R"doc()doc";
+Parameter ``sens``:
+    The sensitivity parameter determines when an energetic difference
+    it big enough to judge the left-hand right-hand side as not equal.)doc";
 
-static const char *__doc_fiction_compare_by_minimum_ground_state_isolation_equals = R"doc()doc";
+static const char *__doc_fiction_compare_by_average_ground_state_isolation_equals =
+R"doc(Implements equality comparison for average ground state isolation.
 
-static const char *__doc_fiction_compare_by_minimum_ground_state_isolation_minimum_ground_state_isolation_over_all_inputs = R"doc()doc";
+Parameter ``lhs``:
+    Left-hand side.
 
-static const char *__doc_fiction_compare_by_minimum_ground_state_isolation_operator_call = R"doc()doc";
+Parameter ``rhs``:
+    Right-hand side.
+
+Returns:
+    True if and only if the left-hand side is equal to the right-hand
+    side as determined by the sensitivity parameter.)doc";
+
+static const char *__doc_fiction_compare_by_average_ground_state_isolation_operator_call =
+R"doc(Implements strict comparison by average ground state isolation.
+
+Parameter ``lhs``:
+    Left-hand side.
+
+Parameter ``rhs``:
+    Right-hand side.
+
+Returns:
+    True if and only if the left-hand side is strictly below the
+    right-hand side.)doc";
+
+static const char *__doc_fiction_compare_by_minimum_ground_state_isolation =
+R"doc(This comparator for designed SiDB gates implements comparison by
+minimum ground state isolation over all input combinations.
+
+Template parameter ``Lyt``:
+    SiDB cell-level layout type.)doc";
+
+static const char *__doc_fiction_compare_by_minimum_ground_state_isolation_compare_by_minimum_ground_state_isolation =
+R"doc(Standard constructor.
+
+Parameter ``sens``:
+    The sensitivity parameter determines when an energetic difference
+    it big enough to judge the left-hand right-hand side as not equal.)doc";
+
+static const char *__doc_fiction_compare_by_minimum_ground_state_isolation_equals =
+R"doc(Implements equality comparison for minimum ground state isolation.
+
+Parameter ``lhs``:
+    Left-hand side.
+
+Parameter ``rhs``:
+    Right-hand side.
+
+Returns:
+    True if and only if the left-hand side is equal to the right-hand
+    side as determined by the sensitivity parameter.)doc";
+
+static const char *__doc_fiction_compare_by_minimum_ground_state_isolation_minimum_ground_state_isolation_over_all_inputs =
+R"doc(Obtains the minimum ground state isolation over all input for the
+given SiDB gate design.
+
+Parameter ``gate_design``:
+    The SiDB gate design object with simulation results for each input
+    to obtain the minimum ground state isolation over all inputs of.
+
+Returns:
+    The minimum ground state isolation over all inputs.)doc";
+
+static const char *__doc_fiction_compare_by_minimum_ground_state_isolation_operator_call =
+R"doc(Implements strict comparison by minimum ground state isolation.
+
+Parameter ``lhs``:
+    Left-hand side.
+
+Parameter ``rhs``:
+    Right-hand side.
+
+Returns:
+    True if and only if the left-hand side is strictly below the
+    right-hand side.)doc";
 
 static const char *__doc_fiction_convert_array =
 R"doc(Converts an array of size `N` and type `T` to an array of size `N` and
@@ -3748,7 +3829,7 @@ Parameter ``stats``:
     Operational domain computation statistics.
 
 Returns:
-    The (partial) operational domain of the layout.
+    The critical temperature domain of the layout.
 
 Throws:
     std::invalid_argument if the given sweep parameters are invalid.)doc";
@@ -3813,7 +3894,7 @@ Parameter ``stats``:
     Operational domain computation statistics.
 
 Returns:
-    The (partial) operational domain of the layout.
+    The critical temperature domain of the layout.
 
 Throws:
     std::invalid_argument if the given sweep parameters are invalid.)doc";
@@ -3874,10 +3955,22 @@ Parameter ``stats``:
     Operational domain computation statistics.
 
 Returns:
-    The operational domain of the layout.
+    The critical temperature domain of the layout.
 
 Throws:
     std::invalid_argument if the given sweep parameters are invalid.)doc";
+
+static const char *__doc_fiction_critical_temperature_domain_maximum_ct =
+R"doc(Finds the maximum critical temperature in the domain.
+
+Returns:
+    The maximum critical temperature.)doc";
+
+static const char *__doc_fiction_critical_temperature_domain_minimum_ct =
+R"doc(Finds the minimum critical temperature in the domain.
+
+Returns:
+    The minimum critical temperature.)doc";
 
 static const char *__doc_fiction_critical_temperature_domain_random_sampling =
 R"doc(Computes the critical temperature domain of the given SiDB cell-level
@@ -3918,7 +4011,7 @@ Parameter ``stats``:
     Operational domain computation statistics.
 
 Returns:
-    The (partial) operational domain of the layout.
+    The critical temperature domain of the layout.
 
 Throws:
     std::invalid_argument if the given sweep parameters are invalid.)doc";
@@ -4623,22 +4716,23 @@ canvas size, and a predetermined number of canvas SiDBs. Two different
 design modes are implemented: `exhaustive` and `random design`.
 
 The `exhaustive design` is composed of three steps: 1. In the initial
-step, all possible distributions of `number_of_sidbs` SiDBs within a
-given canvas are exhaustively determined. This ensures exhaustive
-coverage of every potential arrangement of ``number_of_sidbs`` SiDBs
-across the canvas. 2. The calculated SiDB distributions are then
-incorporated into the skeleton, resulting in the generation of
-distinct SiDB layouts. 3. The generated SiDB layouts then undergo an
-extensive simulation process. All input combinations possible for the
-given Boolean function are used to verify if the logic is fulfilled.
+step, all possible distributions of `number_of_canvas_sidbs` SiDBs
+within a given canvas are exhaustively determined. This ensures
+exhaustive coverage of every potential arrangement of
+`number_of_canvas_sidbs` SiDBs across the canvas. 2. The calculated
+SiDB distributions are then incorporated into the skeleton, resulting
+in the generation of distinct SiDB layouts. 3. The generated SiDB
+layouts then undergo an extensive simulation process. All input
+combinations possible for the given Boolean function are used to
+verify if the logic is fulfilled.
 
 The `random design` is composed of four steps: 1. A specified number
-of canvas SiDBs (`number_of_sidbs`) are randomly added to the skeleton
-layout. 2. The operation status of the layout is simulated based on a
-given Boolean function. 3. If the layout is `operational`, it is
-returned as the result, and the process terminates successfully. 4. If
-the layout is `non-operational`, the process is repeated from the
-first step until an operational layout is found.
+of canvas SiDBs (`number_of_canvas_sidbs`) are randomly added to the
+skeleton layout. 2. The operation status of the layout is simulated
+based on a given Boolean function. 3. If the layout is `operational`,
+it is returned as the result, and the process terminates successfully.
+4. If the layout is `non-operational`, the process is repeated from
+the first step until an operational layout is found.
 
 Template parameter ``Lyt``:
     SiDB cell-level layout type.
@@ -4668,29 +4762,45 @@ R"doc(This struct contains parameters and settings to design SiDB gates.
 Template parameter ``Lyt``:
     SiDB cell-level layout type.)doc";
 
+static const char *__doc_fiction_design_sidb_gates_params_available_threads = R"doc(The number of threads available for the SiDB gate design process)doc";
+
 static const char *__doc_fiction_design_sidb_gates_params_design_mode = R"doc(Gate design mode.)doc";
 
 static const char *__doc_fiction_design_sidb_gates_params_design_sidb_gates_mode = R"doc(Selector for the available design approaches.)doc";
 
-static const char *__doc_fiction_design_sidb_gates_params_design_sidb_gates_mode_EXHAUSTIVE_GATE_DESIGNER = R"doc(Gates are designed by using the *Automatic Exhaustive Gate Designer*.)doc";
+static const char *__doc_fiction_design_sidb_gates_params_design_sidb_gates_mode_EXHAUSTIVE = R"doc(Gates are designed by using the *Automatic Exhaustive Gate Designer*.)doc";
 
-static const char *__doc_fiction_design_sidb_gates_params_design_sidb_gates_mode_QUICKCELL = R"doc(Gates are designed by using *QuickCell*.)doc";
+static const char *__doc_fiction_design_sidb_gates_params_design_sidb_gates_mode_QUICKCELL =
+R"doc(Gates are designed by using *QuickCell*. This is type of gate design
+is exhaustive but involves pruning prior to exhaustive enumeration.)doc";
 
-static const char *__doc_fiction_design_sidb_gates_params_design_sidb_gates_mode_RANDOM =
-R"doc(Gate layouts are designed randomly with possible repetition that needs
-to be checked.)doc";
+static const char *__doc_fiction_design_sidb_gates_params_design_sidb_gates_mode_RANDOM = R"doc(Gate layouts are designed randomly.)doc";
 
-static const char *__doc_fiction_design_sidb_gates_params_max_num_solutions = R"doc()doc";
+static const char *__doc_fiction_design_sidb_gates_params_maximum_number_of_solutions =
+R"doc(Number of solutions that needs to be obtained before termination.
 
-static const char *__doc_fiction_design_sidb_gates_params_number_of_sidbs = R"doc(Number of SiDBs placed in the canvas to create a working gate.)doc";
+@note This parameter has no effect when the gate design is exhaustive
+and all combinations are enumerated.)doc";
+
+static const char *__doc_fiction_design_sidb_gates_params_number_of_canvas_sidbs = R"doc(Number of SiDBs placed in the canvas to create a working gate.)doc";
 
 static const char *__doc_fiction_design_sidb_gates_params_operational_params = R"doc(Parameters for the `is_operational` function.)doc";
 
-static const char *__doc_fiction_design_sidb_gates_params_post_design_process = R"doc(After the design process, the returned gates can be sorted.)doc";
+static const char *__doc_fiction_design_sidb_gates_params_post_design_process =
+R"doc(After the design process, the returned gates can be sorted by the
+given ordering recipe.
+
+@note This parameter has no effect unless the gate design is
+exhaustive and all combinations are enumerated.)doc";
 
 static const char *__doc_fiction_design_sidb_gates_params_termination_cond =
-R"doc(The design process is terminated after a valid SiDB gate design is
-found.)doc";
+R"doc(The design process is either terminated after all canvas layouts have
+been considered, or the given amount of valid SiDB gate designs is
+found (`maximum_number_of_solutions`).
+
+@note This parameter has no effect unless the gate design is
+exhaustive. For random gate design, termination always occurs after
+finding the given amount of solutions.)doc";
 
 static const char *__doc_fiction_design_sidb_gates_params_termination_condition =
 R"doc(Selector for the different termination conditions for the SiDB gate
@@ -4701,8 +4811,8 @@ R"doc(The design process ends after all possible combinations of SiDBs
 within the canvas are enumerated.)doc";
 
 static const char *__doc_fiction_design_sidb_gates_params_termination_condition_OBTAINED_N_SOLUTIONS =
-R"doc(The design process is terminated as soon as the first valid SiDB gate
-design is found. todo)doc";
+R"doc(The design process is terminated as soon as a given amount of valid
+SiDB gate designs is found (`maximum_number_of_solutions`).)doc";
 
 static const char *__doc_fiction_design_sidb_gates_stats = R"doc(Statistics for the design of SiDB gates.)doc";
 
@@ -5069,26 +5179,6 @@ Parameter ``offset``:
 Parameter ``signals``:
     Vector to store signals for the adjusted coordinates.)doc";
 
-static const char *__doc_fiction_detail_advanced_circuit_design_impl = R"doc()doc";
-
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_advanced_circuit_design_impl = R"doc()doc";
-
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_design_circuit_on_defective_surface = R"doc()doc";
-
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_determine_truth_table_of_gate_connection = R"doc()doc";
-
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_find_operational_circuit = R"doc()doc";
-
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_lattice_tiling = R"doc(Gate-level layout.)doc";
-
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_network = R"doc(Network.)doc";
-
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_params = R"doc(Parameters for the on-the-fly circuit design.)doc";
-
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_prune_gate_designs = R"doc()doc";
-
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_stats = R"doc(Statistics for the on-the-fly circuit design.)doc";
-
 static const char *__doc_fiction_detail_any_to_string =
 R"doc(Converts an `std::any` to a string if it contains an alpha-numerical
 standard data type.
@@ -5102,6 +5192,19 @@ Returns:
 static const char *__doc_fiction_detail_apply_gate_library_impl = R"doc()doc";
 
 static const char *__doc_fiction_detail_apply_gate_library_impl_apply_gate_library_impl = R"doc()doc";
+
+static const char *__doc_fiction_detail_apply_gate_library_impl_assign_gate =
+R"doc(This function assigns a given FCN gate implementation to the total
+cell layout.
+
+Parameter ``c``:
+    Top-left cell of the tile where the gate is placed.
+
+Parameter ``g``:
+    Gate implementation.
+
+Parameter ``n``:
+    Corresponding node in the gate-level layout.)doc";
 
 static const char *__doc_fiction_detail_apply_gate_library_impl_cell_lyt = R"doc(Cell-level layout.)doc";
 
@@ -5137,16 +5240,8 @@ Template parameter ``Params``:
 Parameter ``params``:
     Parameters used for the SiDB on-the-fly gate library.
 
-Parameter ``whitelist``:
-    A whitelist for the tiles to which gates are assigned. When
-    `std::nullopt` (default), all tiles are considered that are not
-    blacklisted.
-
-Parameter ``blacklist``:
-    A blacklist for the tiles to which gates are not assigned. When
-    `std::nullopt` (default), all tiles are considered (unless a
-    whitelist is given). The blacklist has priority over the
-    whitelist.
+Parameter ``defect_surface``:
+    Optional defect surface.
 
 Returns:
     A `CellLyt` object representing the generated cell layout.)doc";
@@ -5162,19 +5257,11 @@ their corresponding positions and types. Optionally, it performs post-
 layout optimization and sets the layout name if certain conditions are
 met.
 
+Parameter ``defect_lyt``:
+    Optional defect surface.
+
 Returns:
-    A `CellLyt` object representing the generated cell layout.
-
-Parameter ``whitelist``:
-    A whitelist for the tiles to which gates are assigned. When
-    `std::nullopt` (default), all tiles are considered that are not
-    blacklisted.
-
-Parameter ``blacklist``:
-    A blacklist for the tiles to which gates are not assigned. When
-    `std::nullopt` (default), all tiles are considered (unless a
-    whitelist is given). The blacklist has priority over the
-    whitelist.)doc";
+    A `CellLyt` object representing the generated cell layout.)doc";
 
 static const char *__doc_fiction_detail_calculate_offset_matrix =
 R"doc(Calculate an offset matrix based on a to-delete list in a
@@ -5222,14 +5309,6 @@ collecting a simulation result. In order to judge whether a population
 stable charge distribution is physically valid, the *configuration
 stability* needs to be tested. If this criterion passes, the charge
 distribution is added to the simulation results.
-
-Parameter ``clustering_state``:
-    A clustering state consisting of only singleton clusters along
-    with associated charge states that make up a charge distribution
-    that conforms to the *population stability* criterion.)doc";
-
-static const char *__doc_fiction_detail_clustercomplete_impl_add_if_configuration_stability_is_met_with_upper_bound_external_potential =
-R"doc(TODO
 
 Parameter ``clustering_state``:
     A clustering state consisting of only singleton clusters along
@@ -5294,8 +5373,6 @@ Returns:
     completely empty and thus backtracking is not required.)doc";
 
 static const char *__doc_fiction_detail_clustercomplete_impl_available_threads = R"doc(Number of available threads.)doc";
-
-static const char *__doc_fiction_detail_clustercomplete_impl_bounded_local_external_potential = R"doc(TODO)doc";
 
 static const char *__doc_fiction_detail_clustercomplete_impl_charge_layout =
 R"doc(The base layout, along with the map of placed defects, that are used
@@ -5427,6 +5504,8 @@ pruning.)doc";
 
 static const char *__doc_fiction_detail_clustercomplete_impl_mutex_to_protect_the_simulation_results = R"doc(Mutex to protect the simulation results.)doc";
 
+static const char *__doc_fiction_detail_clustercomplete_impl_real_placed_defects = R"doc(Atomic defects that are placed in the layout.)doc";
+
 static const char *__doc_fiction_detail_clustercomplete_impl_remove_composition =
 R"doc(A composition is removed from the given clustering state, i.e., the
 projector states in the compositions are removed from the clustering
@@ -5454,8 +5533,6 @@ Parameter ``params``:
 
 Returns:
     Results of the exact simulation.)doc";
-
-static const char *__doc_fiction_detail_clustercomplete_impl_set_bounded_local_external_potential_if_present = R"doc(TODO)doc";
 
 static const char *__doc_fiction_detail_clustercomplete_impl_take_parent_out =
 R"doc(Before the parent projector state may be specialized to a specific
@@ -5741,6 +5818,70 @@ Parameter ``b``:
 Returns:
     `true` iff `a < b` based on the aforementioned rule.)doc";
 
+static const char *__doc_fiction_detail_compute_num_inputs_left_to_middle_pi =
+R"doc(This function iterates over all primary inputs in the given Cartesian
+layout and counts those whose tile is at the western border. Such
+inputs are considered to be positioned left of the middle primary
+input when the layout is converted to a hexagonal format.
+
+Template parameter ``CartLyt``:
+    Type of the Cartesian layout.
+
+Parameter ``lyt``:
+    The Cartesian gate-level layout containing primary inputs.
+
+Returns:
+    The number of primary inputs that are placed to the left of the
+    middle primary input.)doc";
+
+static const char *__doc_fiction_detail_compute_num_inputs_right_to_middle_pi =
+R"doc(This function iterates over all primary inputs in the given Cartesian
+layout and counts those whose tiles are at the northern border. Such
+inputs are considered to be positioned right of the middle primary
+input when the layout is converted to a hexagonal format.
+
+Template parameter ``CartLyt``:
+    Type of the Cartesian layout.
+
+Parameter ``lyt``:
+    The Cartesian gate-level layout containing primary inputs.
+
+Returns:
+    The number of primary inputs that are placed to the right of the
+    middle primary input.)doc";
+
+static const char *__doc_fiction_detail_compute_num_outputs_left_to_middle_po =
+R"doc(This function iterates over all primary outputs in the given Cartesian
+layout and counts those whose tiles are at the southern border. Such
+outputs are considered to be positioned left of the middle primary
+output when the layout is converted to a hexagonal format.
+
+Template parameter ``CartLyt``:
+    Type of the Cartesian layout.
+
+Parameter ``lyt``:
+    The Cartesian gate-level layout containing primary outputs.
+
+Returns:
+    The number of primary outputs that are placed to the left of the
+    middle primary output.)doc";
+
+static const char *__doc_fiction_detail_compute_num_outputs_right_to_middle_po =
+R"doc(This function iterates over all primary outputs in the given Cartesian
+layout and counts those whose tile is at the eastern border. Such
+outputs are considered to be positioned right of the middle primary
+output when the layout is converted to a hexagonal format.
+
+Template parameter ``CartLyt``:
+    Type of the Cartesian layout.
+
+Parameter ``lyt``:
+    The Cartesian gate-level layout containing primary outputs.
+
+Returns:
+    The number of primary outputs that are placed to the right of the
+    middle primary output.)doc";
+
 static const char *__doc_fiction_detail_connect_and_place = R"doc()doc";
 
 static const char *__doc_fiction_detail_connect_and_place_2 = R"doc()doc";
@@ -5851,7 +5992,8 @@ static const char *__doc_fiction_detail_critical_temperature_impl_gate_based_sim
 R"doc(*Gate-based Critical Temperature* Simulation of a SiDB layout for a
 given Boolean function.
 
-tparam TT Type of the truth table.
+Template parameter ``TT``:
+    Type of the truth table.
 
 Parameter ``spec``:
     Expected Boolean function of the layout given as a multi-output
@@ -6112,22 +6254,13 @@ static const char *__doc_fiction_detail_design_sidb_gates_impl = R"doc()doc";
 static const char *__doc_fiction_detail_design_sidb_gates_impl_all_sidbs_in_canvas = R"doc(All cells within the canvas.)doc";
 
 static const char *__doc_fiction_detail_design_sidb_gates_impl_convert_canvas_cell_indices_to_layout =
-R"doc(This function generates canvas SiDb layouts.
+R"doc(This function generates canvas SiDB layouts.
 
 Parameter ``cell_indices``:
     A vector of indices of cells to be added to the skeleton layout.
 
 Returns:
-    An SiDB cell-level layout consisting of canvas SidBs.)doc";
-
-static const char *__doc_fiction_detail_design_sidb_gates_impl_create_all_possible_canvas_layouts =
-R"doc(This function calculates all combinations of distributing a given
-number of SiDBs across a specified number of positions in the canvas.
-Each combination is then used to create a gate layout candidate.
-
-Returns:
-    A vector containing all possible gate layouts generated from the
-    combinations.)doc";
+    An SiDB cell-level layout consisting of canvas SiDBs.)doc";
 
 static const char *__doc_fiction_detail_design_sidb_gates_impl_design_sidb_gates_impl =
 R"doc(This constructor initializes an instance of the *SiDB Gate Designer*
@@ -6147,7 +6280,18 @@ Parameter ``ps``:
 Parameter ``st``:
     Statistics for the gate design process.)doc";
 
-static const char *__doc_fiction_detail_design_sidb_gates_impl_extract_gate_designs = R"doc()doc";
+static const char *__doc_fiction_detail_design_sidb_gates_impl_extract_gate_designs =
+R"doc(This process filters the given candidates for an SiDB gate design for
+the ones that are operational under the given truth table
+specification and operational conditions.
+
+Parameter ``candidate_combinations``:
+    A vector of canvas combination candidates to obtain the
+    operational gate designs from.
+
+Returns:
+    A vector of operational gate designs that were extracted from the
+    given vector of candidate canvas combinations.)doc";
 
 static const char *__doc_fiction_detail_design_sidb_gates_impl_input_bdl_wires = R"doc(Input BDL wires.)doc";
 
@@ -6160,8 +6304,6 @@ static const char *__doc_fiction_detail_design_sidb_gates_impl_number_of_discard
 static const char *__doc_fiction_detail_design_sidb_gates_impl_number_of_input_wires = R"doc(Number of input BDL wires.)doc";
 
 static const char *__doc_fiction_detail_design_sidb_gates_impl_number_of_output_wires = R"doc(Number of output BDL wires.)doc";
-
-static const char *__doc_fiction_detail_design_sidb_gates_impl_number_of_threads = R"doc()doc";
 
 static const char *__doc_fiction_detail_design_sidb_gates_impl_output_bdl_wires = R"doc(Output BDL wires.)doc";
 
@@ -6189,8 +6331,8 @@ threading to accelerate the evaluation and ensures thread-safe access
 to shared resources.
 
 Returns:
-    A vector containing the valid gate candidates that were not
-    pruned.)doc";
+    A vector containing the canvas combinations associated with valid
+    gate candidates that were not pruned.)doc";
 
 static const char *__doc_fiction_detail_design_sidb_gates_impl_run_quickcell =
 R"doc(Design Standard Cells/gates by using the *QuickCell* algorithm.
@@ -6224,6 +6366,17 @@ static const char *__doc_fiction_detail_design_sidb_gates_impl_skeleton_layout =
 R"doc(The skeleton layout serves as a starting layout to which SiDBs are
 added to create unique SiDB layouts and, if possible, working gates.
 It defines input and output wires.)doc";
+
+static const char *__doc_fiction_detail_design_sidb_gates_impl_skeleton_layout_with_canvas_sidbs =
+R"doc(This function adds SiDBs (given by indices) to the skeleton layout
+that is returned afterward.
+
+Parameter ``cell_indices``:
+    A vector of indices of cells to be added to the skeleton layout.
+
+Returns:
+    A copy of the original layout (`skeleton_layout`) with SiDB cells
+    added at specified indices.)doc";
 
 static const char *__doc_fiction_detail_design_sidb_gates_impl_stats = R"doc(The statistics of the gate design.)doc";
 
@@ -6283,12 +6436,12 @@ Returns:
 
 static const char *__doc_fiction_detail_detect_bdl_wires_impl_filter_wires_by_type =
 R"doc(This function scans through the `bdl_wires` and selects those
-containing a cell of the specified type. It also checks that all
-selected wires have the same length and triggers an assertion if wires
-of different lengths are found.
+containing BDL pair cells of the specified type. It also checks that
+all selected wires have the same length and triggers an assertion if
+wires of different lengths are found.
 
 Parameter ``type``:
-    The type of the cell to filter by.
+    The type of the BDL pair cells to filter by.
 
 Returns:
     A vector of `bdl_wire` objects containing cells of the specified
@@ -7600,7 +7753,20 @@ static const char *__doc_fiction_detail_generate_edge_intersection_graph_impl_ps
 
 static const char *__doc_fiction_detail_generate_edge_intersection_graph_impl_run = R"doc()doc";
 
-static const char *__doc_fiction_detail_get_ground_state_isolation = R"doc()doc";
+static const char *__doc_fiction_detail_get_ground_state_isolation =
+R"doc(Obtains the energetic ground state isolation; i.e., the energetic
+difference between the ground state and the first excited state.
+
+Template parameter ``Lyt``:
+    SiDB cell-level layout type.
+
+Parameter ``sim_res``:
+    Simulation results as a vector of physically valid charge
+    distributions.
+
+Returns:
+    The energetic difference between the ground state and the first
+    excited state.)doc";
 
 static const char *__doc_fiction_detail_get_offset =
 R"doc(Utility function to calculate the offset that has to be subtracted
@@ -7629,8 +7795,14 @@ Parameter ``cartesian_layout_width``:
 Parameter ``cartesian_layout_height``:
     Height of the Cartesian layout.
 
+Parameter ``input_mode``:
+    Adjust offset based on PIs relocated to the top row.
+
+Parameter ``output_mode``:
+    Adjust offset based on POs relocated to the bottom row.
+
 Returns:
-    offset.)doc";
+    positive and negative offset.)doc";
 
 static const char *__doc_fiction_detail_get_path =
 R"doc(This helper function computes a path between two coordinates using the
@@ -8465,6 +8637,18 @@ Returns:
     The network with virtual primary inputs removed, or the original
     network if unsupported.)doc";
 
+static const char *__doc_fiction_detail_hexagonalization_impl = R"doc()doc";
+
+static const char *__doc_fiction_detail_hexagonalization_impl_hexagonalization_impl = R"doc()doc";
+
+static const char *__doc_fiction_detail_hexagonalization_impl_layout = R"doc(The 2DDWave-clocked layout to hexagonalize.)doc";
+
+static const char *__doc_fiction_detail_hexagonalization_impl_ps = R"doc(Hexagonalization parameters.)doc";
+
+static const char *__doc_fiction_detail_hexagonalization_impl_pst = R"doc(Hexagonalization statistics.)doc";
+
+static const char *__doc_fiction_detail_hexagonalization_impl_run = R"doc()doc";
+
 static const char *__doc_fiction_detail_is_balanced_impl = R"doc()doc";
 
 static const char *__doc_fiction_detail_is_balanced_impl_balanced = R"doc()doc";
@@ -8645,7 +8829,7 @@ R"doc(Constructor to initialize the algorithm with a layout and parameters.
 Parameter ``lyt``:
     The SiDB cell-level layout to be checked.
 
-Parameter ``tt``:
+Parameter ``spec``:
     Expected Boolean function of the layout given as a multi-output
     truth table.
 
@@ -8684,7 +8868,7 @@ input and output wires, and a canvas layout.
 Parameter ``lyt``:
     The SiDB cell-level layout to be checked.
 
-Parameter ``tt``:
+Parameter ``spec``:
     Expected Boolean function of the layout given as a multi-output
     truth table.
 
@@ -8706,7 +8890,7 @@ R"doc(Constructor to initialize the algorithm with a layout and parameters.
 Parameter ``lyt``:
     The SiDB cell-level layout to be checked.
 
-Parameter ``tt``:
+Parameter ``spec``:
     Expected Boolean function of the layout given as a multi-output
     truth table.
 
@@ -9047,19 +9231,7 @@ static const char *__doc_fiction_detail_non_operationality_reason_LOGIC_MISMATCH
 
 static const char *__doc_fiction_detail_non_operationality_reason_NONE = R"doc(No reason for non-operationality could be determined.)doc";
 
-static const char *__doc_fiction_detail_on_the_fly_circuit_design_impl = R"doc()doc";
-
-static const char *__doc_fiction_detail_on_the_fly_circuit_design_impl_design_circuit_on_defective_surface = R"doc()doc";
-
-static const char *__doc_fiction_detail_on_the_fly_circuit_design_impl_lattice_tiling = R"doc(Gate-level layout.)doc";
-
-static const char *__doc_fiction_detail_on_the_fly_circuit_design_impl_network = R"doc(Network.)doc";
-
-static const char *__doc_fiction_detail_on_the_fly_circuit_design_impl_on_the_fly_circuit_design_impl = R"doc()doc";
-
-static const char *__doc_fiction_detail_on_the_fly_circuit_design_impl_params = R"doc(Parameters for the on-the-fly circuit design.)doc";
-
-static const char *__doc_fiction_detail_on_the_fly_circuit_design_impl_stats = R"doc(Statistics for the on-the-fly circuit design.)doc";
+static const char *__doc_fiction_detail_non_operationality_reason_POTENTIAL_POSITIVE_CHARGES = R"doc(Positive charges may occur but the simulation base is set to `2`.)doc";
 
 static const char *__doc_fiction_detail_operational_domain_impl = R"doc()doc";
 
@@ -10172,6 +10344,42 @@ Parameter ``cell``:
 
 static const char *__doc_fiction_detail_recursively_paint_edges = R"doc()doc";
 
+static const char *__doc_fiction_detail_routing_objective_with_fanin_update_information =
+R"doc(Encapsulates a routing objective with fanin update information.
+
+This struct specifies a routing objective by defining the source and
+target coordinates, and it includes a flag that indicates whether the
+primary input was the first fanin for the corresponding fanout and the
+fanout gate is asymmetric (e.g., greater than). If the flag is set to
+true, the fanin signals need to be reordered.
+
+Template parameter ``HexLyt``:
+    The type of the hexagonal layout.)doc";
+
+static const char *__doc_fiction_detail_routing_objective_with_fanin_update_information_routing_objective_with_fanin_update_information =
+R"doc(Constructs a routing objective with fanin update information.
+
+Initializes the base routing objective with the given source and
+target coordinates, and sets the update flag based on the provided
+parameter.
+
+Parameter ``src``:
+    The source coordinate of the routing objective.
+
+Parameter ``tgt``:
+    The target coordinate of the routing objective.
+
+Parameter ``update``:
+    (Optional) A flag that, if true, indicates that the primary input
+    was the first fanin and the fanout gate is asymmetric, which means
+    that the fanin signals need to be reordered. Defaults to false.)doc";
+
+static const char *__doc_fiction_detail_routing_objective_with_fanin_update_information_update_first_fanin =
+R"doc(Flag indicating whether the primary input was the first fanin and the
+fanout gate is asymmetric.
+
+If this flag is true, the fanin signals need to be reordered.)doc";
+
 static const char *__doc_fiction_detail_sat_clocking_handler = R"doc()doc";
 
 static const char *__doc_fiction_detail_sat_clocking_handler_assign_clock_numbers =
@@ -10349,18 +10557,6 @@ R"doc(Enum indicating if primary inputs (PIs) can be placed at the top or
 left.)doc";
 
 static const char *__doc_fiction_detail_search_space_graph_planar = R"doc(Create planar layouts.)doc";
-
-static const char *__doc_fiction_detail_skeleton_influence_bounds_impl = R"doc()doc";
-
-static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_cell_lyt_of_tiles_of_interest = R"doc()doc";
-
-static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_cell_lyt_with_all_skeletons = R"doc()doc";
-
-static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_gate_lyt = R"doc()doc";
-
-static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_skeleton_influence_bounds_impl = R"doc()doc";
-
-static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_tiles_of_interest = R"doc()doc";
 
 static const char *__doc_fiction_detail_sweep_parameter_to_string =
 R"doc(Converts a sweep parameter to a string representation. This is used to
@@ -11564,22 +11760,98 @@ GHz) clocking.)doc";
 static const char *__doc_fiction_energy_dissipation_stats_unknown = R"doc()doc";
 
 static const char *__doc_fiction_energy_distribution =
-R"doc(This function takes in a vector of `charge_distribution_surface`
-objects and returns a map containing the system energy and the number
-of occurrences of that energy in the input vector. To compare two
-energy values for equality, the comparison uses a tolerance specified
-by `constants::ERROR_MARGIN`.
+R"doc(This class is used to store the energy distribution of an SiDB layout.
+The energy distribution is a map that contains the electrostatic
+potential as a key and its degeneracy as a value. To be more precise,
+if two different charge distributions occur with the same energy, the
+degeneracy value of the energy state is 2.)doc";
 
-Template parameter ``Lyt``:
-    SiDB cell-level layout type.
+static const char *__doc_fiction_energy_distribution_add_energy_state =
+R"doc(Adds a state to the energy distribution.
 
-Parameter ``input_vec``:
-    A vector of `charge_distribution_surface` objects for which
-    statistics are to be computed.
+Parameter ``state``:
+    The energy state to be added.)doc";
+
+static const char *__doc_fiction_energy_distribution_degeneracy =
+R"doc(Returns the degeneracy value (number of states) with the given energy
+value.
+
+Parameter ``energy``:
+    The energy value for which the excited state number is to be
+    determined.
 
 Returns:
-    A map containing the system energy as the key and the number of
-    occurrences of that energy in the input vector as the value.)doc";
+    The degeneracy of the given energy. If the energy value is not
+    found, `std::nullopt` is returned instead.)doc";
+
+static const char *__doc_fiction_energy_distribution_distribution =
+R"doc(The energy distribution map. The key is the energy value and the value
+is the degeneracy of the energy value.)doc";
+
+static const char *__doc_fiction_energy_distribution_empty =
+R"doc(Checks if the energy distribution is empty.
+
+Returns:
+    `true` if the energy distribution is empty, `false` otherwise.)doc";
+
+static const char *__doc_fiction_energy_distribution_energy_distribution = R"doc(Default constructor.)doc";
+
+static const char *__doc_fiction_energy_distribution_for_each =
+R"doc(Applies a function to all states in the energy distribution.
+
+Template parameter ``Fn``:
+    Functor type.
+
+Parameter ``fn``:
+    Functor to apply to each key-value pair.)doc";
+
+static const char *__doc_fiction_energy_distribution_get_nth_state =
+R"doc(Returns the nth state (energy + degeneracy) in the energy
+distribution.
+
+Parameter ``state_index``:
+    The index of the state to be retrieved.
+
+Returns:
+    Energy state. If the index is out of range, `std::nullopt` is
+    returned instead.)doc";
+
+static const char *__doc_fiction_energy_distribution_max_energy =
+R"doc(Returns the maximum energy value in the energy distribution.
+
+Returns:
+    The maximum energy value in the energy distribution.)doc";
+
+static const char *__doc_fiction_energy_distribution_min_energy =
+R"doc(Returns the minimum energy value in the energy distribution.
+
+Returns:
+    The minimum energy value in the energy distribution.)doc";
+
+static const char *__doc_fiction_energy_distribution_size =
+R"doc(Returns the number of energy states in the energy distribution.
+
+Returns:
+    The number of energy states in the energy distribution.)doc";
+
+static const char *__doc_fiction_energy_state =
+R"doc(This struct stores the energy state of an SiDB layout. The energy
+state consists of the electrostatic potential energy and the
+degeneracy of the state.)doc";
+
+static const char *__doc_fiction_energy_state_degeneracy = R"doc(The degeneracy of the state.)doc";
+
+static const char *__doc_fiction_energy_state_electrostatic_potential_energy = R"doc(The electrostatic potential energy of the charge distribution (eV).)doc";
+
+static const char *__doc_fiction_energy_state_energy_state =
+R"doc(Default constructor.
+
+Parameter ``electrostatic_potential_energy``:
+    The electrostatic potential energy of the charge distribution
+    (eV).
+
+Parameter ``degeneracy``:
+    The degeneracy of the state.)doc";
 
 static const char *__doc_fiction_enumerate_all_paths =
 R"doc(Enumerates all possible paths in a layout that start at a given source
@@ -12760,6 +13032,14 @@ static const char *__doc_fiction_gate_level_layout_create_and = R"doc()doc";
 
 static const char *__doc_fiction_gate_level_layout_create_buf = R"doc()doc";
 
+static const char *__doc_fiction_gate_level_layout_create_ge = R"doc()doc";
+
+static const char *__doc_fiction_gate_level_layout_create_gt = R"doc()doc";
+
+static const char *__doc_fiction_gate_level_layout_create_le = R"doc()doc";
+
+static const char *__doc_fiction_gate_level_layout_create_lt = R"doc()doc";
+
 static const char *__doc_fiction_gate_level_layout_create_maj = R"doc()doc";
 
 static const char *__doc_fiction_gate_level_layout_create_nand = R"doc()doc";
@@ -13732,39 +14012,40 @@ R"doc(For each routing objective that cannot be fulfilled in the given
 layout, this counter is incremented.)doc";
 
 static const char *__doc_fiction_generate_multiple_random_sidb_layouts =
-R"doc(Generates multiple unique random SiDB layouts by adding them to the
-provided layout skeleton. The layout skeleton serves as the starting
-layout to which SiDBs are added to create unique SiDB layouts.
+R"doc(Generates multiple random layouts featuring a random arrangement of
+SiDBs. These randomly placed dots can be incorporated into an existing
+layout skeleton that may be optionally provided.
 
 Template parameter ``Lyt``:
     SiDB cell-level SiDB layout type.
-
-Parameter ``lyt_skeleton``:
-    A layout to which random SiDBs are added to create unique layouts.
 
 Parameter ``params``:
     The parameters for generating the random SiDB layouts.
 
+Parameter ``skeleton``:
+    Optional layout to which random dots are added.
+
 Returns:
-    A vector containing the unique randomly generated SiDB layouts.)doc";
+    A vector containing the unique randomly generated SiDB layouts. If
+    the design is impossible, `std::nullopt`)doc";
 
 static const char *__doc_fiction_generate_random_sidb_layout =
-R"doc(Generates a random layout of SiDBs by adding them to the provided
-layout skeleton. The layout skeleton serves as the starting layout to
-which SiDBs are added to create the final layout.
+R"doc(Generates a layout featuring a random arrangement of SiDBs. These
+randomly placed dots can be incorporated into an existing layout
+skeleton that may be optionally provided.
 
 Template parameter ``Lyt``:
     SiDB cell-level SiDB layout type.
 
-Parameter ``lyt_skeleton``:
-    A layout to which random cells are added to create the final
-    layout.
-
 Parameter ``params``:
     The parameters for generating the random layout.
 
+Parameter ``skeleton``:
+    Optional layout to which random dots are added.
+
 Returns:
-    A randomly-generated layout of SiDBs.)doc";
+    A randomly generated SiDB layout, or `std::nullopt` if the process
+    failed due to conflicting parameters.)doc";
 
 static const char *__doc_fiction_generate_random_sidb_layout_params =
 R"doc(This struct stores the parameters for the
@@ -13813,7 +14094,7 @@ static const char *__doc_fiction_generate_random_sidb_layout_params_positive_sid
 R"doc(If positively charged SiDBs should be prevented, SiDBs are not placed
 closer than the minimal_spacing.)doc";
 
-static const char *__doc_fiction_generate_random_sidb_layout_params_sim_params = R"doc(Simulation parameters.)doc";
+static const char *__doc_fiction_generate_random_sidb_layout_params_simulation_parameters = R"doc(Simulation parameters.)doc";
 
 static const char *__doc_fiction_geometric_temperature_schedule =
 R"doc(A logarithmically decreasing temperature schedule. The temperature is
@@ -14506,24 +14787,6 @@ static const char *__doc_fiction_ground_state_space_results_top_cluster =
 R"doc(The top cluster is the root of the cluster hierarchy. It therefore
 allows access to the entire cluster hierarchy, including the charge
 spaces of each cluster.)doc";
-
-static const char *__doc_fiction_groundstate_from_simulation_result =
-R"doc(This function calculates the ground state charge distributions from
-the provided simulation results. The ground state charge distributions
-are those with energy closest to the minimum energy found in the
-simulation results.
-
-@note When degenerate states exist, there are multiple ground states
-with the same energy.
-
-Template parameter ``Lyt``:
-    The layout type used in the simulation results.
-
-Parameter ``simulation_results``:
-    The simulation results containing charge distributions.
-
-Returns:
-    A vector of charge distributions with the minimal energy.)doc";
 
 static const char *__doc_fiction_has_above = R"doc()doc";
 
@@ -15471,8 +15734,46 @@ Template parameter ``CartLyt``:
 Parameter ``lyt``:
     2DDWave-clocked Cartesian gate-level layout to hexagonalize.
 
+Parameter ``params``:
+    Parameters.
+
+Parameter ``stats``:
+    Statistics.
+
 Returns:
     Hexagonal representation of the Cartesian layout.)doc";
+
+static const char *__doc_fiction_hexagonalization_io_pin_routing_error =
+R"doc(Exception thrown when an error occurs during moving inputs/outputs to
+top/bottom border and rerouting.)doc";
+
+static const char *__doc_fiction_hexagonalization_io_pin_routing_error_hexagonalization_io_pin_routing_error =
+R"doc(Constructs a `hexagonalization_io_pin_routing_error` object with the
+given error message.
+
+Parameter ``msg``:
+    The error message describing the error.)doc";
+
+static const char *__doc_fiction_hexagonalization_params =
+R"doc(This structure encapsulates settings that determine how primary inputs
+(PIs) and primary outputs (POs) are handled during the conversion from
+a Cartesian to a hexagonal layout.)doc";
+
+static const char *__doc_fiction_hexagonalization_params_input_pin_extension = R"doc(Input extension mode. Defaults to none)doc";
+
+static const char *__doc_fiction_hexagonalization_params_io_pin_extension_mode =
+R"doc(Specifies how primary inputs/outputs should be handled in the
+hexagonalization process.)doc";
+
+static const char *__doc_fiction_hexagonalization_params_io_pin_extension_mode_EXTEND = R"doc(Extend primary inputs/outputs to the top/bottom row.)doc";
+
+static const char *__doc_fiction_hexagonalization_params_io_pin_extension_mode_EXTEND_PLANAR =
+R"doc(Extend primary inputs/outputs to the top/bottom row with planar
+rerouting (i.e., without crossings).)doc";
+
+static const char *__doc_fiction_hexagonalization_params_io_pin_extension_mode_NONE = R"doc(Do not extend primary inputs/outputs to the top/bottom row (default).)doc";
+
+static const char *__doc_fiction_hexagonalization_params_output_pin_extension = R"doc(Output extension mode. Defaults to none)doc";
 
 static const char *__doc_fiction_hexagonalization_stats = R"doc(This struct stores statistics about the hexagonalization process.)doc";
 
@@ -15748,8 +16049,6 @@ Returns:
 
 static const char *__doc_fiction_is_clocked_layout = R"doc()doc";
 
-static const char *__doc_fiction_is_complex_gate = R"doc()doc";
-
 static const char *__doc_fiction_is_coordinate_layout = R"doc()doc";
 
 static const char *__doc_fiction_is_crossable_wire =
@@ -15824,7 +16123,7 @@ Returns:
 static const char *__doc_fiction_is_hexagonal_layout = R"doc()doc";
 
 static const char *__doc_fiction_is_kink_induced_non_operational =
-R"doc(This function determines if the layout is only considered as non-
+R"doc(This function determines if the layout is only considered non-
 operational because of kinks. This means that the layout would be
 considered as operational, if kinks were accepted.
 
@@ -15854,7 +16153,7 @@ Returns:
     `false` otherwise.)doc";
 
 static const char *__doc_fiction_is_kink_induced_non_operational_2 =
-R"doc(This function determines if the layout is only considered as non-
+R"doc(This function determines if the layout is only considered non-
 operational because of kinks. This means that the layout would be
 considered as operational, if kinks were accepted.
 
@@ -15967,9 +16266,9 @@ Parameter ``params``:
     Parameters for the `is_operational` algorithm.
 
 Returns:
-    A pair containing the operational status of the gate layout
-    (either `OPERATIONAL` or `NON_OPERATIONAL`) along with auxiliary
-    statistics.)doc";
+    A datatype containing the operational status of the gate-level
+    layout (either `OPERATIONAL` or `NON_OPERATIONAL`) along with
+    auxiliary statistics.)doc";
 
 static const char *__doc_fiction_is_operational_2 =
 R"doc(Determine the operational status of an SiDB layout.
@@ -16005,13 +16304,11 @@ Parameter ``canvas_lyt``:
     Optional canvas layout.
 
 Returns:
-    A pair containing the operational status of the gate layout
-    (either `OPERATIONAL` or `NON_OPERATIONAL`) along with auxiliary
-    statistics.)doc";
+    A datatype containing the operational status of the gate-level
+    layout (either `OPERATIONAL` or `NON_OPERATIONAL`) along with
+    auxiliary statistics.)doc";
 
-static const char *__doc_fiction_is_operational_params = R"doc(Parameters for the `is_operational` algorithm. TODO)doc";
-
-static const char *__doc_fiction_is_operational_params_cc_map = R"doc()doc";
+static const char *__doc_fiction_is_operational_params = R"doc(Parameters for the `is_operational` algorithm.)doc";
 
 static const char *__doc_fiction_is_operational_params_input_bdl_iterator_params = R"doc(Parameters for the BDL input iterator.)doc";
 
@@ -16050,7 +16347,7 @@ operational, relating to kinks.)doc";
 
 static const char *__doc_fiction_is_operational_params_operational_condition_kinks_REJECT_KINKS =
 R"doc(The I/O pins are not allowed to show kinks. If kinks exist, the layout
-is considered as non-operational.)doc";
+is considered non-operational.)doc";
 
 static const char *__doc_fiction_is_operational_params_operational_condition_kinks_TOLERATE_KINKS =
 R"doc(Even if the I/O pins show kinks, the layout is still considered as
@@ -16067,8 +16364,6 @@ being true, the layout is considered as non-operational.)doc";
 static const char *__doc_fiction_is_operational_params_operational_condition_positive_charges_TOLERATE_POSITIVE_CHARGES =
 R"doc(Even if positive charges can occur, the layout is still considered as
 operational.)doc";
-
-static const char *__doc_fiction_is_operational_params_print = R"doc()doc";
 
 static const char *__doc_fiction_is_operational_params_sim_engine =
 R"doc(The simulation engine to be used for the operational domain
@@ -16343,8 +16638,6 @@ Parameter ``lyt``:
 Returns:
     Number of magnets as counted by MagCAD.)doc";
 
-static const char *__doc_fiction_make_gate_design_params_for_complex_gates = R"doc()doc";
-
 static const char *__doc_fiction_manhattan_distance =
 R"doc(The Manhattan distance :math:`D` between two layout coordinates
 :math:`(x_1, y_1)` and :math:`(x_2, y_2)` given by
@@ -16588,29 +16881,6 @@ Parameter ``n``:
 Returns:
     Number of constant fanins to `n` in `ntk`.)doc";
 
-static const char *__doc_fiction_number_of_operational_input_combinations =
-R"doc(This function calculates the count of input combinations for which the
-SiDB-based logic, represented by the provided layout (`lyt`) and truth
-table specifications (`spec`), produces the correct output.
-
-Template parameter ``Lyt``:
-    Type of the cell-level layout.
-
-Template parameter ``TT``:
-    Type of the truth table.
-
-Parameter ``lyt``:
-    The SiDB layout.
-
-Parameter ``spec``:
-    Vector of truth table specifications.
-
-Parameter ``params``:
-    Parameters to simualte if a input combination is operational.
-
-Returns:
-    The count of operational input combinations.)doc";
-
 static const char *__doc_fiction_obstruction_layout = R"doc()doc";
 
 static const char *__doc_fiction_obstruction_layout_2 = R"doc()doc";
@@ -16632,6 +16902,22 @@ Parameter ``temperature``:
 
 Returns:
     The occupation probability of all erroneous states is returned.)doc";
+
+static const char *__doc_fiction_occupation_probability_non_gate_based =
+R"doc(This function computes the occupation probability of excited states
+(charge distributions with energy higher than the ground state) at a
+given temperature.
+
+Parameter ``energy_distribution``:
+    This contains the energies in eV of all possible charge
+    distributions with the degeneracy.
+
+Parameter ``temperature``:
+    System temperature to assume (unit: K).
+
+Returns:
+    The total occupation probability of all excited states is
+    returned.)doc";
 
 static const char *__doc_fiction_odd_column_cartesian =
 R"doc(\verbatim +-------+ +-------+ | | | | | (0,0) +-------+ (2,0)
@@ -16854,7 +17140,42 @@ static const char *__doc_fiction_offset_ucoord_t_y = R"doc(31 bit for the y coor
 
 static const char *__doc_fiction_offset_ucoord_t_z = R"doc(1 bit for the z coordinate.)doc";
 
-static const char *__doc_fiction_on_the_fly_circuit_design_on_defective_surface =
+static const char *__doc_fiction_on_the_fly_circuit_design_on_defective_surface_stats =
+R"doc(Statistics for the on-the-fly defect-aware circuit design.
+
+Template parameter ``GateLyt``:
+    Gate-level layout type.)doc";
+
+static const char *__doc_fiction_on_the_fly_circuit_design_on_defective_surface_stats_duration = R"doc(The total runtime of the on-the-fly circuit design.)doc";
+
+static const char *__doc_fiction_on_the_fly_circuit_design_on_defective_surface_stats_exact_stats = R"doc(The `stats` of the *exact* algorithm.)doc";
+
+static const char *__doc_fiction_on_the_fly_circuit_design_on_defective_surface_stats_gate_layout = R"doc(The gate-level layout after P&R.)doc";
+
+static const char *__doc_fiction_on_the_fly_sidb_circuit_design =
+R"doc(This function implements an on-the-fly SiDB circuit design algorithm.
+
+The process begins with an already placed and routed gate-level
+layout. For each gate, the corresponding SiDB implementation is
+designed by using an SiDB gate design algorithm.
+
+Template parameter ``CellLyt``:
+    SiDB cell-level layout type.
+
+Template parameter ``GateLyt``:
+    Gate-level layout type.
+
+Parameter ``gate_lyt``:
+    Gate-level layout.
+
+Parameter ``params``:
+    The parameters used for designing the circuit, encapsulated in an
+    `on_the_fly_sidb_circuit_design_params` object.
+
+Returns:
+    Layout representing the designed SiDB circuit.)doc";
+
+static const char *__doc_fiction_on_the_fly_sidb_circuit_design_on_defective_surface =
 R"doc(This function implements an on-the-fly circuit design algorithm for a
 defective SiDB surface.
 
@@ -16879,7 +17200,7 @@ Template parameter ``Ntk``:
     The type of the input network.
 
 Template parameter ``CellLyt``:
-    SiDB cell-level layout type.
+    SiDB defect surface type.
 
 Template parameter ``GateLyt``:
     Gate-level layout type.
@@ -16890,36 +17211,38 @@ Parameter ``ntk``:
 Parameter ``lattice_tiling``:
     The lattice tiling used for the circuit design.
 
+Parameter ``defective_surface``:
+    The defective surface on which the SiDB circuit is designed.
+
 Parameter ``params``:
     The parameters used for designing the circuit, encapsulated in an
-    `on_the_fly_circuit_design_params` object.
+    `on_the_fly_sidb_circuit_design_params` object.
 
 Parameter ``stats``:
-    Pointer to a structure for collecting statistics. If nullptr,
-    statistics are not collected.
+    Pointer to a structure for collecting statistics. If `nullptr`,
+    statistics are discarded.
 
 Returns:
-    A `sidb_defect_surface<CellLyt>` representing the designed circuit
-    on the defective surface.)doc";
+    Layout representing the designed circuit on the defective surface.)doc";
 
-static const char *__doc_fiction_on_the_fly_circuit_design_params =
+static const char *__doc_fiction_on_the_fly_sidb_circuit_design_on_defective_surface_params =
 R"doc(This struct stores the parameters to design an SiDB circuit on a
 defective surface.
 
 Template parameter ``CellLyt``:
     SiDB cell-level layout type.)doc";
 
-static const char *__doc_fiction_on_the_fly_circuit_design_params_exact_design_parameters = R"doc(Parameters for the *exact* placement and routing algorithm.)doc";
+static const char *__doc_fiction_on_the_fly_sidb_circuit_design_on_defective_surface_params_exact_design_parameters = R"doc(Parameters for the *exact* placement and routing algorithm.)doc";
 
-static const char *__doc_fiction_on_the_fly_circuit_design_params_sidb_on_the_fly_gate_library_parameters = R"doc(Parameters for the SiDB on-the-fly gate library.)doc";
+static const char *__doc_fiction_on_the_fly_sidb_circuit_design_on_defective_surface_params_sidb_on_the_fly_gate_library_parameters = R"doc(Parameters for the SiDB on-the-fly gate library.)doc";
 
-static const char *__doc_fiction_on_the_fly_circuit_design_stats = R"doc(Statistics for the on-the-fly defect-aware circuit design.)doc";
+static const char *__doc_fiction_on_the_fly_sidb_circuit_design_params =
+R"doc(This struct stores the parameters to design an SiDB circuit.
 
-static const char *__doc_fiction_on_the_fly_circuit_design_stats_duration = R"doc(The total runtime of the operational domain computation.)doc";
+Template parameter ``CellLyt``:
+    SiDB cell-level layout type.)doc";
 
-static const char *__doc_fiction_on_the_fly_circuit_design_stats_exact_stats = R"doc(The `stats` of the *exact* algorithm.)doc";
-
-static const char *__doc_fiction_on_the_fly_circuit_design_stats_gate_layout = R"doc(The gate-level layout after P&R.)doc";
+static const char *__doc_fiction_on_the_fly_sidb_circuit_design_params_sidb_on_the_fly_gate_library_parameters = R"doc(Parameters for the SiDB on-the-fly gate library.)doc";
 
 static const char *__doc_fiction_open_clocking =
 R"doc(Returns an irregular clocking that maps every coordinate to the
@@ -16956,13 +17279,21 @@ Returns:
     A vector containing the simulation results for each respective
     input that was assessed.)doc";
 
-static const char *__doc_fiction_operational_assessment_operational_assessment = R"doc(Standard constructor that only sets the operational status.)doc";
+static const char *__doc_fiction_operational_assessment_operational_assessment =
+R"doc(Standard constructor that only sets the operational status.
+
+Parameter ``op_status``:
+    The operational status to set.)doc";
 
 static const char *__doc_fiction_operational_assessment_operational_assessment_for_input =
 R"doc(This struct collects the information for a specific input combination
 that was obtained during the assessment.)doc";
 
-static const char *__doc_fiction_operational_assessment_operational_assessment_for_input_operational_assessment_for_input = R"doc(Standard constructor that only sets the operational status.)doc";
+static const char *__doc_fiction_operational_assessment_operational_assessment_for_input_operational_assessment_for_input =
+R"doc(Standard constructor that only sets the operational status.
+
+Parameter ``op_status``:
+    The operational status to set.)doc";
 
 static const char *__doc_fiction_operational_assessment_operational_assessment_for_input_simulation_results =
 R"doc(The charge distributions obtained for one input combination that was
@@ -17063,7 +17394,7 @@ Parameter ``stats``:
     Operational domain computation statistics.
 
 Returns:
-    The (partial) operational domain of the layout.
+    The operational domain of the layout.
 
 Throws:
     std::invalid_argument if the given sweep parameters are invalid.)doc";
@@ -17127,7 +17458,7 @@ Parameter ``stats``:
     Operational domain computation statistics.
 
 Returns:
-    The (partial) operational domain of the layout.
+    The operational domain of the layout.
 
 Throws:
     std::invalid_argument if the given sweep parameters are invalid.)doc";
@@ -17257,7 +17588,7 @@ Parameter ``stats``:
     Operational domain computation statistics.
 
 Returns:
-    The (partial) operational domain of the layout.
+    The operational domain of the layout.
 
 Throws:
     std::invalid_argument if the given sweep parameters are invalid.)doc";
@@ -17356,7 +17687,7 @@ Parameter ``params``:
     Parameters to simulate if an input combination is operational.
 
 Returns:
-    The count of operational input combinations.)doc";
+    The operational input combinations.)doc";
 
 static const char *__doc_fiction_operational_input_patterns_2 =
 R"doc(This function determines the input combinations for which the layout
@@ -18390,19 +18721,18 @@ static const char *__doc_fiction_potential_projection_order_potential_projection
 R"doc(Constructor for a potential projection from a singleton cluster onto
 the SiDB contained in it.
 
-Parameter ``loc_ext_pot_min``:
-    The local external potential at the SiDB in the singleton cluster.
-    Specifically, this is the sum of the local defect potential and
-    the local external potential.
-
-Parameter ``loc_ext_pot_max``:
+Parameter ``loc_ext_pot``:
     The local external potential at the SiDB in the singleton cluster.
     Specifically, this is the sum of the local defect potential and
     the local external potential.
 
 Parameter ``base``:
     The simulation base. This defines whether positive charges are
-    considered.)doc";
+    considered.
+
+Parameter ``self_projection``:
+    Separates the constructor type from inter-SiDB potential
+    projections.)doc";
 
 static const char *__doc_fiction_potential_projection_order_potential_projection_order_3 =
 R"doc(Constructor for a potential projection from a singleton cluster onto
@@ -18805,11 +19135,11 @@ Parameter ``lyt``:
     The layout to simulate.
 
 Parameter ``ps``:
-    Physical parameters. They are material-specific and may vary from
-    experiment to experiment.
+    QuickSim parameters.
 
 Returns:
-    sidb_simulation_result is returned with all results.)doc";
+    `sidb_simulation_result` is returned if the simulation was
+    successful, otherwise `std::nullopt`.)doc";
 
 static const char *__doc_fiction_quicksim_params = R"doc(This struct stores the parameters for the *QuickSim* algorithm.)doc";
 
@@ -18824,6 +19154,8 @@ R"doc(Number of threads to spawn. By default the number of threads is set to
 the number of available hardware threads.)doc";
 
 static const char *__doc_fiction_quicksim_params_simulation_parameters = R"doc(Simulation parameters for the simulation of the physical SiDB system.)doc";
+
+static const char *__doc_fiction_quicksim_params_timeout = R"doc(Timeout limit (in ms).)doc";
 
 static const char *__doc_fiction_random_coordinate =
 R"doc(Generates a random coordinate within the region spanned by two given
@@ -19568,7 +19900,17 @@ is intended for hexagonal, pointy-top layouts that are clocked with a
 row-based clocking scheme, i.e., where the information flow direction
 is north to south.)doc";
 
-static const char *__doc_fiction_sidb_bestagon_library_determine_port_routing = R"doc()doc";
+static const char *__doc_fiction_sidb_bestagon_library_determine_port_routing =
+R"doc(Determines the port directions of a given tile.
+
+Template parameter ``GateLyt``:
+    Pointy-top hexagonal gate-level layout type.
+
+Parameter ``lyt``:
+    Given tile `t` for which the port directions are determined.
+
+Returns:
+    port directions of the given tile are returned as `port_list`.)doc";
 
 static const char *__doc_fiction_sidb_bestagon_library_get_functional_implementations =
 R"doc(Returns a map of all gate functions supported by the library and their
@@ -19775,15 +20117,10 @@ Parameter ``singleton``:
 Parameter ``cs``:
     Charge state to lift to a singleton multiset charge configuration.
 
-Parameter ``loc_ext_pot_min``:
-    The lower bound on the local external potential at the SiDB in the
-    singleton cluster. Specifically, this is the sum of the local
-    defect potential and the local external potential.
-
-Parameter ``loc_ext_pot_max``:
-    The upper bound on the local external potential at the SiDB in the
-    singleton cluster. Specifically, this is the sum of the local
-    defect potential and the local external potential.
+Parameter ``loc_ext_pot``:
+    The local external potential at the SiDB in the singleton cluster.
+    Specifically, this is the sum of the local defect potential and
+    the local external potential.
 
 Parameter ``total_num_sidbs``:
     The total number of SiDBs in the layout.)doc";
@@ -19870,15 +20207,10 @@ Parameter ``loc_pot_min``:
 Parameter ``loc_pot_max``:
     The maximum local potential for the SiDB in the singleton cluster.
 
-Parameter ``loc_ext_pot_min``:
-    The minimum local external potential at the SiDB in the singleton
-    cluster. Specifically, this is the sum of the local defect
-    potential and the local external potential.
-
-Parameter ``loc_ext_pot_max``:
-    The maximum local external potential at the SiDB in the singleton
-    cluster. Specifically, this is the sum of the local defect
-    potential and the local external potential.
+Parameter ``loc_ext_pot``:
+    The local external potential at the SiDB in the singleton cluster.
+    Specifically, this is the sum of the local defect potential and
+    the local external potential.
 
 Parameter ``base``:
     The simulation base.
@@ -20180,6 +20512,140 @@ design of SiDB circuits in the presence of atomic defects. The
 skeleton (i.e., the pre-defined input and output wires) are hexagonal
 in shape.)doc";
 
+static const char *__doc_fiction_sidb_on_the_fly_gate_library_add_defect_to_skeleton =
+R"doc(This function takes a defect surface and a skeleton and adds defects
+from the surrounding area to the skeleton. The defects within a
+specified distance from the center cell are taken into account. The
+resulting skeleton with added defects is returned.
+
+Template parameter ``CellLyt``:
+    SiDB defect surface type.
+
+Parameter ``defect_surface``:
+    Atomic defect surface.
+
+Parameter ``skeleton``:
+    The skeleton to which defects will be added.
+
+Parameter ``influence_distance``:
+    The radius in nanometers around the center of the hexagon where
+    atomic defects are incorporated into the gate design.
+
+Parameter ``center_cell``:
+    The coordinates of the center cell.
+
+Parameter ``absolute_cell``:
+    The coordinates of the skeleton's absolute cell.
+
+Returns:
+    The updated skeleton with added defects from the surrounding area.)doc";
+
+static const char *__doc_fiction_sidb_on_the_fly_gate_library_cell_level_layout_to_list =
+R"doc(Generates a cell-level layout as a 2D array of characters based on the
+provided cell layout information.
+
+Template parameter ``Lyt``:
+    Cell-level layout type.
+
+Parameter ``lyt``:
+    Cell-level layout
+
+Returns:
+    A 2D array of characters representing the cell-level layout.)doc";
+
+static const char *__doc_fiction_sidb_on_the_fly_gate_library_cell_list_to_cell_level_layout =
+R"doc(The function generates a layout where each cell is assigned a specific
+cell type according to the characters in the cell list/input grid.
+
+Template parameter ``Lyt``:
+    The type of the cell-level layout to be generated.
+
+Parameter ``cell_list``:
+    A 2D grid representing the cells and their types.
+
+Returns:
+    The cell-level layout with assigned cell types.)doc";
+
+static const char *__doc_fiction_sidb_on_the_fly_gate_library_design_gate =
+R"doc(This function designs an SiDB gate for a given Boolean function at a
+given tile and a given rotation. If atomic defects exist, they are
+incorporated into the design process.
+
+An exception is thrown in case there is no possible gate design.
+
+Template parameter ``LytSkeleton``:
+    The cell-level layout of the skeleton.
+
+Template parameter ``TT``:
+    Truth table type.
+
+Template parameter ``CellLyt``:
+    The cell-level layout.
+
+Template parameter ``GateLyt``:
+    The gate-level layout.
+
+Parameter ``skeleton``:
+    Skeleton with atomic defects if available.
+
+Parameter ``spec``:
+    Expected Boolean function of the layout given as a multi-output
+    truth table.
+
+Parameter ``parameters``:
+    Parameters for the SiDB gate design process.
+
+Parameter ``p``:
+    The list of ports and their directions.
+
+Parameter ``tile``:
+    The specific tile on which the gate should be designed.
+
+Returns:
+    An `fcn_gate` object.)doc";
+
+static const char *__doc_fiction_sidb_on_the_fly_gate_library_determine_port_routing =
+R"doc(Determines the port directions of a given tile.
+
+Template parameter ``GateLyt``:
+    Pointy-top hexagonal gate-level layout type.
+
+Parameter ``lyt``:
+    Given tile `t` for which the port directions are determined.
+
+Returns:
+    port directions of the given tile are returned as `port_list`.)doc";
+
+static const char *__doc_fiction_sidb_on_the_fly_gate_library_is_predefined_bestagon_gate_applicable =
+R"doc(This function evaluates whether a predefined Bestagon gate can be
+applied to the given node by considering various conditions, including
+the presence of defects and spacing requirements.
+
+Template parameter ``CellLyt``:
+    SiDB defect surface type.
+
+Template parameter ``TT``:
+    Truth table type.
+
+Template parameter ``Params``:
+    Type of the parameters used for the parametrized gate library.
+
+Parameter ``bestagon_lyt``:
+    The Bestagon gate which is to be applied.
+
+Parameter ``skeleton_with_defects``:
+    The skeleton layout with atomic defects.
+
+Parameter ``truth_table``:
+    The truth table representing the gate's logic function.
+
+Parameter ``parameters``:
+    Parameters for the gate design and simulation.
+
+Returns:
+    `true` if the Bestagon gate is applicable to the layout,
+    considering the provided conditions; otherwise, returns `false`.)doc";
+
 static const char *__doc_fiction_sidb_on_the_fly_gate_library_params =
 R"doc(This struct encapsulates parameters for the parameterized SiDB gate
 library.
@@ -20191,7 +20657,13 @@ static const char *__doc_fiction_sidb_on_the_fly_gate_library_params_canvas_sidb
 R"doc(This variable defines the number of canvas SiDBs dedicated to complex
 gates, such as crossing, double wire, and half-adder.)doc";
 
-static const char *__doc_fiction_sidb_on_the_fly_gate_library_params_defect_surface = R"doc(This layout stores all atomic defects.)doc";
+static const char *__doc_fiction_sidb_on_the_fly_gate_library_params_complex_gate_design_policy =
+R"doc(This struct represents the policy for complex (i.e., crossing, double
+wire, half-adder) gate design.)doc";
+
+static const char *__doc_fiction_sidb_on_the_fly_gate_library_params_complex_gate_design_policy_DESIGN_ON_THE_FLY = R"doc(Design complex gates on-the-fly.)doc";
+
+static const char *__doc_fiction_sidb_on_the_fly_gate_library_params_complex_gate_design_policy_USING_PREDEFINED = R"doc(Use predefined complex gates if possible.)doc";
 
 static const char *__doc_fiction_sidb_on_the_fly_gate_library_params_design_gate_params = R"doc(This struct holds parameters to design SiDB gates.)doc";
 
@@ -20200,7 +20672,7 @@ R"doc(This variable specifies the radius in nanometers around the center of
 the hexagon where atomic defects are incorporated into the gate
 design.)doc";
 
-static const char *__doc_fiction_sidb_on_the_fly_gate_library_params_use_skeleton_influence_bounds = R"doc()doc";
+static const char *__doc_fiction_sidb_on_the_fly_gate_library_params_using_predefined_crossing_and_double_wire_if_possible = R"doc(This variable specifies the policy for complex gate design.)doc";
 
 static const char *__doc_fiction_sidb_on_the_fly_gate_library_set_up_gate =
 R"doc(Overrides the corresponding function in fcn_gate_library. Given a tile
@@ -20213,7 +20685,7 @@ Template parameter ``GateLyt``:
     Pointy-top hexagonal gate-level layout type.
 
 Template parameter ``CellLyt``:
-    The type of the cell-level layout.
+    SiDB cell-level layout type.
 
 Template parameter ``Params``:
     Type of the parameter used for the gate library.
@@ -20224,50 +20696,16 @@ Parameter ``lyt``:
 Parameter ``t``:
     Tile to be realized as a Bestagon gate.
 
-Parameter ``parameters``:
+Parameter ``params``:
     Parameter to design SiDB gates.
+
+Parameter ``defect_surface``:
+    Optional atomic defect surface in case atomic defects are present.
 
 Returns:
     Bestagon gate representation of `t` including mirroring.)doc";
 
 static const char *__doc_fiction_sidb_on_the_fly_gate_library_sidb_on_the_fly_gate_library = R"doc()doc";
-
-static const char *__doc_fiction_sidb_on_the_fly_mini_gate_library =
-R"doc(A parameterized gate library for SiDB technology. It allows the design
-of SiDB gates tailored to given atomic defects, thus enabling the
-design of SiDB circuits in the presence of atomic defects. The
-skeleton (i.e., the pre-defined input and output wires) are hexagonal
-in shape.)doc";
-
-static const char *__doc_fiction_sidb_on_the_fly_mini_gate_library_set_up_gate =
-R"doc(Overrides the corresponding function in fcn_gate_library. Given a tile
-`t`, this function takes all necessary information from the stored
-grid into account to design the correct fcn_gate representation for
-that tile. In case there is no possible SiDB design, the blacklist is
-updated and an error fcn gate is returned.
-
-Template parameter ``GateLyt``:
-    Pointy-top hexagonal gate-level layout type.
-
-Template parameter ``CellLyt``:
-    The type of the cell-level layout.
-
-Template parameter ``Params``:
-    Type of the parameter used for the gate library.
-
-Parameter ``lyt``:
-    Layout that hosts tile `t`.
-
-Parameter ``t``:
-    Tile to be realized as a Bestagon gate.
-
-Parameter ``parameters``:
-    Parameter to design SiDB gates.
-
-Returns:
-    Bestagon gate representation of `t` including mirroring.)doc";
-
-static const char *__doc_fiction_sidb_on_the_fly_mini_gate_library_sidb_on_the_fly_mini_gate_library = R"doc()doc";
 
 static const char *__doc_fiction_sidb_simulation_domain =
 R"doc(The `sidb_simulation_domain` is designed to represent a generic
@@ -20432,20 +20870,40 @@ static const char *__doc_fiction_sidb_simulation_result_algorithm_name = R"doc(N
 
 static const char *__doc_fiction_sidb_simulation_result_charge_distributions = R"doc(Charge distributions determined by the algorithm.)doc";
 
+static const char *__doc_fiction_sidb_simulation_result_groundstates =
+R"doc(This function computes the ground state of the charge distributions.
+
+@note If degenerate states exist in the simulation result, this
+function will return multiple ground states that all possess the same
+system energy.
+
+Returns:
+    A vector of charge distributions with the minimal energy.)doc";
+
 static const char *__doc_fiction_sidb_simulation_result_sidb_simulation_result =
 R"doc(Default constructor. It only exists to allow for the use of
 `static_assert` statements that restrict the type of `Lyt`.)doc";
 
 static const char *__doc_fiction_sidb_simulation_result_simulation_parameters = R"doc(Physical parameters used in the simulation.)doc";
 
-static const char *__doc_fiction_sidb_simulation_result_simulation_runtime = R"doc(Total simulation runtime.)doc";
+static const char *__doc_fiction_sidb_simulation_result_simulation_runtime = R"doc(Total simulation runtime in seconds.)doc";
 
 static const char *__doc_fiction_sidb_skeleton_bestagon_library =
 R"doc(This library contains SiDB I/O wires designed for both 1- and 2-input
 functions. Each wire comprises 2 BDL pairs. The library contains all
 mirrored versions, a double wire and a crossing.)doc";
 
-static const char *__doc_fiction_sidb_skeleton_bestagon_library_determine_port_routing = R"doc()doc";
+static const char *__doc_fiction_sidb_skeleton_bestagon_library_determine_port_routing =
+R"doc(Determines the port directions of a given tile.
+
+Template parameter ``GateLyt``:
+    Pointy-top hexagonal gate-level layout type.
+
+Parameter ``lyt``:
+    Given tile `t` for which the port directions are determined.
+
+Returns:
+    port directions of the given tile are returned as `port_list`.)doc";
 
 static const char *__doc_fiction_sidb_skeleton_bestagon_library_get_functional_implementations =
 R"doc(Returns a map of all gate functions supported by the library and their
@@ -20469,76 +20927,7 @@ Returns:
     Map of all different gate implementations and their respective
     port information.)doc";
 
-static const char *__doc_fiction_sidb_skeleton_bestagon_library_set_up_gate =
-R"doc(Overrides the corresponding function in fcn_gate_library. Given a tile
-`t`, this function takes all necessary information from the stored
-grid into account to choose the correct fcn_gate representation for
-that tile. May it be a gate or wires. Rotation and special marks like
-input and output, const cells etc. are computed additionally.
-
-Template parameter ``GateLyt``:
-    Pointy-top hexagonal gate-level layout type.
-
-Parameter ``lyt``:
-    Layout that hosts tile `t`.
-
-Parameter ``t``:
-    Tile to be realized as a Bestagon skeleton gate.
-
-Returns:
-    Bestagon skeleton gate representation of `t` including mirroring.)doc";
-
 static const char *__doc_fiction_sidb_skeleton_bestagon_library_sidb_skeleton_bestagon_library = R"doc()doc";
-
-static const char *__doc_fiction_sidb_skeleton_bestagon_mini_library =
-R"doc(This library contains SiDB I/O wires designed for both 1- and 2-input
-functions. Each wire comprises 2 BDL pairs. The library contains all
-mirrored versions, a double wire and a crossing.)doc";
-
-static const char *__doc_fiction_sidb_skeleton_bestagon_mini_library_determine_port_routing = R"doc()doc";
-
-static const char *__doc_fiction_sidb_skeleton_bestagon_mini_library_get_functional_implementations =
-R"doc(Returns a map of all gate functions supported by the library and their
-respectively possible implementations.
-
-This is an optional interface function that is required by some
-algorithms.
-
-Returns:
-    Map of all gate functions supported by the library and their
-    respective implementations as Bestagon skeletons.)doc";
-
-static const char *__doc_fiction_sidb_skeleton_bestagon_mini_library_get_gate_ports =
-R"doc(Returns a map of all different gate implementations and their
-respective port information.
-
-This is an optional interface function that is required by some
-algorithms.
-
-Returns:
-    Map of all different gate implementations and their respective
-    port information.)doc";
-
-static const char *__doc_fiction_sidb_skeleton_bestagon_mini_library_set_up_gate =
-R"doc(Overrides the corresponding function in fcn_gate_library. Given a tile
-`t`, this function takes all necessary information from the stored
-grid into account to choose the correct fcn_gate representation for
-that tile. May it be a gate or wires. Rotation and special marks like
-input and output, const cells etc. are computed additionally.
-
-Template parameter ``GateLyt``:
-    Pointy-top hexagonal gate-level layout type.
-
-Parameter ``lyt``:
-    Layout that hosts tile `t`.
-
-Parameter ``t``:
-    Tile to be realized as a Bestagon skeleton gate.
-
-Returns:
-    Bestagon skeleton gate representation of `t` including mirroring.)doc";
-
-static const char *__doc_fiction_sidb_skeleton_bestagon_mini_library_sidb_skeleton_bestagon_mini_library = R"doc()doc";
 
 static const char *__doc_fiction_sidb_surface_analysis =
 R"doc(Analyzes a given defective SiDB surface and matches it against gate
@@ -20557,13 +20946,13 @@ Template parameter ``GateLyt``:
     surface.
 
 Template parameter ``CellLyt``:
-    SiDB cell-level layout type that is underlying to the SiDB
+    SiDB cell-level layout type that is underlying to the SiDB defect
     surface.
 
 Parameter ``gate_lyt``:
     Gate-level layout instance that specifies the aspect ratio.
 
-Parameter ``sidb_defect_surface``:
+Parameter ``surface``:
     SiDB surface that instantiates the defects.
 
 Parameter ``charged_defect_spacing_overwrite``:
@@ -20593,8 +20982,6 @@ static const char *__doc_fiction_sidb_technology_cell_mark_LOGIC = R"doc()doc";
 
 static const char *__doc_fiction_sidb_technology_cell_mark_OUTPUT = R"doc()doc";
 
-static const char *__doc_fiction_sidb_technology_cell_mark_OUTPUT_PERTURBER = R"doc()doc";
-
 static const char *__doc_fiction_sidb_technology_cell_mode = R"doc(SiDB cells do not have modes.)doc";
 
 static const char *__doc_fiction_sidb_technology_cell_type = R"doc(Possible types of SiDB cells.)doc";
@@ -20609,8 +20996,6 @@ static const char *__doc_fiction_sidb_technology_cell_type_NORMAL = R"doc(Symbol
 
 static const char *__doc_fiction_sidb_technology_cell_type_OUTPUT = R"doc(Symbol used for output SiDB cells.)doc";
 
-static const char *__doc_fiction_sidb_technology_cell_type_OUTPUT_PERTURBER = R"doc(Symbol used for output perturber SiDB cells.)doc";
-
 static const char *__doc_fiction_sidb_technology_is_empty_cell = R"doc()doc";
 
 static const char *__doc_fiction_sidb_technology_is_input_cell = R"doc()doc";
@@ -20622,8 +21007,6 @@ static const char *__doc_fiction_sidb_technology_is_normal_cell = R"doc()doc";
 static const char *__doc_fiction_sidb_technology_is_normal_cell_mode = R"doc()doc";
 
 static const char *__doc_fiction_sidb_technology_is_output_cell = R"doc()doc";
-
-static const char *__doc_fiction_sidb_technology_is_output_perturber_cell = R"doc()doc";
 
 static const char *__doc_fiction_sidb_technology_sidb_technology = R"doc()doc";
 
@@ -20875,20 +21258,6 @@ Parameter ``coord``:
 Returns:
     SiQAD coordinate representation of `coord`.)doc";
 
-static const char *__doc_fiction_skeleton_influence_bounds_params = R"doc()doc";
-
-static const char *__doc_fiction_skeleton_influence_bounds_params_absolute_positions = R"doc()doc";
-
-static const char *__doc_fiction_skeleton_influence_bounds_params_bdl_wire_params = R"doc(Parameters to detect BDL wires.)doc";
-
-static const char *__doc_fiction_skeleton_influence_bounds_params_canvas = R"doc(Canvas spanned by the northwest and southeast cell.)doc";
-
-static const char *__doc_fiction_skeleton_influence_bounds_params_simulation_parameters =
-R"doc(The simulation parameters for the physical simulation of the ground
-state.)doc";
-
-static const char *__doc_fiction_skip_physical_design_for_node = R"doc()doc";
-
 static const char *__doc_fiction_smart_distance_cache_functor =
 R"doc(A distance functor that internally uses a `sparse_distance_map` as a
 cache to prevent re-computing distances that have already been
@@ -21034,6 +21403,17 @@ Template parameter ``Lyt``:
 
 Returns:
     SRS clocking scheme.)doc";
+
+static const char *__doc_fiction_state_type = R"doc(Label to categorize ground and excited states of an SiDB layout.)doc";
+
+static const char *__doc_fiction_state_type_ACCEPTED =
+R"doc(A state is accepted if the charge distribution encodes the desired
+logic.)doc";
+
+static const char *__doc_fiction_state_type_REJECTED =
+R"doc(A state is rejected if the charge distributiion does not encode the
+desired logic. Moreover, if kinks are rejected, a charge distribution
+that encodes the logic, but does show kinks, is rejected.)doc";
 
 static const char *__doc_fiction_static_depth_view =
 R"doc(A specialization of `static_depth_view` for networks where
@@ -21919,6 +22299,32 @@ static const char *__doc_fiction_unrecognized_cell_definition_exception_unrecogn
 
 static const char *__doc_fiction_unrecognized_cell_definition_exception_where = R"doc()doc";
 
+static const char *__doc_fiction_unsuccessful_gate_design_error =
+R"doc(Exception thrown if the gate design was unsuccessful. Depending on the
+given gate design parameters and the defect density, the gate design
+may fail.)doc";
+
+static const char *__doc_fiction_unsuccessful_gate_design_error_unsuccessful_gate_design_error =
+R"doc(This explicit constructor initializes the base `std::runtime_error`
+class with the provided error message, ensuring that the exception
+contains detailed information about the reason for the gate design
+failure.
+
+Parameter ``msg``:
+    A descriptive message explaining why the gate design failed.)doc";
+
+static const char *__doc_fiction_unsuccessful_pr_error =
+R"doc(If the blacklist is overly restrictive, finding a valid placement and
+routing becomes impossible, resulting in this exception being thrown.)doc";
+
+static const char *__doc_fiction_unsuccessful_pr_error_unsuccessful_pr_error =
+R"doc(This class inherits from `std::runtime_error` and is used to signal
+errors related to unsuccessful placement and routing.
+
+Parameter ``msg``:
+    The error message describing the unsuccessful placement and
+    routing.)doc";
+
 static const char *__doc_fiction_unsupported_cell_type_exception = R"doc()doc";
 
 static const char *__doc_fiction_unsupported_cell_type_exception_coord = R"doc()doc";
@@ -21963,15 +22369,23 @@ Template parameter ``CoordinateType``:
 Template parameter ``PortType``:
     Type of the library ports.)doc";
 
-static const char *__doc_fiction_unsupported_gate_orientation_exception_coord = R"doc()doc";
+static const char *__doc_fiction_unsupported_gate_orientation_exception_coord = R"doc(Coordinate at which the unsupported gate orientation was found.)doc";
 
-static const char *__doc_fiction_unsupported_gate_orientation_exception_ports = R"doc()doc";
+static const char *__doc_fiction_unsupported_gate_orientation_exception_ports = R"doc(Ports of the unsupported gate orientation.)doc";
 
 static const char *__doc_fiction_unsupported_gate_orientation_exception_unsupported_gate_orientation_exception = R"doc()doc";
 
-static const char *__doc_fiction_unsupported_gate_orientation_exception_where = R"doc()doc";
+static const char *__doc_fiction_unsupported_gate_orientation_exception_where =
+R"doc(Coordinate at which the unsupported gate orientation was found.
 
-static const char *__doc_fiction_unsupported_gate_orientation_exception_which_ports = R"doc()doc";
+Returns:
+    Coordinate.)doc";
+
+static const char *__doc_fiction_unsupported_gate_orientation_exception_which_ports =
+R"doc(Ports of the unsupported gate orientation.
+
+Returns:
+    Ports.)doc";
 
 static const char *__doc_fiction_unsupported_gate_type_exception =
 R"doc(Exception to be thrown when a layout hosts a gate type that is not
@@ -21980,7 +22394,7 @@ implemented in the applied gate library.
 Template parameter ``CoordinateType``:
     Type of the layout coordinates.)doc";
 
-static const char *__doc_fiction_unsupported_gate_type_exception_coord = R"doc()doc";
+static const char *__doc_fiction_unsupported_gate_type_exception_coord = R"doc(Coordinate at which the unsupported gate type was found.)doc";
 
 static const char *__doc_fiction_unsupported_gate_type_exception_unsupported_gate_type_exception = R"doc()doc";
 

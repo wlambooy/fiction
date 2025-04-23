@@ -129,7 +129,7 @@ TEST_CASE("SiQAD OR gate", "[is-operational]")
 
     SECTION("determine if layout is operational, reject kinks")
     {
-        CHECK(is_operational(lat, std::vector<tt>{create_and_tt()}, op_params).status ==
+        CHECK(is_operational(lat, std::vector<tt>{create_or_tt()}, op_params).status ==
               operational_status::NON_OPERATIONAL);
     }
 
@@ -378,6 +378,101 @@ TEST_CASE("Bestagon AND gate", "[is-operational]")
                                            sidb_simulation_parameters{2, -0.30}, sidb_simulation_engine::QUICKEXACT});
         CHECK(op_inputs.size() == 1);
         CHECK(op_inputs == std::set<uint64_t>{3});
+    }
+}
+
+TEST_CASE("SiQAD AND gate", "[is-operational]")
+{
+    auto lyt = blueprints::siqad_and_gate<sidb_defect_cell_clk_lyt_siqad>();
+
+    sidb_simulation_parameters params{2, -0.28};
+
+    SECTION("check in regime with positive charges")
+    {
+        SECTION("base 2, reject positive charges")
+        {
+            params.base      = 2;
+            params.epsilon_r = 1.7;
+            params.lambda_tf = 6.9;
+
+            is_operational_params op_params{params};
+            op_params.op_condition_positive_charges =
+                is_operational_params::operational_condition_positive_charges::REJECT_POSITIVE_CHARGES;
+
+            CHECK(is_operational(lyt, std::vector<tt>{create_and_tt()}, op_params).status ==
+                  operational_status::NON_OPERATIONAL);
+            CHECK(operational_input_patterns(lyt, std::vector<tt>{create_and_tt()}, op_params).empty());
+
+            op_params.simulation_parameters.epsilon_r = 3.5;
+            op_params.simulation_parameters.lambda_tf = 5.9;
+
+            CHECK(is_operational(lyt, std::vector<tt>{create_and_tt()}, op_params).status ==
+                  operational_status::NON_OPERATIONAL);
+            CHECK(operational_input_patterns(lyt, std::vector<tt>{create_and_tt()}, op_params).empty());
+        }
+        SECTION("base 2, tolerate positive charges")
+        {
+            params.base      = 2;
+            params.epsilon_r = 1.7;
+            params.lambda_tf = 6.9;
+
+            is_operational_params op_params{params};
+            op_params.op_condition_positive_charges =
+                is_operational_params::operational_condition_positive_charges::TOLERATE_POSITIVE_CHARGES;
+
+            CHECK(is_operational(lyt, std::vector<tt>{create_and_tt()}, op_params).status ==
+                  operational_status::NON_OPERATIONAL);
+            CHECK(operational_input_patterns(lyt, std::vector<tt>{create_and_tt()}, op_params).empty());
+
+            op_params.simulation_parameters.epsilon_r = 3.5;
+            op_params.simulation_parameters.lambda_tf = 5.9;
+
+            CHECK(is_operational(lyt, std::vector<tt>{create_and_tt()}, op_params).status ==
+                  operational_status::NON_OPERATIONAL);
+            CHECK(operational_input_patterns(lyt, std::vector<tt>{create_and_tt()}, op_params).size() == 2);
+        }
+        SECTION("base 3, reject positive charges")
+        {
+            params.base      = 3;
+            params.epsilon_r = 1.7;
+            params.lambda_tf = 6.9;
+
+            is_operational_params op_params{params};
+            op_params.op_condition_positive_charges =
+                is_operational_params::operational_condition_positive_charges::REJECT_POSITIVE_CHARGES;
+
+            CHECK(is_operational(lyt, std::vector<tt>{create_and_tt()}, op_params).status ==
+                  operational_status::NON_OPERATIONAL);
+            CHECK(operational_input_patterns(lyt, std::vector<tt>{create_and_tt()}, op_params).empty());
+
+            op_params.simulation_parameters.epsilon_r = 3.5;
+            op_params.simulation_parameters.lambda_tf = 5.9;
+
+            CHECK(is_operational(lyt, std::vector<tt>{create_and_tt()}, op_params).status ==
+                  operational_status::NON_OPERATIONAL);
+            CHECK(operational_input_patterns(lyt, std::vector<tt>{create_and_tt()}, op_params).empty());
+        }
+        SECTION("base 3, tolerate positive charges")
+        {
+            params.base      = 3;
+            params.epsilon_r = 1.7;
+            params.lambda_tf = 6.9;
+
+            is_operational_params op_params{params};
+            op_params.op_condition_positive_charges =
+                is_operational_params::operational_condition_positive_charges::TOLERATE_POSITIVE_CHARGES;
+
+            CHECK(is_operational(lyt, std::vector<tt>{create_and_tt()}, op_params).status ==
+                  operational_status::NON_OPERATIONAL);
+            CHECK(operational_input_patterns(lyt, std::vector<tt>{create_and_tt()}, op_params).empty());
+
+            op_params.simulation_parameters.epsilon_r = 3.5;
+            op_params.simulation_parameters.lambda_tf = 5.9;
+
+            CHECK(is_operational(lyt, std::vector<tt>{create_and_tt()}, op_params).status ==
+                  operational_status::NON_OPERATIONAL);
+            CHECK(operational_input_patterns(lyt, std::vector<tt>{create_and_tt()}, op_params).size() == 2);
+        }
     }
 }
 
