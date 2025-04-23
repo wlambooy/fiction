@@ -145,7 +145,7 @@ class sidb_on_the_fly_mini_gate_library
                         }
 
                         const auto cell_list =
-                            sidb_skeleton_bestagon_mini_library{}.set_up_gate(lyt, t);//ONE_IN_ONE_OUT_MAP.at(p);
+                            sidb_skeleton_bestagon_mini_library{}.set_up_gate(lyt, t);  // ONE_IN_ONE_OUT_MAP.at(p);
                         if (cell_list == EMPTY_GATE)
                         {
                             return EMPTY_GATE;
@@ -358,7 +358,7 @@ class sidb_on_the_fly_mini_gate_library
                     lyt, {t},
                     skeleton_influence_bounds_params<cell<CellLyt>>{
                         parameters.design_gate_params.operational_params.simulation_parameters,
-                    // {{0, 0}, {gate_x_size(), gate_y_size()}},
+                        // {{0, 0}, {gate_x_size(), gate_y_size()}},
                     parameters.design_gate_params.canvas, parameters.design_gate_params_complex_gates.canvas,
                     // parameters.design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params,
                     // true});

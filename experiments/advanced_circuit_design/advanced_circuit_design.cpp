@@ -81,9 +81,9 @@ int main(int argc, char* argv[])  // NOLINT
     // = 1.7;
     // =; fiction::sidb_simulation_parameters{2, -0.32};
     design_gate_params.operational_params.op_condition_positive_charges = fiction::is_operational_params<
-        fiction::cell<lyt_t>>::
-            operational_condition_positive_charges::TOLERATE_POSITIVE_CHARGES;
-    design_gate_params.operational_params.op_condition_kinks = fiction::is_operational_params<fiction::cell<lyt_t>>::operational_condition_kinks::REJECT_KINKS;
+        fiction::cell<lyt_t>>::operational_condition_positive_charges::TOLERATE_POSITIVE_CHARGES;
+    design_gate_params.operational_params.op_condition_kinks =
+        fiction::is_operational_params<fiction::cell<lyt_t>>::operational_condition_kinks::REJECT_KINKS;
     design_gate_params.design_mode = fiction::design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::RANDOM;
 
     // design_gate_params.post_design_process = {
@@ -102,7 +102,8 @@ int main(int argc, char* argv[])  // NOLINT
 
     design_gate_params.number_of_sidbs               = 4;
     design_gate_params.operational_params.sim_engine = fiction::sidb_simulation_engine::CLUSTERCOMPLETE;
-    design_gate_params.termination_cond              = fiction::design_sidb_gates_params<lyt_t>::termination_condition::OBTAINED_N_SOLUTIONS;
+    design_gate_params.termination_cond =
+        fiction::design_sidb_gates_params<lyt_t>::termination_condition::OBTAINED_N_SOLUTIONS;
     design_gate_params.max_num_solutions = 1000;
     // design_gate_params.design_mode = fiction::design_sidb_gates_params<
     //     lyt_t>::design_sidb_gates_mode::EXHAUSTIVE_GATE_DESIGNER;
