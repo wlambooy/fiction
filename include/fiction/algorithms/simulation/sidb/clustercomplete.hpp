@@ -494,6 +494,7 @@ class clustercomplete_impl
 
         if (!charge_layout_copy.is_configuration_stable())
         {
+            std::cout << "who knows??" << std::endl;
             return;
         }
 

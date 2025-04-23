@@ -11,6 +11,7 @@
 #include "fiction/technology/sidb_defect_surface.hpp"
 #include "fiction/technology/sidb_on_the_fly_gate_library.hpp"
 #include "fiction/technology/sidb_surface_analysis.hpp"
+#include <fiction/io/write_svg_layout.hpp>
 #include "fiction/traits.hpp"
 #include "fiction/types.hpp"
 #include "fiction/utils/gate_design_utils.hpp"
@@ -283,6 +284,7 @@ class advanced_circuit_design_impl
                             params.sidb_on_the_fly_gate_library_parameters.design_gate_params.operational_params
                                 .simulation_parameters,
                             params.sidb_on_the_fly_gate_library_parameters.design_gate_params.canvas,
+                            params.sidb_on_the_fly_gate_library_parameters.design_gate_params_complex_gates.canvas,
                             params.sidb_on_the_fly_gate_library_parameters.design_gate_params.operational_params
                                 .input_bdl_iterator_params.bdl_wire_params,
                             true});
@@ -449,7 +451,7 @@ class advanced_circuit_design_impl
                            std::abs(successful_trial_ratio_per_gate_implementation.at(first_passing_gate_ix - 1).first -
                                     successful_trial_ratio_per_gate_implementation.at(first_passing_gate_ix).first) <
                                std::numeric_limits<double>::epsilon();
-                         --first_passing_gate_ix)
+                         ++first_passing_gate_ix)
                     {}
 
                     std::cout << fmt::format(

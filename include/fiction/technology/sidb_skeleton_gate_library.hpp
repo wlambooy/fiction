@@ -2,8 +2,8 @@
 // Created by Jan Drewniok 20.09.23.
 //
 
-#ifndef FICTION_SIDB_ON_THE_FLY_GATE_LIBRARY_HPP
-#define FICTION_SIDB_ON_THE_FLY_GATE_LIBRARY_HPP
+#ifndef FICTION_SIDB_SKELETON_GATE_LIBRARY_HPP
+#define FICTION_SIDB_SKELETON_GATE_LIBRARY_HPP
 
 #include "fiction/algorithms/physical_design/design_sidb_gates.hpp"
 #include "fiction/algorithms/simulation/sidb/is_operational.hpp"
@@ -40,8 +40,9 @@ namespace fiction
  * @tparam Lyt Cell-level layout type.
  */
 template <typename Lyt>
-struct sidb_on_the_fly_gate_library_params
+struct sidb_skeleton_gate_library_params
 {
+    std::string_view filename{};
     /**
      * This layout stores all atomic defects.
      */
@@ -50,12 +51,11 @@ struct sidb_on_the_fly_gate_library_params
      * This struct holds parameters to design SiDB gates.
      */
     design_sidb_gates_params<sidb_defect_surface<Lyt>> design_gate_params{};
-    design_sidb_gates_params<sidb_defect_surface<Lyt>> design_gate_params_complex_gates{};
     /**
      * This variable defines the number of canvas SiDBs dedicated to complex gates, such as crossing, double wire,
      * and half-adder.
      */
-    // uint64_t canvas_sidb_complex_gates = 3;
+    uint64_t canvas_sidb_complex_gates = 3;
     /**
      * This variable specifies the radius in nanometers around the center of the hexagon where atomic defects are
      * incorporated into the gate design.
@@ -69,10 +69,10 @@ struct sidb_on_the_fly_gate_library_params
  * defects, thus enabling the design of SiDB circuits in the presence of atomic defects. The skeleton (i.e., the
  * pre-defined input and output wires) are hexagonal in shape.
  */
-class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, 60, 46>  // width and height of a hexagon
+class sidb_skeleton_gate_library : public fcn_gate_library<sidb_technology, 60, 46>  // width and height of a hexagon
 {
   public:
-    explicit sidb_on_the_fly_gate_library() = delete;
+    explicit sidb_skeleton_gate_library() = delete;
 
     /**
      * Overrides the corresponding function in fcn_gate_library. Given a tile `t`, this function takes all necessary
@@ -108,7 +108,7 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, 60
         {
             std::cout << "starting to determine skeleton influence bounds" << std::endl;
             parameters.design_gate_params.operational_params.cc_map =
-                skeleton_influence_bounds<CellLyt, sidb_skeleton_bestagon_library, GateLyt>(
+                skeleton_influence_bounds<CellLyt, sidb_skeleton_gate_library, GateLyt>(
                     lyt, {t},
                     skeleton_influence_bounds_params<cell<CellLyt>>{
                         parameters.design_gate_params.operational_params.simulation_parameters,
@@ -117,25 +117,26 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, 60
                         parameters.design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params});
             std::cout << "done determining skeleton influence bounds; size = "
                       << parameters.design_gate_params.operational_params.cc_map.value().size() << std::endl;
-        }
+
+       }
 
         try
         {
-            if constexpr (fiction::has_is_fanout_v<GateLyt>)
-            {
-                if (lyt.is_fanout(n))
-                {
-                    if (lyt.fanout_size(n) == 2)
-                    {
-                        const auto layout =
-                            add_defect_to_skeleton(cell_list_to_cell_level_layout<CellLyt>(ONE_IN_TWO_OUT_MAP.at(p)),
-                                                   center_cell, absolute_cell, parameters);
-
-                        return design_gate<decltype(layout), tt, CellLyt, GateLyt>(layout, create_fan_out_tt(),
-                                                                                   parameters, p, t);
-                    }
-                }
-            }
+//            if constexpr (fiction::has_is_fanout_v<GateLyt>)
+//            {
+//                if (lyt.is_fanout(n))
+//                {
+//                    if (lyt.fanout_size(n) == 2)
+//                    {
+//                        const auto layout =
+//                            add_defect_to_skeleton(cell_list_to_cell_level_layout<CellLyt>(ONE_IN_TWO_OUT_MAP.at(p)),
+//                                                   center_cell, absolute_cell, parameters);
+//
+//                        return design_gate<decltype(layout), tt, CellLyt, GateLyt>(layout, create_fan_out_tt(),
+//                                                                                   parameters, p, t);
+//                    }
+//                }
+//            }
             if constexpr (fiction::has_is_buf_v<GateLyt>)
             {
                 if (lyt.is_buf(n))
@@ -148,26 +149,6 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, 60
                             // two possible options: actual crossover and (parallel) hourglass wire
                             const auto pa = determine_port_routing(lyt, at);
 
-                            if (auto cell_list = TWO_IN_TWO_OUT_MAP.at({p, pa}); cell_list == DOUBLE_WIRE)
-                            {
-                                const auto layout =
-                                    add_defect_to_skeleton(cell_list_to_cell_level_layout<CellLyt>(TWO_IN_TWO_OUT),
-                                                           center_cell, absolute_cell, parameters);
-
-                                if (is_bestagon_gate_applicable(cell_list_to_cell_level_layout<CellLyt>(DOUBLE_WIRE),
-                                                                create_double_wire_tt(), parameters))
-                                {
-                                    return DOUBLE_WIRE;
-                                }
-
-                                auto complex_gate_param = parameters.design_gate_params_complex_gates;
-                                // complex_gate_param.design_gate_params.number_of_sidbs =
-                                //     parameters.canvas_sidb_complex_gates;
-
-                                return design_gate<decltype(layout), tt, CellLyt, GateLyt>(
-                                    layout, create_double_wire_tt(), complex_gate_param, p, t);
-                            }
-
                             const auto layout =
                                 add_defect_to_skeleton(cell_list_to_cell_level_layout<CellLyt>(TWO_IN_TWO_OUT),
                                                        center_cell, absolute_cell, parameters);
@@ -178,9 +159,9 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, 60
                                 return CROSSING;
                             }
 
-                            auto complex_gate_param = parameters.design_gate_params_complex_gates;
-                            // complex_gate_param.design_gate_params.number_of_sidbs =
-                            //     parameters.canvas_sidb_complex_gates;
+                            auto complex_gate_param = parameters;
+                            complex_gate_param.design_gate_params.number_of_sidbs =
+                                parameters.canvas_sidb_complex_gates;
 
                             return design_gate<decltype(layout), tt, CellLyt, GateLyt>(
                                 layout, create_crossing_wire_tt(), complex_gate_param, p, t);

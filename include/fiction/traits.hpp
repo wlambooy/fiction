@@ -257,6 +257,21 @@ template <class Lyt>
 inline constexpr bool has_foreach_coordinate_v = has_foreach_coordinate<Lyt>::value;
 #pragma endregion
 
+#pragma region has_collect_range
+template <class Lyt, class = void>
+struct has_collect_range : std::false_type
+{};
+
+template <class Lyt>
+struct has_collect_range<
+    Lyt, std::void_t<decltype(std::declval<Lyt>().collect_range(std::declval<void(coordinate<Lyt>, coordinate<Lyt>)>()))>>
+        : std::true_type
+{};
+
+template <class Lyt>
+inline constexpr bool has_collect_range_v = has_foreach_coordinate<Lyt>::value;
+#pragma endregion
+
 #pragma region has_foreach_adjacent_coordinate
 template <class Lyt, class = void>
 struct has_foreach_adjacent_coordinate : std::false_type

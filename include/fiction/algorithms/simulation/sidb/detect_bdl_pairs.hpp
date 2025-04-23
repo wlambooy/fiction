@@ -185,7 +185,8 @@ struct detect_bdl_pairs_params
      * The maximum distance between two dots to be considered a BDL pair. This is useful to prevent unlikely pairings
      * of SiDBs that are far apart and to improve performance of the matching algorithm. (unit: nm).
      */
-    double maximum_distance{1.5};
+    // double maximum_distance{1.5};
+    double maximum_distance{1.8};
 };
 
 /**

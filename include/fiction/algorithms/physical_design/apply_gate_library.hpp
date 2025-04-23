@@ -15,6 +15,7 @@
 
 #include <cstdint>
 #endif
+
 #include <kitty/print.hpp>
 #include <mockturtle/traits.hpp>
 
@@ -33,6 +34,7 @@
 
 namespace fiction
 {
+class sidb_skeleton_bestagon_mini_library;
 
 namespace detail
 {
@@ -106,8 +108,16 @@ class apply_gate_library_impl
                             relative_to_absolute_cell_position<GateLibrary::gate_x_size(), GateLibrary::gate_y_size(),
                                                                GateLyt, CellLyt>(gate_lyt, t, cell<CellLyt>{0, 0});
 
-                        assign_gate<CellLyt, GateLibrary, GateLyt>(cell_lyt, c, GateLibrary::set_up_gate(gate_lyt, t),
-                                                                   gate_lyt, n);
+                        if constexpr (std::is_same_v<GateLibrary, sidb_skeleton_bestagon_mini_library>)
+                        {
+                            assign_gate<CellLyt, GateLibrary, GateLyt>(
+                                cell_lyt, c, GateLibrary{}.set_up_gate(gate_lyt, t), gate_lyt, n);
+                        }
+                        else
+                        {
+                            assign_gate<CellLyt, GateLibrary, GateLyt>(
+                                cell_lyt, c, GateLibrary::set_up_gate(gate_lyt, t), gate_lyt, n);
+                        }
                     }
                 }
 #if (PROGRESS_BARS)

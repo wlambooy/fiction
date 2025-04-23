@@ -312,7 +312,7 @@ class design_sidb_gates_impl
 
         const uint64_t max_number_of_solutions = std::min(params.max_num_solutions, stats.number_of_layouts);
 
-// #if (PROGRESS_BARS)
+        // #if (PROGRESS_BARS)
         //         // initialize a progress bar
         //         mockturtle::progress_bar bar{
         //             static_cast<uint32_t>(max_number_of_solutions),

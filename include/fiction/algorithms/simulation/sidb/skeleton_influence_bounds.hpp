@@ -38,6 +38,7 @@ struct skeleton_influence_bounds_params
      * Canvas spanned by the northwest and southeast cell.
      */
     std::pair<CellType, CellType> canvas{};
+    std::pair<CellType, CellType> canvas_complex_gates{};
     /**
      * Parameters to detect BDL wires.
      */
@@ -92,9 +93,10 @@ class skeleton_influence_bounds_impl
                                     const auto& t = gate_lyt.get_tile(nn);
                                     const auto  canvas =
                                         is_complex_gate<GateLyt>(gate_lyt, nn) ?
-                                             make_gate_design_params_for_complex_gates<design_sidb_gates_params<CellLyt>,
-                                                                                       CellLyt>()
-                                                .canvas :
+                                            params.canvas_complex_gates :
+                                        //      make_gate_design_params_for_complex_gates<design_sidb_gates_params<CellLyt>,
+                                        //                                                CellLyt>()
+                                        //         .canvas :
                                              params.canvas;
 
                                     for (const cell<CellLyt>& relative_c :

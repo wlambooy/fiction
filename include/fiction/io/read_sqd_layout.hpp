@@ -15,6 +15,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <cstdint>
 #include <exception>
 #include <fstream>
@@ -44,7 +45,7 @@ namespace detail
 template <typename Lyt>
 class read_sqd_layout_impl
 {
-  public:
+public:
     read_sqd_layout_impl(std::istream& s, const std::string_view& name) : lyt{}, is{s}
     {
         set_name(lyt, name);
@@ -141,6 +142,19 @@ class read_sqd_layout_impl
                     parse_defect(defect);
                 }
             }
+
+            else if (std::string{layer_type} == "Electrode")
+            {
+                lyt.determine_bounding_box();
+
+                for (const auto* electrode = layer->FirstChildElement("electrode"); electrode != nullptr;
+                     electrode             = electrode->NextSiblingElement("electrode"))
+                {
+                    parse_electrode(electrode);
+                }
+
+                lyt.sort_wires();
+            }
         }
 
         // resize the layout to fit all cells
@@ -149,7 +163,7 @@ class read_sqd_layout_impl
         return lyt;
     }
 
-  private:
+private:
     /**
      * The layout to which the parsed cells are added.
      */
@@ -331,26 +345,51 @@ class read_sqd_layout_impl
     {
         // maps defect names to their respective types
         static const std::unordered_map<std::string, sidb_defect_type> defect_name_to_type{
-            {{"h-si", sidb_defect_type::NONE},
-             {"db", sidb_defect_type::DB},
-             {"vacancy", sidb_defect_type::SI_VACANCY},
-             {"single_dihydride", sidb_defect_type::SINGLE_DIHYDRIDE},
-             {"dihydride", sidb_defect_type::DIHYDRIDE_PAIR},
-             {"1by1", sidb_defect_type::ONE_BY_ONE},
-             {"3by1", sidb_defect_type::THREE_BY_ONE},
-             {"siloxane", sidb_defect_type::SILOXANE},
-             {"raised_silicon", sidb_defect_type::RAISED_SI},
-             {"missing_dimer", sidb_defect_type::MISSING_DIMER},
-             {"etch_pit", sidb_defect_type::ETCH_PIT},
-             {"step_edge", sidb_defect_type::STEP_EDGE},
-             {"gunk", sidb_defect_type::GUNK},
-             {"unknown", sidb_defect_type::UNKNOWN}}};
+                {{"h-si", sidb_defect_type::NONE},
+                 {"db", sidb_defect_type::DB},
+                 {"vacancy", sidb_defect_type::SI_VACANCY},
+                 {"single_dihydride", sidb_defect_type::SINGLE_DIHYDRIDE},
+                 {"dihydride", sidb_defect_type::DIHYDRIDE_PAIR},
+                 {"1by1", sidb_defect_type::ONE_BY_ONE},
+                 {"3by1", sidb_defect_type::THREE_BY_ONE},
+                 {"siloxane", sidb_defect_type::SILOXANE},
+                 {"raised_silicon", sidb_defect_type::RAISED_SI},
+                 {"missing_dimer", sidb_defect_type::MISSING_DIMER},
+                 {"etch_pit", sidb_defect_type::ETCH_PIT},
+                 {"step_edge", sidb_defect_type::STEP_EDGE},
+                 {"gunk", sidb_defect_type::GUNK},
+                 {"unknown", sidb_defect_type::UNKNOWN}}};
 
         std::string name{label};
         std::transform(name.begin(), name.end(), name.begin(), ::tolower);
 
         const auto it = defect_name_to_type.find(name);
         return it == defect_name_to_type.cend() ? sidb_defect_type::UNKNOWN : it->second;
+    }
+    /**
+     * Parses an <electrode> element from the SQD file and ...
+     *
+     * NB: Expects all the DB layer to be parsed before
+     *
+     * @param electrode The <electrode> element.
+     */
+    void parse_electrode(const tinyxml2::XMLElement* electrode)
+    {
+        static_assert(has_collect_range_v<Lyt>, "Layout is not a skeleton type");
+
+        const auto* const dim = electrode->FirstChildElement("dim");
+
+        if (dim == nullptr)
+        {
+            throw sqd_parsing_error("Error parsing SQD file: no element 'dim' in element 'electrode'");
+        }
+
+        const auto x1 = std::stod(dim->Attribute("x1")), y1 = std::stod(dim->Attribute("y1"));
+        const auto x2 = std::stod(dim->Attribute("x2")), y2 = std::stod(dim->Attribute("y2"));
+
+        assert(!(x1 < 0 || x2 < 0 || y1 < 0 || y2 < 0) && "electrode has negative coordinates");
+
+        lyt.collect_range({ceil(x1 / 3.86), ceil(2 * y1 / 7.68)}, {floor(x2 / 3.86), floor(2 * y2 / 7.68)});
     }
     /**
      * Parses a <defect> element from the SQD file and adds the respective defect to the layout if it implements the

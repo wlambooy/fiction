@@ -154,7 +154,14 @@ class fcn_gate_library
     /**
      * Gate libraries should not be instantiated but used as static objects.
      */
-    explicit fcn_gate_library() = delete;
+    // explicit fcn_gate_library() = delete;
+    explicit fcn_gate_library() = default;
+    /**
+     * Single empty gate in given technology and tile size. Used as a blue print to create new ones in merge and
+     * transpose for example.
+     */
+    static constexpr const fcn_gate EMPTY_GATE =
+        fiction::create_array<GateSizeY>(fiction::create_array<GateSizeX>(Technology::cell_type::EMPTY));
     /**
      * Converts a `cell_list` of type `T` to an `fcn_gate` at compile time. This function allows to conveniently
      * specify `fcn_gate` instances in a semi-readable way in code. For examples usages see `qca_one_library.hpp`.
@@ -291,10 +298,15 @@ class fcn_gate_library
      */
     static constexpr fcn_gate reverse_columns(const fcn_gate& g) noexcept
     {
-        fcn_gate rev_cols = g;
+        fcn_gate rev_cols{};
 
-        std::for_each(std::begin(rev_cols), std::end(rev_cols),
-                      [](auto& i) { std::reverse(std::begin(i), std::end(i)); });
+        for (std::size_t row = 0; row < GateSizeY; ++row)
+        {
+            for (std::size_t col = 0; col < GateSizeX; ++col)
+            {
+                rev_cols[row][col] = g[row][GateSizeX - 1 - col];
+            }
+        }
 
         return rev_cols;
     }
@@ -306,18 +318,15 @@ class fcn_gate_library
      */
     static constexpr fcn_gate reverse_rows(const fcn_gate& g) noexcept
     {
-        fcn_gate rev_rows = g;
+        fcn_gate rev_rows{};
 
-        std::reverse(std::begin(rev_rows), std::end(rev_rows));
+        for (auto i = 0; i < GateSizeY; ++i)
+        {
+            rev_rows[i] = g[GateSizeY - 1 - i];
+        }
 
         return rev_rows;
     }
-    /**
-     * Single empty gate in given technology and tile size. Used as a blue print to create new ones in merge and
-     * transpose for example.
-     */
-    static constexpr const fcn_gate EMPTY_GATE =
-        fiction::create_array<GateSizeY>(fiction::create_array<GateSizeX>(Technology::cell_type::EMPTY));
 };
 
 }  // namespace fiction

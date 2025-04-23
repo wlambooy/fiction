@@ -573,6 +573,43 @@ TEMPLATE_TEST_CASE("Ground State Space construction of sub-10 DB layouts", "[gro
     }
 }
 
+TEMPLATE_TEST_CASE("Ground State Space construction of a 13 DB layout", "[ground-state-space]", sidb_100_cell_clk_lyt)
+{
+    const auto& verify_layout = [](const TestType& lyt)
+    {
+        const sidb_simulation_parameters ps{2, -0.26};
+
+        const sidb_simulation_result<TestType>& qe_res = quickexact(lyt, quickexact_params<cell<TestType>>{ps});
+        const ground_state_space_results&       gss_res =
+            ground_state_space(lyt, ground_state_space_params<cell<TestType>>{ps});
+
+        for (const charge_distribution_surface<TestType>& cl : qe_res.charge_distributions)
+        {
+            const bool verification = verify_ground_state_space_stats<TestType>(cl, gss_res.top_cluster);
+            CHECK(verification);
+        }
+    };
+
+    TestType lyt{};
+    lyt.assign_cell_type({4, 1, 0}, TestType::cell_type::NORMAL);
+    lyt.assign_cell_type({31, 1, 0}, TestType::cell_type::NORMAL);
+    lyt.assign_cell_type({11, 7, 0}, TestType::cell_type::NORMAL);
+    lyt.assign_cell_type({24, 7, 0}, TestType::cell_type::NORMAL);
+    lyt.assign_cell_type({13, 11, 0}, TestType::cell_type::NORMAL);
+    lyt.assign_cell_type({22, 11, 0}, TestType::cell_type::NORMAL);
+    lyt.assign_cell_type({14, 13, 0}, TestType::cell_type::NORMAL);
+    lyt.assign_cell_type({16, 18, 0}, TestType::cell_type::NORMAL);
+    lyt.assign_cell_type({21, 18, 0}, TestType::cell_type::NORMAL);
+    lyt.assign_cell_type({21, 19, 0}, TestType::cell_type::NORMAL);
+    lyt.assign_cell_type({13, 15, 0}, TestType::cell_type::NORMAL);
+    lyt.assign_cell_type({10, 28, 0}, TestType::cell_type::NORMAL);
+    lyt.assign_cell_type({6, 31, 0}, TestType::cell_type::NORMAL);
+
+    verify_layout(lyt);
+
+    SECTION("Layout 1 (4 DBs)") {}
+}
+
 #else  // FICTION_ALGLIB_ENABLED
 
 #include <catch2/catch_test_macros.hpp>

@@ -12,6 +12,7 @@
 #include "fiction/algorithms/simulation/sidb/detect_bdl_wires.hpp"
 #include "fiction/algorithms/simulation/sidb/exhaustive_ground_state_simulation.hpp"
 #include "fiction/algorithms/simulation/sidb/groundstate_from_simulation_result.hpp"
+#include "fiction/technology/sidb_bounded_local_external_potential_wrapper.hpp"
 #include "fiction/algorithms/simulation/sidb/quickexact.hpp"
 #include "fiction/algorithms/simulation/sidb/quicksim.hpp"
 #include "fiction/algorithms/simulation/sidb/sidb_simulation_engine.hpp"
@@ -583,8 +584,20 @@ class is_operational_impl
             {
                 const auto [op_status, non_op_reason] = verify_logic_match_of_cds(gs, i);
 
+                // if (truth_table.size() == 2 && truth_table.at(0) == create_crossing_wire_tt().at(0))
+                // {
+                //     print_layout(gs);
+                //     std::cout << std::endl;
+                // }
+
                 if (op_status == operational_status::OPERATIONAL)
                 {
+                    // // if (truth_table.size() == 2 && truth_table.at(0) == create_crossing_wire_tt().at(0))
+                    // {
+                    //     print_layout(gs);
+                    //     std::cout << "OPERATIONAL!!" << std::endl;
+                    //     std::cout << std::endl;
+                    // }
                     continue;
                 }
 
@@ -1160,7 +1173,13 @@ class is_operational_impl
                     }
                 }
                 const auto& res = clustercomplete(*bdl_iterator, cc_params);
-                return res;
+
+                sidb_simulation_result<Lyt> res2{};
+                for (const auto& s : res.charge_distributions)
+                {
+                    res2.charge_distributions.push_back(s);
+                }
+                return res2;
             }
 
             if ((*bdl_iterator).num_cells() > 60)
