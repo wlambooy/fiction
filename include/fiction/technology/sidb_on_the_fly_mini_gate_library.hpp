@@ -360,7 +360,7 @@ class sidb_on_the_fly_mini_gate_library
                         parameters.design_gate_params.operational_params.simulation_parameters,
                         // {{0, 0}, {gate_x_size(), gate_y_size()}},
                         parameters.design_gate_params.canvas, parameters.design_gate_params_complex_gates.canvas,
-                    // parameters.design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params,
+                        // parameters.design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params,
                     // true});
                     parameters.design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params});
             std::cout << "done determining skeleton influence bounds; size = "
