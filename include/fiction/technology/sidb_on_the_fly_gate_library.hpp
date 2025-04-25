@@ -188,11 +188,11 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, 60
 
                             const auto& [cell_list, spec] = TWO_IN_TWO_OUT_MAP.at({p, pa});
 
-                            auto complex_gate_param = params;
+                            auto complex_gate_param               = params;
                             complex_gate_param.design_gate_params = params.design_gate_params_complex_gates;
 
                             complex_gate_param.design_gate_params.operational_params.cc_map =
-                                        params.design_gate_params.operational_params.cc_map;
+                                params.design_gate_params.operational_params.cc_map;
 
                             if constexpr (is_sidb_defect_surface_v<CellLyt>)
                             {

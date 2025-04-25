@@ -831,17 +831,19 @@ struct is_sidb_bounded_local_external_potential_wrapper : std::false_type
 // SFINAE-enabled specialization for Lyt satisfying certain conditions
 template <class Lyt>
 struct is_sidb_bounded_local_external_potential_wrapper<
-    Lyt, std::void_t<typename Lyt::storage,  // Check if Lyt has a nested type 'storage'
-                     decltype(std::declval<Lyt>().assign_bounds(
-                         std::declval<std::unordered_map<cell<Lyt>, std::array<double, 2>>>())),  // Check if calling
-                                                                                    // 'assign_bounds' is valid
-                     decltype(std::declval<Lyt>().get_bound(std::declval<cell<Lyt>>()))>>
+    Lyt,
+    std::void_t<typename Lyt::storage,  // Check if Lyt has a nested type 'storage'
+                decltype(std::declval<Lyt>().assign_bounds(
+                    std::declval<std::unordered_map<cell<Lyt>, std::array<double, 2>>>())),  // Check if calling
+                                                                                             // 'assign_bounds' is valid
+                decltype(std::declval<Lyt>().get_bound(std::declval<cell<Lyt>>()))>>
         : std::true_type  // Check if calling 'get_bound' is valid
 {};
 
 // Helper variable template for easy access to the trait value
 template <class Lyt>
-inline constexpr bool is_sidb_bounded_local_external_potential_wrapper_v = is_sidb_bounded_local_external_potential_wrapper<Lyt>::value;
+inline constexpr bool is_sidb_bounded_local_external_potential_wrapper_v =
+    is_sidb_bounded_local_external_potential_wrapper<Lyt>::value;
 #pragma endregion
 
 #pragma region has_assign_bounds
@@ -850,9 +852,8 @@ struct has_assign_bounds : std::false_type
 {};
 
 template <class Lyt>
-struct has_assign_bounds<
-    Lyt, std::void_t<decltype(std::declval<Lyt>().assign_bounds(std::unordered_map<cell<Lyt>, std::array<double, 2>>()))>>
-        : std::true_type
+struct has_assign_bounds<Lyt, std::void_t<decltype(std::declval<Lyt>().assign_bounds(
+                                  std::unordered_map<cell<Lyt>, std::array<double, 2>>()))>> : std::true_type
 {};
 
 template <class Lyt>
@@ -865,8 +866,7 @@ struct has_get_bound : std::false_type
 {};
 
 template <class Lyt>
-struct has_get_bound<Lyt, std::void_t<decltype(std::declval<Lyt>().get_bound(cell<Lyt>()))>>
-        : std::true_type
+struct has_get_bound<Lyt, std::void_t<decltype(std::declval<Lyt>().get_bound(cell<Lyt>()))>> : std::true_type
 {};
 
 template <class Lyt>

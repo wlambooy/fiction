@@ -214,7 +214,7 @@ class advanced_circuit_design_impl
      *
      */
     bool prune_gate_designs(const GateLyt& gate_lyt,
-                            std::unordered_map<mockturtle::node<Ntk>, sidb_on_the_fly_mini_gate_library::designed_fcn_gates>&
+                       std::unordered_map<mockturtle::node<Ntk>, sidb_on_the_fly_mini_gate_library::designed_fcn_gates>&
                            operational_gate_designs) const noexcept
     {
 
@@ -344,7 +344,8 @@ class advanced_circuit_design_impl
 
 #if (PROGRESS_BARS)
                     mockturtle::progress_bar bar{
-                        static_cast<uint32_t>(std::min(chunk_size, operational_gate_designs.at(n).designed_gates.size())),
+                        static_cast<uint32_t>(
+                            std::min(chunk_size, operational_gate_designs.at(n).designed_gates.size())),
                         "[i] Determining successful trial ratio for tile " +
                             fmt::format("({},{})", gate_lyt.get_tile(n).x, gate_lyt.get_tile(n).y) + ": |{0}|\t" +
                             fmt::format("({} trials for {} gate connection{} for {} gate implementations)",
@@ -367,8 +368,7 @@ class advanced_circuit_design_impl
                              &mutex_to_protect_successful_trial_ratios]
                             {
                                 const uint64_t start_index = i * chunk_size;
-                                const uint64_t end_index =
-                                    std::min(
+                                const uint64_t end_index   = std::min(
                                     start_index + chunk_size, operational_gate_designs.at(n).designed_gates.size());
 
                                 for (uint64_t j = start_index; j < end_index; ++j)

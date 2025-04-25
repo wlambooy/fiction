@@ -96,8 +96,7 @@ class sidb_on_the_fly_mini_gate_library
                     skeleton_influence_bounds_params<cell<CellLyt>>{
                         params.design_gate_params.operational_params.simulation_parameters,
                         // {{0, 0}, {gate_x_size(), gate_y_size()}},
-                        params.design_gate_params.canvas,
-                        params.design_gate_params_complex_gates.canvas,
+                        params.design_gate_params.canvas, params.design_gate_params_complex_gates.canvas,
                         params.design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params});
             std::cout << "done determining skeleton influence bounds; size = "
                       << params.design_gate_params.operational_params.cc_map.value().size() << std::endl;
@@ -149,11 +148,11 @@ class sidb_on_the_fly_mini_gate_library
 
                             const auto spec = TWO_IN_TWO_OUT_MAP.at({p, pa});
 
-                            auto complex_gate_param = params;
+                            auto complex_gate_param               = params;
                             complex_gate_param.design_gate_params = params.design_gate_params_complex_gates;
 
                             complex_gate_param.design_gate_params.operational_params.cc_map =
-                                        params.design_gate_params.operational_params.cc_map;
+                                params.design_gate_params.operational_params.cc_map;
 
                             if constexpr (is_sidb_defect_surface_v<CellLyt>)
                             {
@@ -195,8 +194,8 @@ class sidb_on_the_fly_mini_gate_library
                 if (defect_surface.has_value())
                 {
                     const auto skeleton_with_defects =
-                        add_defect_to_skeleton(defect_surface.value(), skeleton, params.influence_radius_charged_defects,
-                                               center_cell, absolute_cell);
+                        add_defect_to_skeleton(defect_surface.value(), skeleton,
+                                               params.influence_radius_charged_defects, center_cell, absolute_cell);
 
                     return design_gates<decltype(skeleton_with_defects), tt, CellLyt, GateLyt>(
                         skeleton_with_defects, std::vector<tt>{f}, params, p, t);
