@@ -7,6 +7,7 @@
 
 #include <fiction/traits.hpp>
 
+#include <array>
 #include <type_traits>
 #include <unordered_map>
 
@@ -24,10 +25,11 @@ struct sidb_bounded_local_external_potential_wrapper_params
  * fabrication defects on the H-Si(100) 2x1 surface.
  *
  * @tparam Lyt SiDB cell-level layout type.
- * @tparam has_sidb_defect_surface Automatically determines whether a defect interface is already present.
+ * @tparam has_sidb_bounded_local_external_potential_wrapper Automatically determines whether a defect interface is
+ * already present.
  */
-template <typename Lyt,
-          bool has_sidb_defect_surface = std::conjunction_v<has_assign_sidb_defect<Lyt>, has_get_sidb_defect<Lyt>>>
+template <typename Lyt, bool has_sidb_bounded_local_external_potential_wrapper =
+                            std::conjunction_v<has_assign_bounds<Lyt>, has_get_bound<Lyt>>>
 class sidb_bounded_local_external_potential_wrapper : public Lyt
 {};
 
@@ -54,7 +56,7 @@ class sidb_bounded_local_external_potential_wrapper<Lyt, false> : public Lyt
 
         sidb_bounded_local_external_potential_wrapper_params params{};
 
-        std::unordered_map<typename Lyt::coordinate, sidb_defect> defective_coordinates{};
+        std::unordered_map<cell<Lyt>, std::array<double, 2>> bounds{};
     };
 
     using storage = std::shared_ptr<sidb_bounded_local_external_potential_wrapper_storage>;
@@ -71,7 +73,7 @@ class sidb_bounded_local_external_potential_wrapper<Lyt, false> : public Lyt
     {
         static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout");
         static_assert(has_sidb_technology_v<Lyt>, "Lyt is not an SiDB layout");
-        static_assert(is_charge_distribution_surface_v<Lyt>, "Lyt is not a charge distribution surface");
+        // static_assert(is_charge_distribution_surface_v<Lyt>, "Lyt is not a charge distribution surface");
     }
 
     /**
@@ -87,7 +89,7 @@ class sidb_bounded_local_external_potential_wrapper<Lyt, false> : public Lyt
     {
         static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout");
         static_assert(has_sidb_technology_v<Lyt>, "Lyt is not an SiDB layout");
-        static_assert(is_charge_distribution_surface_v<Lyt>, "Lyt is not a charge distribution surface");
+        // static_assert(is_charge_distribution_surface_v<Lyt>, "Lyt is not a charge distribution surface");
     }
 
     /**
@@ -103,7 +105,7 @@ class sidb_bounded_local_external_potential_wrapper<Lyt, false> : public Lyt
     {
         static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout");
         static_assert(has_sidb_technology_v<Lyt>, "Lyt is not an SiDB layout");
-        static_assert(is_charge_distribution_surface_v<Lyt>, "Lyt is not a charge distribution surface");
+        // static_assert(is_charge_distribution_surface_v<Lyt>, "Lyt is not a charge distribution surface");
     }
     /**
      * Clones the layout returning a deep copy.
@@ -116,6 +118,24 @@ class sidb_bounded_local_external_potential_wrapper<Lyt, false> : public Lyt
         copy.strg = std::make_shared<sidb_bounded_local_external_potential_wrapper_storage>(*strg);
 
         return copy;
+    }
+    /**
+     * Assigns a bounded local external potential store.
+     *
+     * @param c ...
+     * @param d ...
+     */
+    void assign_bounds(const std::unordered_map<cell<Lyt>, std::array<double, 2>>& bounds) noexcept
+    {
+        for (const auto& [c, b] : bounds)
+        {
+            strg->bounds[c] = b;
+        }
+    }
+
+    std::array<double, 2> get_bound(const cell<Lyt>& c) const noexcept
+    {
+        return strg->bounds[c];
     }
 
   private:

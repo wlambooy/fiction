@@ -1222,7 +1222,7 @@ class is_operational_impl
                     std::cout << "NO CHARGE DISTRIBUTIONS FOUNDS" << std::endl;
                     return res;
                 }
-                print_layout(groundstate_from_simulation_result(res).front());
+                print_layout(res.groundstates().front());
                 std::cout << std::endl;
             }
 

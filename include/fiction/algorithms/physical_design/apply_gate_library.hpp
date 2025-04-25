@@ -81,8 +81,10 @@ public:
      * tiles are considered (unless a whitelist is given). The blacklist has priority over the whitelist.
      * @return A `CellLyt` object representing the generated cell layout.
      */
-    [[nodiscard]] CellLyt run_static_gate_library(const std::optional<CellLyt>& defect_surface = std::nullopt, const std::optional<std::set<tile<GateLyt>>>& whitelist,
-                                                  const std::optional<std::set<tile<GateLyt>>>& blacklist)
+    [[nodiscard]] CellLyt
+    run_static_gate_library(const std::optional<CellLyt>&                 defect_surface = std::nullopt,
+                            const std::optional<std::set<tile<GateLyt>>>& whitelist      = std::nullopt,
+                            const std::optional<std::set<tile<GateLyt>>>& blacklist      = std::nullopt)
     {
 #if (PROGRESS_BARS)
         // initialize a progress bar
@@ -171,8 +173,8 @@ public:
     template <typename Params>
     [[nodiscard]] auto run_parameterized_gate_library(const Params&                                       params,
                                                       const std::optional<CellLyt>& defect_surface = std::nullopt,
-                                                         const std::optional<std::set<tile<GateLyt>>>& whitelist,
-                                                         const std::optional<std::set<tile<GateLyt>>>& blacklist)
+                                   const std::optional<std::set<tile<GateLyt>>>& whitelist = std::nullopt,
+                                   const std::optional<std::set<tile<GateLyt>>>& blacklist = std::nullopt)
     {
 #if (PROGRESS_BARS)
         // initialize a progress bar

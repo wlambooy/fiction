@@ -622,9 +622,6 @@ class design_sidb_gates_impl
 
         std::shuffle(all_combinations.begin(), all_combinations.end(), std::mt19937(std::random_device()()));
 
-        std::cout << "done creating all possible canvas layouts (size = " << all_canvas_layouts.size() << ")"
-                  << std::endl;
-
         // Function to check validity and add layout to all_designs
         auto conduct_pruning_steps = [&](const canvas_combination& combination)
         {

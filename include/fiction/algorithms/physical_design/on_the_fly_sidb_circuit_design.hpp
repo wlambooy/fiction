@@ -42,22 +42,6 @@ class unsuccessful_pr_error : public std::runtime_error
     explicit unsuccessful_pr_error(const std::string_view& msg) noexcept : std::runtime_error(msg.data()) {}
 };
 /**
- * Exception thrown if the gate design was unsuccessful. Depending on the given gate design parameters and the defect
- * density, the gate design may fail.
- */
-class unsuccessful_gate_design_error : public std::runtime_error
-{
-  public:
-    /**
-     * This explicit constructor initializes the base `std::runtime_error` class
-     * with the provided error message, ensuring that the exception contains
-     * detailed information about the reason for the gate design failure.
-     *
-     * @param msg A descriptive message explaining why the gate design failed.
-     */
-    explicit unsuccessful_gate_design_error(const std::string_view& msg) noexcept : std::runtime_error(msg.data()) {}
-};
-/**
  * This struct stores the parameters to design an SiDB circuit on a defective surface.
  *
  * @tparam CellLyt SiDB cell-level layout type.

@@ -820,6 +820,60 @@ inline constexpr bool has_foreach_sidb_defect_v = has_foreach_sidb_defect<Lyt>::
 #pragma endregion
 
 /**
+ * SiDB bounded local external potential wrapper
+ */
+
+#pragma region is_sidb_bounded_local_external_potential_wrapper
+template <class Lyt, class = void>
+struct is_sidb_bounded_local_external_potential_wrapper : std::false_type
+{};
+
+// SFINAE-enabled specialization for Lyt satisfying certain conditions
+template <class Lyt>
+struct is_sidb_bounded_local_external_potential_wrapper<
+    Lyt, std::void_t<typename Lyt::storage,  // Check if Lyt has a nested type 'storage'
+                     decltype(std::declval<Lyt>().assign_bounds(
+                         std::declval<std::unordered_map<cell<Lyt>, std::array<double, 2>>>())),  // Check if calling
+                                                                                    // 'assign_bounds' is valid
+                     decltype(std::declval<Lyt>().get_bound(std::declval<cell<Lyt>>()))>>
+        : std::true_type  // Check if calling 'get_bound' is valid
+{};
+
+// Helper variable template for easy access to the trait value
+template <class Lyt>
+inline constexpr bool is_sidb_bounded_local_external_potential_wrapper_v = is_sidb_bounded_local_external_potential_wrapper<Lyt>::value;
+#pragma endregion
+
+#pragma region has_assign_bounds
+template <class Lyt, class = void>
+struct has_assign_bounds : std::false_type
+{};
+
+template <class Lyt>
+struct has_assign_bounds<
+    Lyt, std::void_t<decltype(std::declval<Lyt>().assign_bounds(std::unordered_map<cell<Lyt>, std::array<double, 2>>()))>>
+        : std::true_type
+{};
+
+template <class Lyt>
+inline constexpr bool has_assign_bounds_v = has_assign_bounds<Lyt>::value;
+#pragma endregion
+
+#pragma region has_get_bound
+template <class Lyt, class = void>
+struct has_get_bound : std::false_type
+{};
+
+template <class Lyt>
+struct has_get_bound<Lyt, std::void_t<decltype(std::declval<Lyt>().get_bound(cell<Lyt>()))>>
+        : std::true_type
+{};
+
+template <class Lyt>
+inline constexpr bool has_get_bound_v = has_get_bound<Lyt>::value;
+#pragma endregion
+
+/**
  * SiDB simulation domain
  */
 #pragma region has_dimensions

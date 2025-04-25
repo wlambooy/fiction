@@ -80,8 +80,6 @@ class sidb_defect_surface<Lyt, false> : public Lyt
     {
         static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout");
         static_assert(has_sidb_technology_v<Lyt>, "Lyt is not an SiDB layout");
-
-        assert(strg->params.ignore.count(sidb_defect_type::NONE) == 0 && "The defect type 'NONE' cannot be ignored");
     }
 
     /**
@@ -96,8 +94,6 @@ class sidb_defect_surface<Lyt, false> : public Lyt
     {
         static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout");
         static_assert(has_sidb_technology_v<Lyt>, "Lyt is not an SiDB layout");
-
-        assert(strg->params.ignore.count(sidb_defect_type::NONE) == 0 && "The defect type 'NONE' cannot be ignored");
     }
 
     /**
@@ -112,8 +108,6 @@ class sidb_defect_surface<Lyt, false> : public Lyt
     {
         static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout");
         static_assert(has_sidb_technology_v<Lyt>, "Lyt is not an SiDB layout");
-
-        assert(strg->params.ignore.count(sidb_defect_type::NONE) == 0 && "The defect type 'NONE' cannot be ignored");
     }
     /**
      * Clones the layout returning a deep copy.

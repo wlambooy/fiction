@@ -58,6 +58,7 @@ int main(int argc, char* argv[])  // NOLINT
     using gate_lyt = fiction::hex_even_row_gate_clk_lyt;
     using cell_lyt = fiction::sidb_cell_clk_lyt_cube;
     using lyt_t    = fiction::sidb_bounded_local_external_potential_wrapper<fiction::sidb_defect_surface<cell_lyt>>;
+    // using lyt_t = fiction::sidb_defect_surface<cell_lyt>;
 
 #ifdef USE_MINI
     using gate_lib          = fiction::sidb_on_the_fly_mini_gate_library;
@@ -100,11 +101,11 @@ int main(int argc, char* argv[])  // NOLINT
         design_gate_params.canvas = {{24, 17}, {34, 28}};  // normal canvas
     }
 
-    design_gate_params.number_of_sidbs               = 4;
+    design_gate_params.number_of_canvas_sidbs        = 4;
     design_gate_params.operational_params.sim_engine = fiction::sidb_simulation_engine::CLUSTERCOMPLETE;
     design_gate_params.termination_cond =
         fiction::design_sidb_gates_params<lyt_t>::termination_condition::OBTAINED_N_SOLUTIONS;
-    design_gate_params.max_num_solutions = 1000;
+    design_gate_params.maximum_number_of_solutions = 1000;
     // design_gate_params.design_mode = fiction::design_sidb_gates_params<
     //     lyt_t>::design_sidb_gates_mode::EXHAUSTIVE_GATE_DESIGNER;
 
@@ -113,7 +114,7 @@ int main(int argc, char* argv[])  // NOLINT
     fiction::design_sidb_gates_params<lyt_t> design_gate_params_complex_gates{};
     design_gate_params_complex_gates.operational_params.simulation_parameters =
         design_gate_params.operational_params.simulation_parameters;
-    design_gate_params_complex_gates.number_of_sidbs = 6;
+    design_gate_params_complex_gates.number_of_canvas_sidbs = 6;
     design_gate_params_complex_gates.design_mode =
         fiction::design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::RANDOM;
     design_gate_params_complex_gates.termination_cond =
@@ -133,7 +134,7 @@ int main(int argc, char* argv[])  // NOLINT
     design_gate_params_complex_gates.operational_params.strategy_to_analyze_operational_status =
         // fiction::is_operational_params<fiction::cell<cell_lyt>>::operational_analysis_strategy::FILTER_THEN_SIMULATION;
         fiction::is_operational_params<fiction::cell<cell_lyt>>::operational_analysis_strategy::SIMULATION_ONLY;
-    design_gate_params_complex_gates.max_num_solutions             = 1000;
+    design_gate_params_complex_gates.maximum_number_of_solutions   = 1000;
     design_gate_params_complex_gates.operational_params.sim_engine = fiction::sidb_simulation_engine::CLUSTERCOMPLETE;
 
     // // save atomic defects which their respective physical parameters as experimentally determined by T. R. Huff, T.
@@ -260,7 +261,7 @@ int main(int argc, char* argv[])  // NOLINT
 
         // fiction::write_
 
-        fiction::advanced_circuit_design_params<cell_lyt> params{};
+        fiction::advanced_circuit_design_params<lyt_t> params{};
 
         // design_gate_params.max_num_solutions = 200;
         params.num_trials                   = 100;
@@ -272,21 +273,21 @@ int main(int argc, char* argv[])  // NOLINT
 
         if (argc == 2)
         {
-            design_gate_params_complex_gates.number_of_sidbs = atoi(argv[1]);
+            design_gate_params_complex_gates.number_of_canvas_sidbs = atoi(argv[1]);
         }
         else if (argc == 3)
         {
-            design_gate_params.number_of_sidbs               = atoi(argv[1]);
-            design_gate_params_complex_gates.number_of_sidbs = atoi(argv[2]);
+            design_gate_params.number_of_canvas_sidbs               = atoi(argv[1]);
+            design_gate_params_complex_gates.number_of_canvas_sidbs = atoi(argv[2]);
         }
         else if (argc != 1)
         {
-            design_gate_params.max_num_solutions               = std::stoi(argv[1]);
-            design_gate_params_complex_gates.max_num_solutions = std::stoi(argv[2]);
-            params.num_trials                                  = std::stoi(argv[3]);
-            params.selectivity                                 = std::stod(argv[4]);
-            params.num_trials_for_global_scope                 = std::stoi(argv[5]);
-            params.selectivity_for_global_scope                = std::stod(argv[6]);
+            design_gate_params.maximum_number_of_solutions               = std::stoi(argv[1]);
+            design_gate_params_complex_gates.maximum_number_of_solutions = std::stoi(argv[2]);
+            params.num_trials                                            = std::stoi(argv[3]);
+            params.selectivity                                           = std::stod(argv[4]);
+            params.num_trials_for_global_scope                           = std::stoi(argv[5]);
+            params.selectivity_for_global_scope                          = std::stod(argv[6]);
         }
 
         params.exact_design_parameters.scheme        = "ROW4";
@@ -297,7 +298,7 @@ int main(int argc, char* argv[])  // NOLINT
         params.exact_design_parameters.upper_bound_y = 30;         // 12 x 31 tiles
         params.exact_design_parameters.timeout       = 3'600'000;  // 1h in ms
 
-        params.sidb_on_the_fly_gate_library_parameters.defect_surface                = surface_lattice;
+        // params.sidb_on_the_fly_gate_library_parameters.defect_surface                = surface_lattice;
         params.sidb_on_the_fly_gate_library_parameters.use_skeleton_influence_bounds = true;
         params.sidb_on_the_fly_gate_library_parameters.design_gate_params            = design_gate_params;
 
@@ -307,13 +308,10 @@ int main(int argc, char* argv[])  // NOLINT
         // 6;  //
         // params.sidb_on_the_fly_gate_library_parameters.design_gate_params.number_of_sidbs;
 
-
-
         fiction::advanced_circuit_design_stats<gate_lyt> st{};
 
-        lyt =
-            fiction::advanced_circuit_design<decltype(mapped_network), cell_lyt, gate_lyt, gate_lib, skeleton_gate_lib>(
-                mapped_network, lattice_tiling, params, &st);
+        lyt = fiction::advanced_circuit_design<decltype(mapped_network), lyt_t, gate_lyt, gate_lib, skeleton_gate_lib>(
+            mapped_network, lattice_tiling, params, &st);
 
         params.sidb_on_the_fly_gate_library_parameters.design_gate_params.operational_params.print = true;
 
