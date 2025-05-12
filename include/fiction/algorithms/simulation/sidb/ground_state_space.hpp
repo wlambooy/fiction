@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <chrono>
 #include <cstdint>
 #include <functional>
@@ -292,23 +293,24 @@ class ground_state_space_impl
         {
             const uint64_t i = get_singleton_sidb_ix(c);
 
-            const cell<Lyt>& sidb = min_loc_pot_cds.index_to_cell(i);
+            assert(min_loc_pot_cds.get_local_potential_caused_by_defects_by_index(i).has_value() &&
+                   "SiDB i is out of range");
+            assert(min_loc_pot_cds.get_local_internal_potential_by_index(i).has_value() && "SiDB i is out of range");
+            assert(max_loc_pot_cds.get_local_internal_potential_by_index(i).has_value() && "SiDB i is out of range");
+            assert(min_loc_pot_cds.get_local_external_potential_by_index(i).has_value() && "SiDB i is out of range");
 
-            // separate the local potential into potential from SiDBs and external sources
-            double loc_ext_pot_min = min_loc_pot_cds.get_local_defect_potentials()[sidb];
-            double loc_ext_pot_max = loc_ext_pot_min;
+            const double defect_pot = *min_loc_pot_cds.get_local_potential_caused_by_defects_by_index(i);
 
-            loc_ext_pot_min += min_loc_pot_cds.get_local_external_potentials()[sidb];
-            loc_ext_pot_max += max_loc_pot_cds.get_local_external_potentials()[sidb];
+            const double min_loc_pot = *min_loc_pot_cds.get_local_internal_potential_by_index(i) - defect_pot;
+            const double max_loc_pot = *max_loc_pot_cds.get_local_internal_potential_by_index(i) - defect_pot;
 
-            const double min_loc_pot = min_loc_pot_cds.get_local_potential_by_index(i).value() - loc_ext_pot_min;
-            const double max_loc_pot = max_loc_pot_cds.get_local_potential_by_index(i).value() - loc_ext_pot_max;
+            const double loc_ext_pot = *min_loc_pot_cds.get_local_external_potential_by_index(i) + defect_pot;
 
-            c->initialize_singleton_cluster_charge_space(-min_loc_pot, -max_loc_pot, -loc_ext_pot_min, -loc_ext_pot_max,
+            c->initialize_singleton_cluster_charge_space(-min_loc_pot, -max_loc_pot, -loc_ext_pot,
                                                          min_loc_pot_cds.get_simulation_params().base, c);
 
-            c->pot_projs[i] = potential_projection_order{-loc_ext_pot_min, -loc_ext_pot_max,
-                                                         min_loc_pot_cds.get_simulation_params().base};
+            c->pot_projs[i] =
+                potential_projection_order{-loc_ext_pot, min_loc_pot_cds.get_simulation_params().base, true};
 
             for (uint64_t j = 0; j < min_loc_pot_cds.num_cells(); ++j)
             {
