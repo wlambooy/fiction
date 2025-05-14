@@ -3086,14 +3086,6 @@ static const char *__doc_fiction_clustercomplete_params_ground_state_space_repor
 R"doc(Enabling this option will output *Ground State Space* statistics to
 the standard output.)doc";
 
-static const char *__doc_fiction_clustercomplete_params_insert_local_external_potential =
-R"doc(Parameter ``c``:
-    Cell to assign TODO)doc";
-
-static const char *__doc_fiction_clustercomplete_params_local_external_potential =
-R"doc(Local external electrostatic potentials (e.g., locally applied
-electrodes). Either single-valued per cell, or double valued (bounds).)doc";
-
 static const char *__doc_fiction_clustercomplete_params_num_overlapping_witnesses_limit_gss =
 R"doc(The complexity is of validity witness partitioning bounded by a
 factorial in the number of overlapping witnesses. This parameter thus
@@ -5461,14 +5453,6 @@ Parameter ``clustering_state``:
     with associated charge states that make up a charge distribution
     that conforms to the *population stability* criterion.)doc";
 
-static const char *__doc_fiction_detail_clustercomplete_impl_add_if_configuration_stability_is_met_with_upper_bound_external_potential =
-R"doc(TODO
-
-Parameter ``clustering_state``:
-    A clustering state consisting of only singleton clusters along
-    with associated charge states that make up a charge distribution
-    that conforms to the *population stability* criterion.)doc";
-
 static const char *__doc_fiction_detail_clustercomplete_impl_add_parent =
 R"doc(After all specializations have been tried, the clustering state needs
 to un-specialize in order for other specializations to take place
@@ -5554,8 +5538,6 @@ Returns:
     completely empty and thus backtracking is not required.)doc";
 
 static const char *__doc_fiction_detail_clustercomplete_impl_available_threads = R"doc(Number of available threads.)doc";
-
-static const char *__doc_fiction_detail_clustercomplete_impl_bounded_local_external_potential = R"doc(TODO)doc";
 
 static const char *__doc_fiction_detail_clustercomplete_impl_charge_layout =
 R"doc(The base layout that is used to create charge distribution surface
@@ -5726,8 +5708,6 @@ Parameter ``params``:
 
 Returns:
     Results of the exact simulation.)doc";
-
-static const char *__doc_fiction_detail_clustercomplete_impl_set_bounded_local_external_potential_if_present = R"doc(TODO)doc";
 
 static const char *__doc_fiction_detail_clustercomplete_impl_take_parent_out =
 R"doc(Before the parent projector state may be specialized to a specific
@@ -16847,6 +16827,12 @@ Parameter ``t``:
 Returns:
     The next temperature, i.e. :math:`\texttt{t} - 10`.)doc";
 
+static const char *__doc_fiction_local_external_potential_type = R"doc()doc";
+
+static const char *__doc_fiction_local_external_potential_type_BOUNDED = R"doc()doc";
+
+static const char *__doc_fiction_local_external_potential_type_SINGLE_VALUED = R"doc()doc";
+
 static const char *__doc_fiction_magcad_magnet_count =
 R"doc(Calculates the number of magnets for an iNML layout the way MagCAD
 (https://topolinano.polito.it/) would do it. That is, counting chains
@@ -21257,7 +21243,10 @@ algorithm, the physical parameters used in the simulation, and
 (optional) algorithm-specific named simulation parameters.
 
 Template parameter ``Lyt``:
-    SiDB cell-level layout type.)doc";
+    SiDB cell-level layout type.
+
+Template parameter ``ExtPotType``:
+    Type of external local potential (single-valued / bounded).)doc";
 
 static const char *__doc_fiction_sidb_simulation_result_additional_simulation_parameters =
 R"doc(Additional named simulation parameters. This is used to store
