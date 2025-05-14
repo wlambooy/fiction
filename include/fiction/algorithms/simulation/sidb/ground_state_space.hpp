@@ -1269,7 +1269,8 @@ class ground_state_space_impl
  */
 template <typename Lyt, local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED>
 [[nodiscard]] ground_state_space_results
-ground_state_space(const Lyt& lyt, const ground_state_space_params& params = {}) noexcept
+ground_state_space(const Lyt&                       lyt,
+                                                            const ground_state_space_params& params = {}) noexcept
 {
     static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout");
     static_assert(has_sidb_technology_v<Lyt>, "Lyt is not an SiDB layout");

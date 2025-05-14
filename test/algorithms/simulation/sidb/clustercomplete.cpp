@@ -1823,7 +1823,7 @@ TEMPLATE_TEST_CASE(
         }
     }
 
-    SECTION("ThRee SiDBs")
+    SECTION("Three SiDBs")
     {
         lyt.assign_cell_type({3, 3, 0}, TestType::cell_type::NORMAL);
 
