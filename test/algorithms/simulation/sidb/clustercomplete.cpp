@@ -1766,40 +1766,99 @@ TEMPLATE_TEST_CASE("ClusterComplete simulation of two SiDBs placed directly next
 
         CHECK(simulation_results.charge_distributions.size() == 2);
     }
+}
 
-    SECTION("Base 3 with bounded local external potential")
+TEMPLATE_TEST_CASE(
+    "ClusterComplete simulation of SiDBs placed directly next to each other with bounded local external potential",
+    "[clustercomplete]", (sidb_lattice<sidb_100_lattice, sidb_cell_clk_lyt_siqad>))
+{
+    TestType lyt{};
+    lyt.assign_cell_type({1, 3, 0}, TestType::cell_type::NORMAL);
+    lyt.assign_cell_type({2, 3, 0}, TestType::cell_type::NORMAL);
+
+    SECTION("Two SiDBs")
     {
-        clustercomplete_params<cell<TestType>> params{
-            sidb_simulation_parameters{3, -0.32},
-            typename clustercomplete_params<cell<TestType>>::bounded_local_external_potential{}};
-        params.insert_local_external_potential({1, 3, 0}, std::array<double, 2>{-2.0, 1.8});
+        clustercomplete_params<cell<TestType>, local_external_potential_type::BOUNDED> params{
+            sidb_simulation_parameters{3, -0.32}};
+        params.local_external_potential[cell<TestType>{1, 3, 0}] = std::array<double, 2>{-2.0, 1.8};
 
-        auto simulation_results = clustercomplete<TestType>(lyt, params);
+        auto simulation_results = clustercomplete<TestType, local_external_potential_type::BOUNDED>(lyt, params);
 
-        // CHECK(simulation_results.charge_distributions.size() == 3);  // TODO
-        REQUIRE(!simulation_results.charge_distributions.empty());
+        CHECK(simulation_results.charge_distributions.size() == 3);
 
-        for (charge_distribution_surface<TestType>& cds : simulation_results.charge_distributions)
+        for (auto& cds : simulation_results.charge_distributions)
         {
-            std::vector<double> loc_pots{};
+            std::vector<std::array<double, 2>> loc_pots{};
             loc_pots.reserve(cds.num_cells());
 
             for (const cell<TestType>& c : cds.get_sidb_order())
             {
                 REQUIRE(cds.get_local_potential(c).has_value());
+                CHECK(cds.get_local_potential(c).value()[0] <= cds.get_local_potential(c).value()[1]);
+                const double v = c.x == 1 ? 1.8 - -2.0 : 0.0;
+                CHECK_THAT(v - (cds.get_local_potential(c).value()[1] - cds.get_local_potential(c).value()[0]),
+                           Catch::Matchers::WithinAbs(0, constants::ERROR_MARGIN));
                 loc_pots.push_back(cds.get_local_potential(c).value());
             }
 
-            const double energy = cds.get_system_energy();
+            const std::array<double, 2>& energy = cds.get_electrostatic_potential_energy();
+
+            CHECK(energy[0] <= energy[1]);
 
             cds.update_after_charge_change();
 
-            CHECK_THAT(energy - cds.get_system_energy(), Catch::Matchers::WithinAbs(0, constants::ERROR_MARGIN));
+            CHECK_THAT(energy[0] - cds.get_electrostatic_potential_energy()[0],
+                       Catch::Matchers::WithinAbs(0, constants::ERROR_MARGIN));
+            CHECK_THAT(energy[1] - cds.get_electrostatic_potential_energy()[1],
+                       Catch::Matchers::WithinAbs(0, constants::ERROR_MARGIN));
 
             for (uint64_t i = 0; i < loc_pots.size(); ++i)
             {
                 REQUIRE(cds.get_local_potential_by_index(i).has_value());
-                CHECK_THAT(loc_pots.at(i) - cds.get_local_potential_by_index(i).value(),
+                CHECK_THAT(loc_pots.at(i)[0] - cds.get_local_potential_by_index(i).value()[0],
+                           Catch::Matchers::WithinAbs(0, constants::ERROR_MARGIN));
+                CHECK_THAT(loc_pots.at(i)[1] - cds.get_local_potential_by_index(i).value()[1],
+                           Catch::Matchers::WithinAbs(0, constants::ERROR_MARGIN));
+            }
+        }
+    }
+
+    SECTION("ThRee SiDBs")
+    {
+        lyt.assign_cell_type({3, 3, 0}, TestType::cell_type::NORMAL);
+
+        clustercomplete_params<cell<TestType>, local_external_potential_type::BOUNDED> params{
+            sidb_simulation_parameters{3, -0.32}};
+        params.local_external_potential[cell<TestType>{1, 3, 0}] = std::array<double, 2>{-2.0, 1.8};
+        params.local_external_potential[cell<TestType>{3, 3, 0}] = std::array<double, 2>{0.5, 1.0};
+
+        auto simulation_results = clustercomplete<TestType, local_external_potential_type::BOUNDED>(lyt, params);
+
+        CHECK(simulation_results.charge_distributions.size() == 3);
+        REQUIRE(!simulation_results.charge_distributions.empty());
+
+        for (auto& cds : simulation_results.charge_distributions)
+        {
+            std::vector<std::array<double, 2>> loc_pots{};
+            loc_pots.reserve(cds.num_cells());
+
+            for (const cell<TestType>& c : cds.get_sidb_order())
+            {
+                REQUIRE(cds.get_local_potential(c).has_value());
+                CHECK(cds.get_local_potential(c).value()[0] <= cds.get_local_potential(c).value()[1]);
+                const double v = c.x == 1 ? 1.8 - -2.0 : c.x == 3 ? 1 - 0.5 : 0.0;
+                CHECK_THAT(v - (cds.get_local_potential(c).value()[1] - cds.get_local_potential(c).value()[0]),
+                           Catch::Matchers::WithinAbs(0, constants::ERROR_MARGIN));
+                loc_pots.push_back(cds.get_local_potential(c).value());
+            }
+
+            const std::array<double, 2>& energy = cds.get_electrostatic_potential_energy();
+
+            CHECK(energy[0] < energy[1]);
+
+            if (cds.num_negative_sidbs() > 1)
+            {
+                CHECK_THAT((energy[1] - energy[0]) - ((1.8 + 1.0) - (-2.0 + 0.5)),
                            Catch::Matchers::WithinAbs(0, constants::ERROR_MARGIN));
             }
         }

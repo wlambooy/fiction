@@ -28,8 +28,9 @@ namespace fiction
  * the simulation, and (optional) algorithm-specific named simulation parameters.
  *
  * @tparam Lyt SiDB cell-level layout type.
+ * @tparam ExtPotType Type of external local potential (single-valued / bounded).
  */
-template <typename Lyt>
+template <typename Lyt, local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED>
 struct sidb_simulation_result
 {
     /**
@@ -52,7 +53,7 @@ struct sidb_simulation_result
     /**
      * Charge distributions determined by the algorithm.
      */
-    std::vector<charge_distribution_surface<Lyt>> charge_distributions{};
+    std::vector<charge_distribution_surface<Lyt, ExtPotType>> charge_distributions{};
     /**
      * Physical parameters used in the simulation.
      */
@@ -72,10 +73,10 @@ struct sidb_simulation_result
      *
      * @return A vector of charge distributions with the minimal energy.
      */
-    [[nodiscard]] std::vector<charge_distribution_surface<Lyt>> groundstates() const noexcept
+    [[nodiscard]] std::vector<charge_distribution_surface<Lyt, ExtPotType>> groundstates() const noexcept
     {
-        std::vector<charge_distribution_surface<Lyt>> groundstate_charge_distributions{};
-        std::set<uint64_t>                            charge_indices{};
+        std::vector<charge_distribution_surface<Lyt, ExtPotType>> groundstate_charge_distributions{};
+        std::set<uint64_t>                                        charge_indices{};
 
         // Find all unique charge indices. This is done because simulation results can have multiple identical charge
         // distributions.
