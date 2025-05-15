@@ -106,14 +106,14 @@ struct sidb_simulation_result
 
                 for (const auto charge_index : charge_indices)
                 {
-                    const auto cds_it = std::find_if(
-                        charge_distributions.cbegin(), charge_distributions.cend(),
-                        [&](const auto& cds)
-                        {
-                            return cds.get_charge_index_and_base().first == charge_index &&
-                                   cds.get_electrostatic_potential_energy()[0] - min_energy.first <
-                                       constants::ERROR_MARGIN;
-                        });
+                    const auto cds_it =
+                        std::find_if(charge_distributions.cbegin(), charge_distributions.cend(),
+                                     [&](const auto& cds)
+                                     {
+                                         return cds.get_charge_index_and_base().first == charge_index &&
+                                                cds.get_electrostatic_potential_energy()[0] - min_energy.first <
+                                                    constants::ERROR_MARGIN;
+                                     });
 
                     if (cds_it != charge_distributions.cend())
                     {
