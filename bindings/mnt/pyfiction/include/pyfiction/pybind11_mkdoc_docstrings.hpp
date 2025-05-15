@@ -3047,7 +3047,7 @@ equations to higher order, allowing us to reason over potential bounds
 in a cluster hierarchy.
 
 Template parameter ``Lyt``:
-    SiDB cell-level layout type.
+    SiDB cell-level layout type. todo
 
 Parameter ``lyt``:
     Layout to simulate.
@@ -3061,7 +3061,14 @@ Returns:
 
 static const char *__doc_fiction_clustercomplete_params =
 R"doc(The struct containing the parameters both passed on to pre-simulator
-Ground State Space, and used during simulation.)doc";
+Ground State Space, and used during simulation.
+
+Template parameter ``CellType``:
+    The type of SiDB cell to assign local external potential to.
+
+Template parameter ``ExtPotType``:
+    The type of local external potential values, either single-valued
+    or double-valued (bounds).)doc";
 
 static const char *__doc_fiction_clustercomplete_params_available_threads = R"doc()doc";
 
@@ -8426,6 +8433,24 @@ Parameter ``ssg``:
 
 static const char *__doc_fiction_detail_ground_state_space_impl = R"doc()doc";
 
+static const char *__doc_fiction_detail_ground_state_space_impl_add_pot_projection =
+R"doc(Helper function for adding the given potential projection to the store
+of all potential projections onto the given receiving SiDB. This store
+only contains multiset charge configurations (that constitute the
+respective potential projections in this store) that have not yet been
+judged as physically invalid.
+
+Parameter ``c``:
+    Cluster of which the associated given potential projection `pp`
+    onto `sidb_ix` is to be added to its store of possible potential
+    projections onto this SiDB.
+
+Parameter ``sidb_ix``:
+    SiDB that receives the given potential projection from `c`.
+
+Parameter ``pp``:
+    Potential projection from `c` to `sidb_ix` to add.)doc";
+
 static const char *__doc_fiction_detail_ground_state_space_impl_check_charge_space =
 R"doc(The charge space of the given cluster is checked by performing the
 potential bound analysis on each multiset charge configuration in it
@@ -8575,6 +8600,110 @@ Returns:
     `true` if a validity witness partitioning was found, and `false`
     if no consistent partitioning was found.)doc";
 
+static const char *__doc_fiction_detail_ground_state_space_impl_get_initial_clustering =
+R"doc(Recursive function used to get the initial clustering; the data object
+that collects all SiDBs in the layout that are each individually
+lifted to (singleton) SiDB cluster objects. Each SiDB cluster object
+has information of its electrostatic potential effect onto each SiDB
+in the layout, as well as information on the accumulated electrostatic
+potential effect that each SiDB has on it.
+
+This function is initially called with the top cluster, i.e., the
+cluster containing all SiDBs in the layout. The function is called
+recursively on each of the children of this cluster until the function
+is called on a cluster without children. The aforementioned
+electrostatic potential information with respect to this singleton
+cluster is then computed, and it is added to the clustering that
+eventually contains all singleton clusters, which is then returned.
+
+Parameter ``c``:
+    Cluster to add to the clustering if it is a singleton, otherwise
+    this function is called recursively on each of its children.
+
+Parameter ``local_potential_bound_containers``:
+    Charge distribution surface objects containing information on the
+    initial minimum and maximum electrostatic potential.
+
+Returns:
+    The clustering that contains only singleton clusters, one for each
+    SiDB in the layout.)doc";
+
+static const char *__doc_fiction_detail_ground_state_space_impl_get_local_potential_bounds =
+R"doc(Function used to initialize two charge distribution surfaces, each
+corresponding to the initial lower/upper bound on the electrostatic
+potential in the layout. The minimum electrostatic potential depends
+on the given simulation base: when positive charges are considered,
+there may be negative electrostatic potential.
+
+Parameter ``lyt``:
+    Layout to construct the *Ground State Space* of.
+
+Parameter ``simulation_parameters``:
+    Parameters used to calculate the electrostatic potential in the
+    layout.
+
+Returns:
+    The two charge distribution surfaces that each represent
+    respective bounds on the electrostatic potential in the layout.)doc";
+
+static const char *__doc_fiction_detail_ground_state_space_impl_get_next_projected_pot_bound =
+R"doc(Helper function for obtaining the stored one-above lower or one-below
+upper bound on the electrostatic potential that SiDBs in the given
+cluster collectively project onto the given SiDB.
+
+Template parameter ``bound``:
+    Bound to obtain (one-above lower / one-below upper).
+
+Parameter ``c``:
+    Projecting cluster.
+
+Parameter ``sidb_ix``:
+    Receiving SiDB.
+
+Returns:
+    The potential projection associated with this bound; i.e., an
+    electrostatic potential (in V) associated with a multiset charge
+    configuration of the given cluster.)doc";
+
+static const char *__doc_fiction_detail_ground_state_space_impl_get_projection_bound =
+R"doc(Helper function for obtaining the stored lower or upper bound on the
+electrostatic potential that SiDBs in the given cluster collectively
+project onto the given SiDB.
+
+Template parameter ``bound``:
+    Bound to obtain (lower/upper).
+
+Parameter ``c``:
+    Projecting cluster.
+
+Parameter ``sidb_ix``:
+    Receiving SiDB.
+
+Returns:
+    The potential projection associated with this bound; i.e., an
+    electrostatic potential (in V) associated with a multiset charge
+    configuration of the given cluster.)doc";
+
+static const char *__doc_fiction_detail_ground_state_space_impl_get_projector_state_bound =
+R"doc(Helper function for obtaining the stored lower or upper bound on the
+electrostatic potential that SiDBs in the given projector state--i.e.,
+a cluster together with an associated multiset charge configuration--
+collectively project onto the given SiDB.
+
+Template parameter ``bound``:
+    Bound to obtain (lower/upper).
+
+Parameter ``pst``:
+    Projector state.
+
+Parameter ``sidb_ix``:
+    Receiving SiDB.
+
+Returns:
+    The potential projection associated with this bound; i.e., an
+    electrostatic potential (in V) associated with the given projector
+    state.)doc";
+
 static const char *__doc_fiction_detail_ground_state_space_impl_get_received_potential_bounds =
 R"doc(This function obtains the pair of potential bounds relevant to a
 potential projection associated with a multiset charge configuration
@@ -8618,6 +8747,16 @@ Parameter ``lyt``:
 Parameter ``parameters``:
     The parameters that *Ground State Space* will use throughout the
     construction.)doc";
+
+static const char *__doc_fiction_detail_ground_state_space_impl_handle_invalid_state =
+R"doc(When a multiset charge configuration is found to be invalid for an
+associated cluster, this has an effect on each SiDB in each other
+cluster. This function invokes the procedures that perform updates
+where necessary.
+
+Parameter ``pst``:
+    Projector state of which the multiset charge configuration is to
+    be purged from the cluster hierarchy data structure.)doc";
 
 static const char *__doc_fiction_detail_ground_state_space_impl_lb_fail_onto_neutral_charge =
 R"doc(Performs V > e - mu+.
@@ -8712,6 +8851,19 @@ static const char *__doc_fiction_detail_ground_state_space_impl_projector_state_
 R"doc(Count the total number of projector states that are stored in the
 constructed hierarchy.)doc";
 
+static const char *__doc_fiction_detail_ground_state_space_impl_remove_all_cluster_charge_state_occurrences =
+R"doc(Helper function to remove all occurrences of a cluster charge state--
+i.e., a multiset charge configuration--that is part of the given
+projector state from the potential projections from the associated
+cluster onto the given SiDB.
+
+Parameter ``rm_pst``:
+    Projector state to move all occurrences of in the projection onto
+    `sidb_ix`.
+
+Parameter ``sidb_ix``:
+    SiDB that receives the potential projections to be removed.)doc";
+
 static const char *__doc_fiction_detail_ground_state_space_impl_run =
 R"doc(The main loop in the *Ground State Space* construction. Charge spaces
 are updated until a fixed point is reached, after which a merging of
@@ -8767,6 +8919,43 @@ Returns:
     `true` if and only if a fixed point has been reached; i.e., none
     of the charge space contain an element that may be removed.)doc";
 
+static const char *__doc_fiction_detail_ground_state_space_impl_update_external_pot_projection_if_bound_removed =
+R"doc(When the multiset charge configuration associated with the given
+projector state represents a bound, then the one-above lower or one-
+below upper bound should be used instead in the accumulation of
+potential projections received by the given receptor state.
+
+Template parameter ``bound``:
+    Bound to check (lower/upper).
+
+Parameter ``pst``:
+    Projector state that could be associated with a bound on the
+    potential projected from the associated cluster onto the SiDB in
+    the given receptor state.
+
+Parameter ``rst``:
+    Receptor state that contains the cluster object at which the
+    accumulation of externally received potentials may need to be
+    updated, and the relevant SiDB that receives the potential
+    projection.)doc";
+
+static const char *__doc_fiction_detail_ground_state_space_impl_update_external_potential_projection =
+R"doc(For a given projector state and receptor state, i.e., an interaction
+between two clusters with an associated multiset charge configuration
+of the projecting cluster and an SiDB in the receiving cluster, this
+multiset charge configuration is to be removed. Corresponding updates
+are made when it represented a bound, such that the potential
+projection range shrinks, perhaps leading to more sub-configurations
+detected to be physically invalid.
+
+Parameter ``pst``:
+    Projector state of which the associated multiset charge
+    configuration is to be removed.
+
+Parameter ``rst``:
+    Receptor state at which the updates to the accumulation of
+    externally received potential should be made when necessary.)doc";
+
 static const char *__doc_fiction_detail_ground_state_space_impl_verify_composition =
 R"doc(This function determines whether a newly composed candidate for the
 charge space of the newly forming parent cluster can be rejected in
@@ -8784,6 +8973,40 @@ Parameter ``composition``:
 
 Returns:
     `false` if and only if the given composition can be rejected.)doc";
+
+static const char *__doc_fiction_detail_ground_state_space_impl_witness_partitioning_state =
+R"doc(The witness partitioning state is used to collect which SiDBs are
+witness of (i.e., "accept") which charge state. After free witnesses
+are accounted for, a permutation problem is left: can the witnesses be
+partitioned in such a way that there are enough witnesses for each
+charge state? When no such witness partitioning exists, the given
+multiset charge configuration is invalid. This problem can quickly
+become very difficult for larger instances; therefore the problem
+instance size is limited by corresponding parameters.)doc";
+
+static const char *__doc_fiction_detail_ground_state_space_impl_witness_partitioning_state_negative_witnesses = R"doc(The set of witnesses for the negative charge state.)doc";
+
+static const char *__doc_fiction_detail_ground_state_space_impl_witness_partitioning_state_neutral_witnesses = R"doc(The set of witnesses for the neutral charge state.)doc";
+
+static const char *__doc_fiction_detail_ground_state_space_impl_witness_partitioning_state_omit_free_witnesses_and_count_overlap =
+R"doc(This function finds the free witnesses to reduce the problem, leaving
+only witnesses to partition that overlap.
+
+Returns:
+    The number of overlapping witnesses that determines the resulting
+    problem's complexity.)doc";
+
+static const char *__doc_fiction_detail_ground_state_space_impl_witness_partitioning_state_positive_witnesses = R"doc(The set of witnesses for the positive charge state.)doc";
+
+static const char *__doc_fiction_detail_ground_state_space_impl_witness_partitioning_state_required_neg_count = R"doc(The number of witnesses required for the negative charge state.)doc";
+
+static const char *__doc_fiction_detail_ground_state_space_impl_witness_partitioning_state_required_neut_count = R"doc(The number of witnesses required for the neutral charge state.)doc";
+
+static const char *__doc_fiction_detail_ground_state_space_impl_witness_partitioning_state_required_pos_count = R"doc(The number of witnesses required for the positive charge state.)doc";
+
+static const char *__doc_fiction_detail_ground_state_space_impl_witness_partitioning_state_witness_partitioning_state =
+R"doc(Constructor. Converts the multiset charge configuration into
+requirements for each charge state.)doc";
 
 static const char *__doc_fiction_detail_ground_state_space_impl_write_children_pot_bounds_to_complete_store =
 R"doc(To facilitate efficient unfolding for the second stage of the
@@ -14880,6 +15103,10 @@ or 3) exponential growth in the number of SiDBs.
 
 Template parameter ``Lyt``:
     SiDB cell-level layout type.
+
+Template parameter ``ExtPotType``:
+    The type of local external potential values, either single-valued
+    or double-valued (bounds).
 
 Parameter ``lyt``:
     Layout to construct the *Ground State Space* of.
@@ -21265,7 +21492,7 @@ R"doc(This function computes the ground state of the charge distributions.
 
 @note If degenerate states exist in the simulation result, this
 function will return multiple ground states that all possess the same
-system energy.
+system energy. todo
 
 Returns:
     A vector of charge distributions with the minimal energy.)doc";
