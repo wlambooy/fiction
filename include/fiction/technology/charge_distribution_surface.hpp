@@ -396,14 +396,14 @@ class charge_distribution_surface<Lyt, ExtPotType, false> : public Lyt
         static_assert(has_sidb_technology_v<Lyt>, "Lyt is not an SiDB layout");
 
         initialize(cs, configuration);
-    };
+    }
 
     /**
      * Copy constructor.
      *
      * @param cds Other `charge_distribution_surface`.
      */
-    charge_distribution_surface(const charge_distribution_surface<Lyt>& cds) :
+    charge_distribution_surface(const charge_distribution_surface<Lyt, ExtPotType>& cds) :
             Lyt(cds),
             strg{std::make_shared<charge_distribution_storage>(*cds.strg)}
     {}
@@ -412,7 +412,7 @@ class charge_distribution_surface<Lyt, ExtPotType, false> : public Lyt
      *
      * @param other charge_distribution_surface.
      */
-    charge_distribution_surface& operator=(const charge_distribution_surface& other)
+    charge_distribution_surface<Lyt, ExtPotType>& operator=(const charge_distribution_surface<Lyt, ExtPotType>& other)
     {
         if (this != &other)
         {
@@ -426,9 +426,9 @@ class charge_distribution_surface<Lyt, ExtPotType, false> : public Lyt
      *
      * @return A deep copy of the current charge_distribution_surface, preserving all its properties.
      */
-    [[nodiscard]] charge_distribution_surface clone() const noexcept
+    [[nodiscard]] charge_distribution_surface<Lyt, ExtPotType> clone() const noexcept
     {
-        charge_distribution_surface copy{Lyt::clone()};
+        charge_distribution_surface<Lyt, ExtPotType> copy{Lyt::clone()};
         copy.strg = std::make_shared<charge_distribution_storage>(*strg);
         return copy;
     }

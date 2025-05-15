@@ -41,6 +41,9 @@ namespace fiction
 
 /**
  * The struct containing the parameters both passed on to pre-simulator Ground State Space, and used during simulation.
+ *
+ * @tparam CellType The type of SiDB cell to assign local external potential to.
+ * @tparam ExtPotType The type of local external potential values, either single-valued or double-valued (bounds).
  */
 template <typename CellType                        = offset::ucoord_t,
           local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED>
@@ -409,7 +412,7 @@ class clustercomplete_impl
      */
     void add_if_configuration_stability_is_met(const sidb_clustering_state& clustering_state) noexcept
     {
-        charge_distribution_surface<Lyt, ExtPotType> charge_layout_copy{charge_layout.clone()};
+        charge_distribution_surface<Lyt, ExtPotType> charge_layout_copy{charge_layout};
 
         // convert bottom clustering state to charge distribution
         for (const auto& pst : clustering_state.proj_states)
@@ -460,7 +463,7 @@ class clustercomplete_impl
 
         charge_layout_copy.recompute_electrostatic_potential_energy();
 
-        charge_layout_copy.charge_distribution_to_index();
+        charge_layout_copy.charge_distribution_to_index_general();
 
         {
             const std::lock_guard lock{mutex_to_protect_the_simulation_results};
@@ -1197,6 +1200,7 @@ class clustercomplete_impl
  * equations to higher order, allowing us to reason over potential bounds in a cluster hierarchy.
  *
  * @tparam Lyt SiDB cell-level layout type.
+ * todo
  * @param lyt Layout to simulate.
  * @param params Parameter required for both the invocation of *Ground State Space*, and the simulation following.
  * @return Simulation results.
@@ -1207,8 +1211,6 @@ clustercomplete(const Lyt& lyt, const clustercomplete_params<cell<Lyt>, ExtPotTy
 {
     static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout");
     static_assert(has_sidb_technology_v<Lyt>, "Lyt is not an SiDB layout");
-    static_assert(ExtPotType == local_external_potential_type::SINGLE_VALUED || !is_charge_distribution_surface_v<Lyt>,
-                  "When ExtPotType is set to be BOUNDED, the given layout cannot be a charge distribution surface.");
 
     return detail::clustercomplete_impl<Lyt, ExtPotType>{lyt, params}.run(params);
 }

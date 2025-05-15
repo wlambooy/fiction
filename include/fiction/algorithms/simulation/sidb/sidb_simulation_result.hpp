@@ -12,11 +12,13 @@
 
 #include <any>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <limits>
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace fiction
@@ -69,7 +71,7 @@ struct sidb_simulation_result
      * This function computes the ground state of the charge distributions.
      *
      * @note If degenerate states exist in the simulation result, this function will return multiple ground states that
-     * all possess the same system energy.
+     * all possess the same system energy. todo
      *
      * @return A vector of charge distributions with the minimal energy.
      */
@@ -86,30 +88,90 @@ struct sidb_simulation_result
             charge_indices.insert(cds.get_charge_index_and_base().first);
         }
 
-        // Find the minimum energy
-        double min_energy = std::numeric_limits<double>::infinity();
-        if (!charge_distributions.empty())
+        if constexpr (ExtPotType == local_external_potential_type::BOUNDED)
         {
-            min_energy = minimum_energy(charge_distributions.cbegin(), charge_distributions.cend());
-        }
+            // NB: degenerate states are not regarded here
 
-        for (const auto charge_index : charge_indices)
-        {
-            const auto cds_it = std::find_if(charge_distributions.cbegin(), charge_distributions.cend(),
-                                             [&](const auto& cds)
-                                             {
-                                                 return cds.get_charge_index_and_base().first == charge_index &&
-                                                        std::abs(cds.get_electrostatic_potential_energy() -
-                                                                 min_energy) < constants::ERROR_MARGIN;
-                                             });
+            bool fixed_point = false;
 
-            if (cds_it != charge_distributions.cend())
+            double ground_state_energy_ub = std::numeric_limits<double>::infinity();
+
+            while (!fixed_point)
             {
-                groundstate_charge_distributions.push_back(*cds_it);
-            }
-        }
+                fixed_point = true;
 
-        return groundstate_charge_distributions;
+                std::pair<double, std::optional<std::pair<uint64_t, typename std::vector<charge_distribution_surface<
+                                                                        Lyt, ExtPotType>>::const_iterator>>>
+                    min_energy = {ground_state_energy_ub, std::nullopt};
+
+                for (const auto charge_index : charge_indices)
+                {
+                    const auto cds_it = std::find_if(
+                        charge_distributions.cbegin(), charge_distributions.cend(),
+                        [&](const auto& cds)
+                        {
+                            return cds.get_charge_index_and_base().first == charge_index &&
+                                   cds.get_electrostatic_potential_energy()[0] - min_energy.first <
+                                       constants::ERROR_MARGIN;
+                        });
+
+                    if (cds_it != charge_distributions.cend())
+                    {
+                        min_energy = {
+                            cds_it->get_electrostatic_potential_energy()[0],
+                            std::make_optional<std::pair<uint64_t, typename std::vector<charge_distribution_surface<
+                                                                       Lyt, ExtPotType>>::const_iterator>>(charge_index,
+                                                                                                           cds_it)};
+                    }
+                }
+
+                if (!min_energy.second.has_value())
+                {
+                    continue;  // fixed point reached
+                }
+
+                fixed_point = false;
+
+                if (std::isinf(ground_state_energy_ub))
+                {
+                    ground_state_energy_ub = min_energy.second->second->get_electrostatic_potential_energy()[1];
+                }
+                else
+                {
+                    ground_state_energy_ub = std::max(
+                        ground_state_energy_ub, min_energy.second->second->get_electrostatic_potential_energy()[1]);
+                }
+
+                groundstate_charge_distributions.push_back(std::move(*min_energy.second->second));
+
+                charge_indices.erase(min_energy.second->first);
+            }
+
+            return groundstate_charge_distributions;
+        }
+        else
+        {
+            // Find the minimum energy
+            double min_energy = minimum_energy(charge_distributions.cbegin(), charge_distributions.cend());
+
+            for (const auto charge_index : charge_indices)
+            {
+                const auto cds_it = std::find_if(charge_distributions.cbegin(), charge_distributions.cend(),
+                                                 [&](const auto& cds)
+                                                 {
+                                                     return cds.get_charge_index_and_base().first == charge_index &&
+                                                            std::abs(cds.get_electrostatic_potential_energy() -
+                                                                     min_energy) < constants::ERROR_MARGIN;
+                                                 });
+
+                if (cds_it != charge_distributions.cend())
+                {
+                    groundstate_charge_distributions.push_back(std::move(*cds_it));
+                }
+            }
+
+            return groundstate_charge_distributions;
+        }
     }
 };
 

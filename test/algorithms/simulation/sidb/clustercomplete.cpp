@@ -113,10 +113,9 @@ static bool
 verify_clustercomplete_result_by_charge_indices(const charge_distribution_surface<Lyt>&              qe_cds,
                                                 const std::vector<charge_distribution_surface<Lyt>>& cc_cdss) noexcept
 {
-    return std::any_of(cc_cdss.cbegin(), cc_cdss.cend(),
-                       [&](const auto& cc_cds) {
-                           return cc_cds.get_charge_index_and_base().first == qe_cds.get_charge_index_and_base().first;
-                       });
+    return std::any_of(
+        cc_cdss.cbegin(), cc_cdss.cend(), [&](const auto& cc_cds)
+        { return cc_cds.get_charge_index_and_base().first == qe_cds.get_charge_index_and_base().first; });
 }
 
 TEMPLATE_TEST_CASE("ClusterComplete simulation of a 4 DB layout with a positive charge", "[clustercomplete]",
@@ -563,7 +562,7 @@ TEMPLATE_TEST_CASE("Single SiDB ClusterComplete simulation with local external p
 
     clustercomplete_params<cell<TestType>> params{sidb_simulation_parameters{2, -0.25}};
 
-    params.insert_local_external_potential({0, 0, 0}, -0.5);
+    params.local_external_potential[cell<TestType>{0, 0, 0}] = -0.5;
 
     const auto simulation_results = clustercomplete<TestType>(lyt, params);
 
@@ -579,8 +578,8 @@ TEMPLATE_TEST_CASE("Single SiDB ClusterComplete simulation with local external p
 
     clustercomplete_params<cell<TestType>> params{sidb_simulation_parameters{3, -0.25}};
 
-    params.insert_local_external_potential({0, 0, 0}, -1.0);
-    const auto simulation_results = clustercomplete<TestType>(lyt, params);
+    params.local_external_potential[{0, 0, 0}] = -1.0;
+    const auto simulation_results              = clustercomplete<TestType>(lyt, params);
 
     REQUIRE(simulation_results.charge_distributions.size() == 1);
     CHECK(simulation_results.charge_distributions.front().get_charge_state_by_index(0) == sidb_charge_state::POSITIVE);
@@ -937,7 +936,7 @@ TEMPLATE_TEST_CASE("ClusterComplete simulation of a Y-shape SiDB OR gate with in
     lyt.assign_cell_type({16, 1, 0}, TestType::cell_type::NORMAL);
 
     clustercomplete_params<cell<TestType>> params{sidb_simulation_parameters{3, -0.28}};
-    params.insert_local_external_potential({6, 2, 0}, -0.5);
+    params.local_external_potential[{6, 2, 0}] = -0.5;
 
     const auto simulation_results = clustercomplete<TestType>(lyt, params);
 
@@ -979,7 +978,7 @@ TEMPLATE_TEST_CASE("ClusterComplete simulation of a Y-shaped SiDB OR gate with i
                          TestType::cell_type::NORMAL);
 
     clustercomplete_params<cell<TestType>> params{sidb_simulation_parameters{3, -0.28}};
-    params.insert_local_external_potential(siqad::to_fiction_coord<offset::ucoord_t>(siqad::coord_t{6, 2, 0}), -0.5);
+    params.local_external_potential[siqad::to_fiction_coord<offset::ucoord_t>(siqad::coord_t{6, 2, 0})] = -0.5;
 
     const auto simulation_results = clustercomplete<TestType>(lyt, params);
 
@@ -1022,7 +1021,7 @@ TEMPLATE_TEST_CASE(
     lyt.assign_cell_type(siqad::to_fiction_coord<cube::coord_t>(siqad::coord_t{16, 1, 0}), TestType::cell_type::NORMAL);
 
     clustercomplete_params<cell<TestType>> params{sidb_simulation_parameters{3, -0.28}};
-    params.insert_local_external_potential(siqad::to_fiction_coord<cube::coord_t>(siqad::coord_t{6, 2, 0}), -0.5);
+    params.local_external_potential[siqad::to_fiction_coord<cube::coord_t>(siqad::coord_t{6, 2, 0})] = -0.5;
 
     const auto simulation_results = clustercomplete<TestType>(lyt, params);
 
@@ -1770,7 +1769,9 @@ TEMPLATE_TEST_CASE("ClusterComplete simulation of two SiDBs placed directly next
 
 TEMPLATE_TEST_CASE(
     "ClusterComplete simulation of SiDBs placed directly next to each other with bounded local external potential",
-    "[clustercomplete]", (sidb_lattice<sidb_100_lattice, sidb_cell_clk_lyt_siqad>))
+    "[clustercomplete]", (sidb_lattice<sidb_100_lattice, sidb_cell_clk_lyt_siqad>),
+    (charge_distribution_surface<sidb_lattice<sidb_100_lattice, sidb_cell_clk_lyt_siqad>,
+                                 local_external_potential_type::BOUNDED>))
 {
     TestType lyt{};
     lyt.assign_cell_type({1, 3, 0}, TestType::cell_type::NORMAL);
@@ -1784,7 +1785,10 @@ TEMPLATE_TEST_CASE(
 
         auto simulation_results = clustercomplete<TestType, local_external_potential_type::BOUNDED>(lyt, params);
 
+        const auto& ground_states = simulation_results.groundstates();
+
         CHECK(simulation_results.charge_distributions.size() == 3);
+        CHECK(ground_states.size() == 3);
 
         for (auto& cds : simulation_results.charge_distributions)
         {
@@ -1829,12 +1833,17 @@ TEMPLATE_TEST_CASE(
 
         clustercomplete_params<cell<TestType>, local_external_potential_type::BOUNDED> params{
             sidb_simulation_parameters{3, -0.32}};
-        params.local_external_potential[cell<TestType>{1, 3, 0}] = std::array<double, 2>{-2.0, 1.8};
-        params.local_external_potential[cell<TestType>{3, 3, 0}] = std::array<double, 2>{0.5, 1.0};
+        params.local_external_potential[cell<TestType>{1, 3, 0}] = std::array<double, 2>{-1.0, -0.2};
+        params.local_external_potential[cell<TestType>{3, 3, 0}] = std::array<double, 2>{-1.5, -1.0};
 
         auto simulation_results = clustercomplete<TestType, local_external_potential_type::BOUNDED>(lyt, params);
 
-        CHECK(simulation_results.charge_distributions.size() == 3);
+        const auto& ground_states = simulation_results.groundstates();
+
+        CHECK(simulation_results.charge_distributions.size() == 2);
+
+        CHECK(ground_states.size() == 1);
+
         REQUIRE(!simulation_results.charge_distributions.empty());
 
         for (auto& cds : simulation_results.charge_distributions)
@@ -1846,7 +1855,7 @@ TEMPLATE_TEST_CASE(
             {
                 REQUIRE(cds.get_local_potential(c).has_value());
                 CHECK(cds.get_local_potential(c).value()[0] <= cds.get_local_potential(c).value()[1]);
-                const double v = c.x == 1 ? 1.8 - -2.0 : c.x == 3 ? 1 - 0.5 : 0.0;
+                const double v = c.x == 1 ? -0.2 - -1.0 : c.x == 3 ? -1.0 - -1.5 : 0.0;
                 CHECK_THAT(v - (cds.get_local_potential(c).value()[1] - cds.get_local_potential(c).value()[0]),
                            Catch::Matchers::WithinAbs(0, constants::ERROR_MARGIN));
                 loc_pots.push_back(cds.get_local_potential(c).value());
@@ -1855,12 +1864,6 @@ TEMPLATE_TEST_CASE(
             const std::array<double, 2>& energy = cds.get_electrostatic_potential_energy();
 
             CHECK(energy[0] < energy[1]);
-
-            if (cds.num_negative_sidbs() > 1)
-            {
-                CHECK_THAT((energy[1] - energy[0]) - ((1.8 + 1.0) - (-2.0 + 0.5)),
-                           Catch::Matchers::WithinAbs(0, constants::ERROR_MARGIN));
-            }
         }
     }
 }

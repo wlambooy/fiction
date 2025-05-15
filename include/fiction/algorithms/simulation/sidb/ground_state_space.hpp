@@ -219,11 +219,10 @@ class ground_state_space_impl
      * @return The two charge distribution surfaces that each represent respective bounds on the electrostatic potential
      * in the layout.
      */
-    [[nodiscard]] static std::pair<charge_distribution_surface<Lyt, ExtPotType>,
-                                   charge_distribution_surface<Lyt, ExtPotType>>
+    [[nodiscard]] static std::pair<Lyt, Lyt>
     get_local_potential_bounds(const Lyt& lyt, const sidb_simulation_parameters& simulation_parameters) noexcept
     {
-        charge_distribution_surface<Lyt, ExtPotType> cds_min{lyt.clone()}, cds_max{lyt.clone()};
+        Lyt cds_min{lyt}, cds_max{lyt};
 
         cds_min.assign_physical_parameters(simulation_parameters);
         cds_max.assign_physical_parameters(simulation_parameters);
@@ -256,10 +255,9 @@ class ground_state_space_impl
      * minimum and maximum electrostatic potential.
      * @return The clustering that contains only singleton clusters, one for each SiDB in the layout.
      */
-    [[nodiscard]] static sidb_clustering get_initial_clustering(
-        const sidb_cluster_ptr& c,
-        const std::pair<charge_distribution_surface<Lyt, ExtPotType>, charge_distribution_surface<Lyt, ExtPotType>>&
-            local_potential_bound_containers) noexcept
+    [[nodiscard]] static sidb_clustering
+    get_initial_clustering(const sidb_cluster_ptr&    c,
+                           const std::pair<Lyt, Lyt>& local_potential_bound_containers) noexcept
     {
         const auto& [min_loc_pot_cds, max_loc_pot_cds] = local_potential_bound_containers;
 
@@ -1257,6 +1255,7 @@ class ground_state_space_impl
  * (base 2 or 3) exponential growth in the number of SiDBs.
  *
  * @tparam Lyt SiDB cell-level layout type.
+ * @tparam ExtPotType The type of local external potential values, either single-valued or double-valued (bounds).
  * @param lyt Layout to construct the *Ground State Space* of.
  * @param params The parameters that *Ground State Space* will use throughout the construction. The physical parameters
  * that *Ground State Space* will use to prune simulation search space are stored in there. In particular, the user may
@@ -1268,8 +1267,7 @@ class ground_state_space_impl
  * contains the charge spaces of each cluster.
  */
 template <typename Lyt, local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED>
-[[nodiscard]] ground_state_space_results
-ground_state_space(const Lyt&                       lyt,
+[[nodiscard]] ground_state_space_results ground_state_space(const Lyt&                       lyt,
                                                             const ground_state_space_params& params = {}) noexcept
 {
     static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout");
