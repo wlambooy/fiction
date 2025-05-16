@@ -16734,8 +16734,6 @@ Returns:
 
 static const char *__doc_fiction_is_operational_params = R"doc(Parameters for the `is_operational` algorithm. TODO)doc";
 
-static const char *__doc_fiction_is_operational_params_cc_map = R"doc()doc";
-
 static const char *__doc_fiction_is_operational_params_input_bdl_iterator_params = R"doc(Parameters for the BDL input iterator.)doc";
 
 static const char *__doc_fiction_is_operational_params_op_condition_kinks =
