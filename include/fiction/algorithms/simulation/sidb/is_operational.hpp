@@ -178,8 +178,8 @@ struct is_operational_params
      */
     simulation_results_mode simulation_results_retention = simulation_results_mode::DISCARD_SIMULATION_RESULTS;
     // TODO
-    std::optional<typename clustercomplete_params<CellType>::bounded_local_external_potential> cc_map{};
-    bool                                                                                      print = false;
+    std::optional<std::unordered_map<CellType, std::array<double, 2>>> cc_map{};
+    bool                                                               print = false;
 };
 
 /**
@@ -595,27 +595,26 @@ class is_operational_impl
 
             const auto ground_states = simulation_results.groundstates();
 
+            auto status = operational_status::NON_OPERATIONAL;
+            auto reason = non_operationality_reason::NONE;
+
+            // disregard degenerate states
             for (const auto& gs : ground_states)
             {
                 const auto [op_status, non_op_reason] = verify_logic_match_of_cds(gs, i);
 
-                // if (truth_table.size() == 2 && truth_table.at(0) == create_crossing_wire_tt().at(0))
-                // {
-                //     print_layout(gs);
-                //     std::cout << std::endl;
-                // }
-
                 if (op_status == operational_status::OPERATIONAL)
                 {
-                    // // if (truth_table.size() == 2 && truth_table.at(0) == create_crossing_wire_tt().at(0))
-                    // {
-                    //     print_layout(gs);
-                    //     std::cout << "OPERATIONAL!!" << std::endl;
-                    //     std::cout << std::endl;
-                    // }
-                    continue;
+                    status = operational_status::OPERATIONAL;
+
+                    break;
                 }
 
+                reason = non_op_reason;
+            }
+
+            if (status == operational_status::NON_OPERATIONAL)
+            {
                 // the input combination is not operational
 
                 operational_assessment_results.status = operational_status::NON_OPERATIONAL;
@@ -623,17 +622,7 @@ class is_operational_impl
                 if (parameters.termination_cond ==
                     is_operational_params<cell<Lyt>>::termination_condition::ON_FIRST_NON_OPERATIONAL)
                 {
-                    if (non_op_reason == non_operationality_reason::LOGIC_MISMATCH)
-                    {
-                        return {operational_assessment_results, non_operationality_reason::LOGIC_MISMATCH};
-                    }
-
-                    if (non_op_reason == non_operationality_reason::KINKS &&
-                        parameters.op_condition_kinks ==
-                            is_operational_params<cell<Lyt>>::operational_condition_kinks::REJECT_KINKS)
-                    {
-                        return {operational_assessment_results, non_operationality_reason::KINKS};
-                    }
+                    return {operational_assessment_results, reason};
                 }
 
                 // all input combinations are being assessed
@@ -1176,9 +1165,8 @@ class is_operational_impl
 
             if (parameters.cc_map.has_value())
             {
-                clustercomplete_params<cell<Lyt>> cc_params{
-                    parameters.simulation_parameters,
-                    typename clustercomplete_params<cell<Lyt>>::bounded_local_external_potential{}};
+                clustercomplete_params<cell<Lyt>, local_external_potential_type::BOUNDED> cc_params{
+                    parameters.simulation_parameters};
 
                 cc_params.available_threads = 1;
 
@@ -1186,17 +1174,19 @@ class is_operational_impl
                 {
                     if ((*bdl_iterator).get_cell_type(c) != sidb_technology::cell_type::EMPTY)
                     {
-                        cc_params.insert_local_external_potential(c, bounds);
+                        cc_params.local_external_potential[c] = bounds;
                     }
                 }
-                const auto& res = clustercomplete(*bdl_iterator, cc_params);
+                const auto& res =
+                    clustercomplete<Lyt, local_external_potential_type::BOUNDED>(*bdl_iterator, cc_params);
 
-                sidb_simulation_result<Lyt> res2{};
-                for (const auto& s : res.charge_distributions)
-                {
-                    res2.charge_distributions.push_back(s);
-                }
-                return res2;
+                return res;
+                // sidb_simulation_result<Lyt, local_external_potential_type::BOUNDED> res2{};
+                // for (const auto& s : res.charge_distributions)
+                // {
+                //     res2.charge_distributions.push_back(s);
+                // }
+                // return res2;
             }
 
             if ((*bdl_iterator).num_cells() > 60)

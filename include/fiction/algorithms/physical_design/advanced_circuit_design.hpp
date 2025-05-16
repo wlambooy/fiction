@@ -9,7 +9,7 @@
 #include "fiction/algorithms/simulation/sidb/is_operational.hpp"
 #include "fiction/algorithms/simulation/sidb/skeleton_influence_bounds.hpp"
 #include "fiction/technology/sidb_defect_surface.hpp"
-#include "fiction/technology/sidb_on_the_fly_gate_library.hpp"
+#include "fiction/technology/sidb_on_the_fly_mini_gate_library.hpp"
 #include "fiction/technology/sidb_surface_analysis.hpp"
 #include "fiction/traits.hpp"
 #include "fiction/types.hpp"
@@ -25,6 +25,7 @@
 #endif
 
 #include <kitty/dynamic_truth_table.hpp>
+#include <kitty/print.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/traits.hpp>
 #include <mockturtle/utils/stopwatch.hpp>

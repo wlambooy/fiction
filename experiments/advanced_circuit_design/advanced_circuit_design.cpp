@@ -2,13 +2,6 @@
 // Created by Willem Lambooy on 27/01/2025.
 //
 
-#include <fiction/algorithms/simulation/sidb/compare_by_ground_state_isolation.hpp>
-#include <fiction/io/print_layout.hpp>
-#include <fiction/technology/sidb_bounded_local_external_potential_wrapper.hpp>
-#include <fiction/technology/sidb_on_the_fly_gate_library.hpp>
-#include <fiction/technology/sidb_on_the_fly_mini_gate_library.hpp>
-#include <fiction/technology/sidb_skeleton_bestagon_library.hpp>
-#include <fiction/technology/sidb_skeleton_bestagon_mini_library.hpp>
 #if (FICTION_Z3_SOLVER)
 
 #include "fiction_experiments.hpp"
@@ -16,14 +9,20 @@
 #include <fiction/algorithms/network_transformation/technology_mapping.hpp>
 #include <fiction/algorithms/physical_design/advanced_circuit_design.hpp>
 #include <fiction/algorithms/physical_design/design_sidb_gates.hpp>
+#include <fiction/algorithms/simulation/sidb/compare_by_ground_state_isolation.hpp>
 #include <fiction/algorithms/simulation/sidb/sidb_simulation_engine.hpp>
+#include <fiction/io/print_layout.hpp>
 #include <fiction/io/read_sidb_surface_defects.hpp>
 #include <fiction/layouts/bounding_box.hpp>
 #include <fiction/technology/area.hpp>
 #include <fiction/technology/cell_technologies.hpp>
+#include <fiction/technology/sidb_bounded_local_external_potential_wrapper.hpp>
 #include <fiction/technology/sidb_defect_surface.hpp>
 #include <fiction/technology/sidb_defects.hpp>
+#include <fiction/technology/sidb_on_the_fly_gate_library.hpp>
 #include <fiction/technology/sidb_on_the_fly_mini_gate_library.hpp>
+#include <fiction/technology/sidb_skeleton_bestagon_library.hpp>
+#include <fiction/technology/sidb_skeleton_bestagon_mini_library.hpp>
 #include <fiction/traits.hpp>
 #include <fiction/types.hpp>
 
