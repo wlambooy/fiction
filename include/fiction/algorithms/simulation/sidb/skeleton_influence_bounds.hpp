@@ -136,8 +136,11 @@ class skeleton_influence_bounds_impl
                         {absolute_c.x - absolute_offset.x, absolute_c.y - absolute_offset.y}, absolute_c);
                 });
 
-            for (const cell<CellLyt>& relative_c :
-                 all_coordinates_in_spanned_area(params.canvas.first, params.canvas.second))
+            const auto canvas = is_complex_gate<GateLyt>(gate_lyt, gate_lyt.get_node(current_tile)) ?
+                                    params.canvas_complex_gates :
+                                    params.canvas;
+
+            for (const cell<CellLyt>& relative_c : all_coordinates_in_spanned_area(canvas.first, canvas.second))
             {
                 const cell<CellLyt> absolute_c =
                     relative_to_absolute_cell_position<SkeletonGateLibrary::gate_x_size(),
