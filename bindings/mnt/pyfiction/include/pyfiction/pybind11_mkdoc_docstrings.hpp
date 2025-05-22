@@ -4852,7 +4852,7 @@ Template parameter ``Lyt``:
     SiDB cell-level layout type.
 
 Template parameter ``TT``:
-    The type of the truth table specifying the gate behavior.
+    The type of the truth table specifying the gate behavior. todo
 
 Parameter ``skeleton``:
     The skeleton layout used for gate design.
@@ -5047,7 +5047,7 @@ R"doc(This struct is used to store designed gate layouts, optionally along
 with their respective simulation results for each input.
 
 Template parameter ``Lyt``:
-    SiDB cell-level layout)doc";
+    SiDB cell-level layout todo)doc";
 
 static const char *__doc_fiction_designed_sidb_gates_gate_layouts = R"doc(The designed SiDB gate layouts are stored here.)doc";
 
@@ -5301,6 +5301,8 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl_advanced_ci
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_design_circuit_on_defective_surface = R"doc()doc";
 
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_determine_first_passing_gate_ix = R"doc()doc";
+
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_determine_truth_table_of_gate_connection = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_find_operational_circuit = R"doc()doc";
@@ -5312,6 +5314,8 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl_network = R
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_params = R"doc(Parameters for the on-the-fly circuit design.)doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_prune_gate_designs = R"doc()doc";
+
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_select_gate_implementations_by_successful_trial_ratio = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_stats = R"doc(Statistics for the on-the-fly circuit design.)doc";
 
@@ -9091,7 +9095,10 @@ Template parameter ``Lyt``:
     SiDB cell-level layout type.
 
 Template parameter ``TT``:
-    Type of the truth table.)doc";
+    Type of the truth table.
+
+Template parameter ``todo``:
+    .)doc";
 
 static const char *__doc_fiction_detail_is_operational_impl_bii = R"doc(Iterator that iterates over all possible input states.)doc";
 
@@ -16708,6 +16715,9 @@ Template parameter ``Lyt``:
 Template parameter ``TT``:
     Type of the truth table.
 
+Template parameter ``TExT``:
+    todo Type of the truth table.
+
 Parameter ``lyt``:
     The SiDB cell-level layout to be checked.
 
@@ -17696,7 +17706,7 @@ R"doc(This struct is used to collect results from the operational status
 assessment.
 
 Template parameter ``Lyt``:
-    SiDB cell-level layout type.)doc";
+    SiDB cell-level layout type. todo)doc";
 
 static const char *__doc_fiction_operational_assessment_assessment_per_input =
 R"doc(When the termination condition is set to
@@ -21247,7 +21257,7 @@ Template parameter ``CellLyt``:
     The cell-level layout.
 
 Template parameter ``GateLyt``:
-    The gate-level layout.
+    The gate-level layout. todo
 
 Parameter ``skeleton``:
     Skeleton with atomic defects if available.
@@ -21300,7 +21310,7 @@ Template parameter ``CellLyt``:
     SiDB cell-level layout type.
 
 Template parameter ``Params``:
-    Type of the parameter used for the gate library.
+    Type of the parameter used for the gate library. todo
 
 Parameter ``lyt``:
     Layout that hosts tile `t`.
@@ -21494,6 +21504,8 @@ system energy. todo
 
 Returns:
     A vector of charge distributions with the minimal energy.)doc";
+
+static const char *__doc_fiction_sidb_simulation_result_reduce_to_groundstates_under_bounded_energy = R"doc()doc";
 
 static const char *__doc_fiction_sidb_simulation_result_sidb_simulation_result =
 R"doc(Default constructor. It only exists to allow for the use of
