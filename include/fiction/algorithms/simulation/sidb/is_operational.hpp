@@ -186,15 +186,16 @@ struct is_operational_params
  * This struct is used to collect results from the operational status assessment.
  *
  * @tparam Lyt SiDB cell-level layout type.
+ * todo
  */
-template <typename Lyt>
+template <typename Lyt, local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED>
 struct operational_assessment
 {
     /**
      * Typedef for the simulation results type, i.e., all physically valid charge distributions obtained during the
      * simulation.
      */
-    using simulation_results_t = std::vector<charge_distribution_surface<Lyt>>;
+    using simulation_results_t = std::vector<charge_distribution_surface<Lyt, ExtPotType>>;
     /**
      * This struct collects the information for a specific input combination that was obtained during the assessment.
      */
@@ -315,8 +316,10 @@ enum class layout_invalidity_reason : uint8_t
  *
  * @tparam Lyt SiDB cell-level layout type.
  * @tparam TT Type of the truth table.
+ * @tparam todo.
  */
-template <typename Lyt, typename TT>
+template <typename Lyt, typename TT,
+          local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED>
 class is_operational_impl
 {
   public:
@@ -437,7 +440,7 @@ class is_operational_impl
     {
         bii = input_pattern;
 
-        charge_distribution_surface<Lyt> cds_layout{*bii};
+        charge_distribution_surface<Lyt, ExtPotType> cds_layout{*bii};
         cds_layout.assign_all_charge_states(sidb_charge_state::NEGATIVE);
         cds_layout.assign_physical_parameters(parameters.simulation_parameters);
 
@@ -475,52 +478,57 @@ class is_operational_impl
      * @return Pair with the first element indicating the operational status (either `OPERATIONAL` or `NON_OPERATIONAL`)
      * and the second element indicating the reason if it is non-operational.
      */
-    [[nodiscard]] std::pair<operational_assessment<Lyt>, non_operationality_reason> run() noexcept
+    [[nodiscard]] std::pair<operational_assessment<Lyt, ExtPotType>, non_operationality_reason> run() noexcept
     {
-        if (!canvas_lyt.is_empty())
+        if constexpr (ExtPotType == local_external_potential_type::SINGLE_VALUED)
         {
-            if ((parameters.op_condition_kinks ==
-                     is_operational_params<cell<Lyt>>::operational_condition_kinks::REJECT_KINKS &&
-                 parameters.strategy_to_analyze_operational_status ==
-                     is_operational_params<cell<Lyt>>::operational_analysis_strategy::FILTER_THEN_SIMULATION) ||
-                parameters.strategy_to_analyze_operational_status ==
-                    is_operational_params<cell<Lyt>>::operational_analysis_strategy::FILTER_ONLY)
+            if (!canvas_lyt.is_empty())
             {
-                // number of different input combinations
-                for (auto i = 0u; i < truth_table.front().num_bits(); ++i, ++bii)
+                if ((parameters.op_condition_kinks ==
+                         is_operational_params<cell<Lyt>>::operational_condition_kinks::REJECT_KINKS &&
+                     parameters.strategy_to_analyze_operational_status ==
+                         is_operational_params<cell<Lyt>>::operational_analysis_strategy::FILTER_THEN_SIMULATION) ||
+                    parameters.strategy_to_analyze_operational_status ==
+                        is_operational_params<cell<Lyt>>::operational_analysis_strategy::FILTER_ONLY)
                 {
-                    if (is_layout_invalid(bii.get_current_input_index()))
+                    // number of different input combinations
+                    for (auto i = 0u; i < truth_table.front().num_bits(); ++i, ++bii)
                     {
-                        return {operational_assessment<Lyt>{operational_status::NON_OPERATIONAL},
-                                non_operationality_reason::LOGIC_MISMATCH};
+                        if (is_layout_invalid(bii.get_current_input_index()))
+                        {
+                            return {operational_assessment<Lyt, ExtPotType>{operational_status::NON_OPERATIONAL},
+                                    non_operationality_reason::LOGIC_MISMATCH};
+                        }
                     }
                 }
-            }
 
-            // if the layout is not discarded during the three filtering steps, it is considered operational.
-            // This is only an approximation.
-            if (parameters.strategy_to_analyze_operational_status ==
-                    is_operational_params<cell<Lyt>>::operational_analysis_strategy::FILTER_ONLY &&
-                !canvas_lyt.is_empty())
-            {
-                return {operational_assessment<Lyt>{operational_status::OPERATIONAL}, non_operationality_reason::NONE};
-            }
+                // if the layout is not discarded during the three filtering steps, it is considered operational.
+                // This is only an approximation.
+                if (parameters.strategy_to_analyze_operational_status ==
+                        is_operational_params<cell<Lyt>>::operational_analysis_strategy::FILTER_ONLY &&
+                    !canvas_lyt.is_empty())
+                {
+                    return {operational_assessment<Lyt, ExtPotType>{operational_status::OPERATIONAL},
+                            non_operationality_reason::NONE};
+                }
 
-            if (parameters.strategy_to_analyze_operational_status !=
-                    is_operational_params<cell<Lyt>>::operational_analysis_strategy::SIMULATION_ONLY &&
-                parameters.strategy_to_analyze_operational_status !=
-                    is_operational_params<cell<Lyt>>::operational_analysis_strategy::FILTER_THEN_SIMULATION &&
-                !canvas_lyt.is_empty())
-            {
-                return {operational_assessment<Lyt>{operational_status::OPERATIONAL}, non_operationality_reason::NONE};
+                if (parameters.strategy_to_analyze_operational_status !=
+                        is_operational_params<cell<Lyt>>::operational_analysis_strategy::SIMULATION_ONLY &&
+                    parameters.strategy_to_analyze_operational_status !=
+                        is_operational_params<cell<Lyt>>::operational_analysis_strategy::FILTER_THEN_SIMULATION &&
+                    !canvas_lyt.is_empty())
+                {
+                    return {operational_assessment<Lyt, ExtPotType>{operational_status::OPERATIONAL},
+                            non_operationality_reason::NONE};
+                }
             }
         }
 
-        operational_assessment<Lyt> operational_assessment_results{operational_status::OPERATIONAL};
+        operational_assessment<Lyt, ExtPotType> operational_assessment_results{operational_status::OPERATIONAL};
 
         // when `termination_condition::ALL_INPUT_COMBINATIONS_ASSESSED` is set, the results of the operational status
         // assessment are also stored for each input separately
-        std::vector<typename operational_assessment<Lyt>::operational_assessment_for_input>
+        std::vector<typename operational_assessment<Lyt, ExtPotType>::operational_assessment_for_input>
             assessment_results_per_input{};
         if (parameters.termination_cond ==
             is_operational_params<cell<Lyt>>::termination_condition::ALL_INPUT_COMBINATIONS_ASSESSED)
@@ -530,7 +538,7 @@ class is_operational_impl
 
         // when `simulation_results_mode::KEEP_SIMULATION_RESULTS` is set, the simulation results must be collected for
         // each input combination
-        std::vector<typename operational_assessment<Lyt>::simulation_results_t> sim_res_per_input{};
+        std::vector<typename operational_assessment<Lyt, ExtPotType>::simulation_results_t> sim_res_per_input{};
         if (parameters.simulation_results_retention ==
             is_operational_params<cell<Lyt>>::simulation_results_mode::KEEP_SIMULATION_RESULTS)
         {
@@ -541,7 +549,7 @@ class is_operational_impl
         // number of different input combinations
         for (auto i = 0u; i < truth_table.front().num_bits(); ++i, ++bii)
         {
-            typename operational_assessment<Lyt>::operational_assessment_for_input
+            typename operational_assessment<Lyt, ExtPotType>::operational_assessment_for_input
                 assessment_results_for_this_input_combination{operational_status::OPERATIONAL};
 
             // if positively charged SiDBs can occur, the SiDB layout is considered non-operational
@@ -569,7 +577,7 @@ class is_operational_impl
             ++operational_assessment_results.simulator_invocations;
 
             // performs physical simulation of a given SiDB layout at a given input combination
-            const auto simulation_results = physical_simulation_of_layout(bii);
+            auto simulation_results = physical_simulation_of_layout(bii);
 
             // if no physically valid charge distributions were found, the layout is non-operational
             if (simulation_results.charge_distributions.empty())
@@ -593,24 +601,47 @@ class is_operational_impl
                 continue;
             }
 
-            const auto ground_states = simulation_results.groundstates();
-
             auto status = operational_status::NON_OPERATIONAL;
             auto reason = non_operationality_reason::NONE;
 
-            // disregard degenerate states
-            for (const auto& gs : ground_states)
+            if constexpr (ExtPotType == local_external_potential_type::BOUNDED)
             {
-                const auto [op_status, non_op_reason] = verify_logic_match_of_cds(gs, i);
+                simulation_results.reduce_to_groundstates_under_bounded_energy();
 
-                if (op_status == operational_status::OPERATIONAL)
+                // disregard degenerate states
+                for (const auto& gs : simulation_results.charge_distributions)
                 {
-                    status = operational_status::OPERATIONAL;
+                    const auto [op_status, non_op_reason] = verify_logic_match_of_cds(gs, i);
 
-                    break;
+                    if (op_status == operational_status::OPERATIONAL)
+                    {
+                        status = operational_status::OPERATIONAL;
+
+                        break;
+                    }
+
+                    reason = non_op_reason;
                 }
+            }
+            else
+            {
+                const auto ground_states = simulation_results.groundstates();
 
-                reason = non_op_reason;
+                status = operational_status::OPERATIONAL;
+
+                for (const auto& gs : ground_states)
+                {
+                    const auto [op_status, non_op_reason] = verify_logic_match_of_cds(gs, i);
+
+                    if (op_status == operational_status::NON_OPERATIONAL)
+                    {
+                        status = operational_status::NON_OPERATIONAL;
+
+                        break;
+                    }
+
+                    reason = non_op_reason;
+                }
             }
 
             if (status == operational_status::NON_OPERATIONAL)
@@ -628,6 +659,26 @@ class is_operational_impl
                 // all input combinations are being assessed
 
                 assessment_results_for_this_input_combination.status = operational_status::NON_OPERATIONAL;
+
+                if (parameters.print)
+                {
+                    switch (reason)
+                    {
+                        case non_operationality_reason::NONE:
+                            std::cout << "NO NON-OPERATIONALITY REASON" << std::endl;
+                        break;
+                        case non_operationality_reason::LOGIC_MISMATCH:
+                            std::cout << "NON-OPERATIONALITY REASON: LOGIC_MISMATCH" << std::endl;
+                        break;
+                        case non_operationality_reason::POTENTIAL_POSITIVE_CHARGES:
+                            std::cout << "NON-OPERATIONALITY REASON: POTENTIAL_POSITIVE_CHARGES" << std::endl;
+                        break;
+                        case non_operationality_reason::KINKS:
+                            std::cout << "NON-OPERATIONALITY REASON: KINKS" << std::endl;
+                        break;
+                        default: break;
+                    }
+                }
             }
 
             // store the assessment results for this input combination when the termination condition is set to
@@ -685,7 +736,8 @@ class is_operational_impl
      * and the second element indicating the reason if it is non-operational.
      */
     [[nodiscard]] std::pair<operational_status, non_operationality_reason>
-    verify_logic_match_of_cds(const charge_distribution_surface<Lyt>& given_cds, const uint64_t input_pattern) noexcept
+    verify_logic_match_of_cds(const charge_distribution_surface<Lyt, ExtPotType>& given_cds,
+                              const uint64_t                                      input_pattern) noexcept
     {
         // if positively charged SiDBs can occur, the SiDB layout is considered as non-operational
         if (parameters.op_condition_positive_charges ==
@@ -808,8 +860,10 @@ class is_operational_impl
      * otherwise.
      */
     [[nodiscard]] std::optional<double>
-    is_physical_validity_feasible(charge_distribution_surface<Lyt>& cds_layout) const noexcept
+    is_physical_validity_feasible(charge_distribution_surface<Lyt, ExtPotType>& cds_layout) const noexcept
     {
+        static_assert(ExtPotType == local_external_potential_type::SINGLE_VALUED, "ExtPotType cannot be BOUNDED.");
+
         if (canvas_lyt.num_cells() == 0)
         {
             cds_layout.update_after_charge_change(dependent_cell_mode::FIXED,
@@ -817,7 +871,7 @@ class is_operational_impl
 
             if (cds_layout.is_physically_valid())
             {
-                cds_layout.recompute_system_energy();
+                cds_layout.recompute_electrostatic_potential_energy();
                 return cds_layout.get_electrostatic_potential_energy();
             }
 
@@ -828,7 +882,7 @@ class is_operational_impl
 
         uint64_t canvas_charge_index = 0;
 
-        charge_distribution_surface<Lyt> cds_canvas_copy{canvas_lyt};
+        charge_distribution_surface<Lyt, ExtPotType> cds_canvas_copy{canvas_lyt};
         cds_canvas_copy.assign_base_number(2);
         cds_canvas_copy.assign_charge_index(canvas_charge_index);
         cds_canvas_copy.assign_dependent_cell(cds_canvas_copy.get_sidb_order().front());
@@ -884,8 +938,8 @@ class is_operational_impl
      * @param cds The charge distribution surface layout to be modified.
      * @param current_input_index The index representing the current input pattern.
      */
-    void set_charge_distribution_of_input_pins(charge_distribution_surface<Lyt>& cds,
-                                               const uint64_t                    current_input_index) const noexcept
+    void set_charge_distribution_of_input_pins(charge_distribution_surface<Lyt, ExtPotType>& cds,
+                                               const uint64_t current_input_index) const noexcept
     {
         cds.assign_all_charge_states(sidb_charge_state::NEGATIVE, charge_index_mode::KEEP_CHARGE_INDEX);
 
@@ -964,8 +1018,8 @@ class is_operational_impl
      * @param cds The charge distribution surface layout to be modified.
      * @param output_wire_index The index representing the current input pattern of the output wire.
      */
-    void set_charge_distribution_of_output_pins(charge_distribution_surface<Lyt>& cds,
-                                                const uint64_t                    output_wire_index) const noexcept
+    void set_charge_distribution_of_output_pins(charge_distribution_surface<Lyt, ExtPotType>& cds,
+                                                const uint64_t output_wire_index) const noexcept
     {
         for (auto i = 0u; i < number_of_output_wires; i++)
         {
@@ -1061,7 +1115,7 @@ class is_operational_impl
      * considered unstable.
      * @return `true` if the I/O signal is unstable, `false` otherwise.
      */
-    [[nodiscard]] bool is_io_signal_unstable(charge_distribution_surface<Lyt>& cds_layout,
+    [[nodiscard]] bool is_io_signal_unstable(charge_distribution_surface<Lyt, ExtPotType>& cds_layout,
                                              const uint64_t max_input_pattern_index, const uint64_t input_pattern,
                                              const uint64_t logical_correct_output_pattern,
                                              const double   minimal_energy_of_physically_valid_layout) const noexcept
@@ -1142,31 +1196,14 @@ class is_operational_impl
      * combination.
      * @return Simulation results.
      */
-    [[nodiscard]] sidb_simulation_result<Lyt>
+    [[nodiscard]] sidb_simulation_result<Lyt, ExtPotType>
     physical_simulation_of_layout(const bdl_input_iterator<Lyt>& bdl_iterator) noexcept
     {
-        if (parameters.sim_engine == sidb_simulation_engine::EXGS)
+        if constexpr (ExtPotType == local_external_potential_type::BOUNDED)
         {
-            // perform exhaustive ground state simulation
-            return exhaustive_ground_state_simulation(*bdl_iterator, parameters.simulation_parameters);
-        }
-        if (parameters.sim_engine == sidb_simulation_engine::QUICKEXACT)
-        {
-            // perform QuickExact exact simulation
-            const quickexact_params<cell<Lyt>> quickexact_params{
-                parameters.simulation_parameters,
-                fiction::quickexact_params<cell<Lyt>>::automatic_base_number_detection::OFF};
-            return quickexact(*bdl_iterator, quickexact_params);
-        }
-#if (FICTION_ALGLIB_ENABLED)
-        if (parameters.sim_engine == sidb_simulation_engine::CLUSTERCOMPLETE)
-        {
-            // perform ClusterComplete exact simulation
-
             if (parameters.cc_map.has_value())
             {
-                clustercomplete_params<cell<Lyt>, local_external_potential_type::BOUNDED> cc_params{
-                    parameters.simulation_parameters};
+                clustercomplete_params<cell<Lyt>, ExtPotType> cc_params{parameters.simulation_parameters};
 
                 cc_params.available_threads = 1;
 
@@ -1177,71 +1214,86 @@ class is_operational_impl
                         cc_params.local_external_potential[c] = bounds;
                     }
                 }
-                const auto& res =
-                    clustercomplete<Lyt, local_external_potential_type::BOUNDED>(*bdl_iterator, cc_params);
+                return clustercomplete<Lyt, ExtPotType>(*bdl_iterator, cc_params);
+            }
+
+            return sidb_simulation_result<Lyt, ExtPotType>{};
+        }
+        else
+        {
+            if (parameters.sim_engine == sidb_simulation_engine::EXGS)
+            {
+                // perform exhaustive ground state simulation
+                return exhaustive_ground_state_simulation(*bdl_iterator, parameters.simulation_parameters);
+            }
+            if (parameters.sim_engine == sidb_simulation_engine::QUICKEXACT)
+            {
+                // perform QuickExact exact simulation
+                const quickexact_params<cell<Lyt>> quickexact_params{
+                    parameters.simulation_parameters,
+                    fiction::quickexact_params<cell<Lyt>>::automatic_base_number_detection::OFF};
+                return quickexact(*bdl_iterator, quickexact_params);
+            }
+#if (FICTION_ALGLIB_ENABLED)
+            if (parameters.sim_engine == sidb_simulation_engine::CLUSTERCOMPLETE)
+            {
+                // perform ClusterComplete exact simulation
+
+                if ((*bdl_iterator).num_cells() > 60)
+                {
+                    std::cout << "starting large exact simulation task (#SiDBs: " << (*bdl_iterator).num_cells() << ")"
+                              << std::endl;
+                }
+
+                clustercomplete_params<cell<Lyt>> cc_params{parameters.simulation_parameters};
+                const auto&                       res = clustercomplete(*bdl_iterator, cc_params);
+
+                if ((*bdl_iterator).num_cells() > 60)
+                {
+                    std::cout << "exact simulation terminated in " << res.simulation_runtime.count() << " seconds"
+                              << std::endl;
+                }
+
+                if ((*bdl_iterator).num_cells() > 60 || parameters.print)
+                {
+                    std::cout << std::endl;
+                    if (res.charge_distributions.empty())
+                    {
+                        std::cout << "NO CHARGE DISTRIBUTIONS FOUNDS" << std::endl;
+                        return res;
+                    }
+                    print_layout(res.groundstates().front());
+                    std::cout << std::endl;
+                }
 
                 return res;
-                // sidb_simulation_result<Lyt, local_external_potential_type::BOUNDED> res2{};
-                // for (const auto& s : res.charge_distributions)
-                // {
-                //     res2.charge_distributions.push_back(s);
-                // }
-                // return res2;
-            }
-
-            if ((*bdl_iterator).num_cells() > 60)
-            {
-                std::cout << "starting large exact simulation task (#SiDBs: " << (*bdl_iterator).num_cells() << ")"
-                          << std::endl;
-            }
-
-            clustercomplete_params<cell<Lyt>> cc_params{parameters.simulation_parameters};
-            const auto&                       res = clustercomplete(*bdl_iterator, cc_params);
-
-            if ((*bdl_iterator).num_cells() > 60)
-            {
-                std::cout << "exact simulation terminated in " << res.simulation_runtime.count() << " seconds"
-                          << std::endl;
-            }
-
-            if ((*bdl_iterator).num_cells() > 60 || parameters.print)
-            {
-                std::cout << std::endl;
-                if (res.charge_distributions.empty())
-                {
-                    std::cout << "NO CHARGE DISTRIBUTIONS FOUNDS" << std::endl;
-                    return res;
-                }
-                print_layout(res.groundstates().front());
-                std::cout << std::endl;
-            }
-
-            return res;
 
 #else   // FICTION_ALGLIB_ENABLED
-        assert(false && "ALGLIB must be enabled if ClusterComplete is to be used");
+            assert(false && "ALGLIB must be enabled if ClusterComplete is to be used");
 #endif  // FICTION_ALGLIB_ENABLED
-        }
-        if constexpr (!is_sidb_defect_surface_v<Lyt>)
-        {
-            if (parameters.sim_engine == sidb_simulation_engine::QUICKSIM)
-            {
-                assert(parameters.simulation_parameters.base == 2 && "QuickSim does not support base-3 simulation");
-
-                // perform QuickSim heuristic simulation
-                const quicksim_params qs_params{parameters.simulation_parameters, 500, 0.6};
-
-                if (const auto qs_result = quicksim(*bdl_iterator, qs_params); qs_result.has_value())
-                {
-                    return qs_result.value();
-                }
-                return sidb_simulation_result<Lyt>{};  // return empty result if no valid charge distribution was found
             }
+            if constexpr (!is_sidb_defect_surface_v<Lyt>)
+            {
+                if (parameters.sim_engine == sidb_simulation_engine::QUICKSIM)
+                {
+                    assert(parameters.simulation_parameters.base == 2 && "QuickSim does not support base-3 simulation");
+
+                    // perform QuickSim heuristic simulation
+                    const quicksim_params qs_params{parameters.simulation_parameters, 500, 0.6};
+
+                    if (const auto qs_result = quicksim(*bdl_iterator, qs_params); qs_result.has_value())
+                    {
+                        return qs_result.value();
+                    }
+                    return sidb_simulation_result<Lyt>{};  // return empty result if no valid charge distribution was
+                                                           // found
+                }
+            }
+
+            assert(false && "unsupported simulation engine");
+
+            return sidb_simulation_result<Lyt>{};
         }
-
-        assert(false && "unsupported simulation engine");
-
-        return sidb_simulation_result<Lyt>{};
     }
     /**
      * This function iterates through the input wires and evaluates their charge states against the expected
@@ -1252,8 +1304,9 @@ class is_operational_impl
      * @param current_input_index The current input index used to retrieve the expected output from the truth table.
      * @return `true` if any input wire contains a kink (i.e., an unexpected charge state), `false` otherwise.
      */
-    [[nodiscard]] bool check_existence_of_kinks_in_input_wires(const charge_distribution_surface<Lyt>& ground_state,
-                                                               const uint64_t current_input_index) const noexcept
+    [[nodiscard]] bool
+    check_existence_of_kinks_in_input_wires(const charge_distribution_surface<Lyt, ExtPotType>& ground_state,
+                                            const uint64_t current_input_index) const noexcept
     {
         return std::any_of(input_bdl_wires.crbegin(), input_bdl_wires.crend(),
                            [this, &ground_state, &current_input_index, i = 0u](const auto& wire) mutable
@@ -1286,8 +1339,9 @@ class is_operational_impl
      * @param current_input_index The current input index used to retrieve the expected output from the truth table.
      * @return `true` if any output wire contains a kink (i.e., an unexpected charge state), `false` otherwise.
      */
-    [[nodiscard]] bool check_existence_of_kinks_in_output_wires(const charge_distribution_surface<Lyt>& ground_state,
-                                                                const uint64_t current_input_index) const noexcept
+    [[nodiscard]] bool
+    check_existence_of_kinks_in_output_wires(const charge_distribution_surface<Lyt, ExtPotType>& ground_state,
+                                             const uint64_t current_input_index) const noexcept
     {
         for (auto i = 0u; i < output_bdl_wires.size(); i++)
         {
@@ -1320,7 +1374,7 @@ class is_operational_impl
      * @param port Port direction where the BDL pair to be evaluated is.
      * @return `true` if `0` is encoded, `false` otherwise.
      */
-    [[nodiscard]] bool encodes_bit_zero(const charge_distribution_surface<Lyt>& ground_state,
+    [[nodiscard]] bool encodes_bit_zero(const charge_distribution_surface<Lyt, ExtPotType>& ground_state,
                                         const bdl_pair<cell<Lyt>>& bdl, const port_direction port) const noexcept
     {
         if (port.dir == port_direction::SOUTH || port.dir == port_direction::EAST || port.dir == port_direction::NONE)
@@ -1340,7 +1394,7 @@ class is_operational_impl
      * @param port Port direction where the BDL pair to be evaluated is.
      * @return `true` if `1` is encoded, `false` otherwise.
      */
-    [[nodiscard]] bool encodes_bit_one(const charge_distribution_surface<Lyt>& ground_state,
+    [[nodiscard]] bool encodes_bit_one(const charge_distribution_surface<Lyt, ExtPotType>& ground_state,
                                        const bdl_pair<cell<Lyt>>& bdl, const port_direction port) const noexcept
     {
         if (port.dir == port_direction::SOUTH || port.dir == port_direction::EAST || port.dir == port_direction::NONE)
@@ -1371,9 +1425,11 @@ class is_operational_impl
  * @return A datatype containing the operational status of the gate-level layout (either `OPERATIONAL` or
  * `NON_OPERATIONAL`) along with auxiliary statistics.
  */
-template <typename Lyt, typename TT>
-[[nodiscard]] operational_assessment<Lyt> is_operational(const Lyt& lyt, const std::vector<TT>& spec,
-                                                         const is_operational_params<cell<Lyt>>& params = {}) noexcept
+template <typename Lyt, typename TT,
+          local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED>
+[[nodiscard]] operational_assessment<Lyt, ExtPotType>
+is_operational(const Lyt& lyt, const std::vector<TT>& spec,
+               const is_operational_params<cell<Lyt>>& params = {}) noexcept
 {
     static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout");
     static_assert(has_sidb_technology_v<Lyt>, "Lyt is not an SiDB layout");
@@ -1387,12 +1443,15 @@ template <typename Lyt, typename TT>
     assert(std::adjacent_find(spec.cbegin(), spec.cend(), [](const auto& a, const auto& b)
                               { return a.num_vars() != b.num_vars(); }) == spec.cend());
 
-    detail::is_operational_impl<Lyt, TT> p{lyt, spec, params};
+    detail::is_operational_impl<Lyt, TT, ExtPotType> p{lyt, spec, params};
 
     const auto [assessment_result, non_op_reason] = p.run();
 
     if (params.print)
     {
+        std::cout << "STATUS: " << (assessment_result.status == operational_status::NON_OPERATIONAL ? "NON-" : "")
+                  << "OPERATIONAL" << std::endl;
+
         switch (non_op_reason)
         {
             case detail::non_operationality_reason::NONE:
@@ -1401,7 +1460,13 @@ template <typename Lyt, typename TT>
             case detail::non_operationality_reason::LOGIC_MISMATCH:
                 std::cout << "NON-OPERATIONALITY REASON: LOGIC_MISMATCH" << std::endl;
                 break;
-            case detail::non_operationality_reason::KINKS: std::cout << "NON-OPERATIONALITY REASON: KINKS" << std::endl;
+            case detail::non_operationality_reason::POTENTIAL_POSITIVE_CHARGES:
+                std::cout << "NON-OPERATIONALITY REASON: POTENTIAL_POSITIVE_CHARGES" << std::endl;
+                break;
+            case detail::non_operationality_reason::KINKS:
+                std::cout << "NON-OPERATIONALITY REASON: KINKS" << std::endl;
+                break;
+            default: break;
         }
     }
 
@@ -1416,6 +1481,7 @@ template <typename Lyt, typename TT>
  *
  * @tparam Lyt SiDB cell-level layout type.
  * @tparam TT Type of the truth table.
+ * @tparam TExT todo Type of the truth table.
  * @param lyt The SiDB cell-level layout to be checked.
  * @param spec Expected Boolean function of the layout given as a multi-output truth table.
  * @param params Parameters for the `is_operational` algorithm.
@@ -1425,8 +1491,9 @@ template <typename Lyt, typename TT>
  * @return A datatype containing the operational status of the gate-level layout (either `OPERATIONAL` or
  * `NON_OPERATIONAL`) along with auxiliary statistics.
  */
-template <typename Lyt, typename TT>
-[[nodiscard]] operational_assessment<Lyt>
+template <typename Lyt, typename TT,
+          local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED>
+[[nodiscard]] operational_assessment<Lyt, ExtPotType>
 is_operational(const Lyt& lyt, const std::vector<TT>& spec, const is_operational_params<cell<Lyt>>& params,
                const std::vector<bdl_wire<Lyt>>& input_bdl_wire, const std::vector<bdl_wire<Lyt>>& output_bdl_wire,
                const std::optional<Lyt>& canvas_lyt = std::nullopt) noexcept
@@ -1445,7 +1512,8 @@ is_operational(const Lyt& lyt, const std::vector<TT>& spec, const is_operational
 
     if (canvas_lyt.has_value())
     {
-        detail::is_operational_impl<Lyt, TT> p{lyt, spec, params, input_bdl_wire, output_bdl_wire, canvas_lyt.value()};
+        detail::is_operational_impl<Lyt, TT, ExtPotType> p{
+            lyt, spec, params, input_bdl_wire, output_bdl_wire, canvas_lyt.value()};
 
         const auto [assessment_result, _] = p.run();
 
@@ -1461,14 +1529,14 @@ is_operational(const Lyt& lyt, const std::vector<TT>& spec, const is_operational
             c_lyt.assign_cell_type(c, technology<Lyt>::cell_type::LOGIC);
         }
 
-        detail::is_operational_impl<Lyt, TT> p{lyt, spec, params, input_bdl_wire, output_bdl_wire, c_lyt};
+        detail::is_operational_impl<Lyt, TT, ExtPotType> p{lyt, spec, params, input_bdl_wire, output_bdl_wire, c_lyt};
 
         const auto [assessment_result, _] = p.run();
 
         return assessment_result;
     }
 
-    detail::is_operational_impl<Lyt, TT> p{lyt, spec, params, input_bdl_wire, output_bdl_wire};
+    detail::is_operational_impl<Lyt, TT, ExtPotType> p{lyt, spec, params, input_bdl_wire, output_bdl_wire};
 
     const auto [assessment_result, _] = p.run();
 

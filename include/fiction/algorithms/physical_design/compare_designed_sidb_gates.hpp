@@ -21,15 +21,16 @@ namespace fiction
  * each input.
  *
  * @tparam Lyt SiDB cell-level layout
+ * todo
  */
-template <typename Lyt>
+template <typename Lyt, local_external_potential_type ExtPotType = local_external_potential_type::BOUNDED>
 struct designed_sidb_gates
 {
     /**
      * Simulation results per input is a vector of simulation results (which is a vector of charge distribution
      * surfaces) that occur in the order of the bit representation of the respectively associated inputs.
      */
-    using simulation_results_per_input = std::vector<std::vector<charge_distribution_surface<Lyt>>>;
+    using simulation_results_per_input = std::vector<std::vector<charge_distribution_surface<Lyt, ExtPotType>>>;
     /**
      * The designed SiDB gate layouts are stored here.
      */

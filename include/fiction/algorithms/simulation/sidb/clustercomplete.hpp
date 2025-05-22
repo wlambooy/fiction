@@ -447,13 +447,30 @@ class clustercomplete_impl
             return;
         }
 
+        // charge_layout_copy.recompute_electrostatic_potential_energy(); // for debug only
+
         // population stability is a given when this function is called; hence the charge distribution is physically
         // valid when configuration stability is met
         charge_layout_copy.declare_physically_valid();
 
         if constexpr (ExtPotType == local_external_potential_type::BOUNDED)
         {
+            // std::vector<std::array<double, 2>> save{};
+            // for (const auto& [c, arr] : charge_layout_copy.get_local_external_potential_map())
+            // {
+            //     assert(arr[0] <= arr[1]);
+            //     save.push_back({arr[0], arr[1]});
+            // }
             charge_layout_copy.restrict_local_external_potential_to_pop_stability();
+            // uint64_t ix = 0;
+            // for (const auto& [c, arr] : charge_layout_copy.get_local_external_potential_map())
+            // {
+            //     assert(arr[0] <= arr[1]);
+            //     assert(save[ix][0] <= arr[0]);
+            //     assert(arr[1] <= save[ix][1]);
+            //     assert((save[ix][1] - save[ix][0]) - (arr[1] - arr[0]) >= 0);
+            //     ix++;
+            // }
         }
 
         if constexpr (is_sidb_defect_surface_v<Lyt>)
@@ -468,7 +485,7 @@ class clustercomplete_impl
         {
             const std::lock_guard lock{mutex_to_protect_the_simulation_results};
 
-            result.charge_distributions.emplace_back(charge_layout_copy);
+            result.charge_distributions.push_back(std::move(charge_layout_copy));
         }
     }
     /**

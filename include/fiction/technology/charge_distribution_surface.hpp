@@ -422,6 +422,22 @@ class charge_distribution_surface<Lyt, ExtPotType, false> : public Lyt
 
         return *this;
     }
+    // Move constructor
+    charge_distribution_surface(charge_distribution_surface&& other) noexcept :
+        Lyt(std::move(other)),
+        strg(std::move(other.strg))
+    {}
+
+    // Move assignment
+    charge_distribution_surface& operator=(charge_distribution_surface&& other) noexcept
+    {
+        if (this != &other)
+        {
+            Lyt::operator=(std::move(other));
+            strg = std::move(other.strg);
+        }
+        return *this;
+    }
     /**
      * Clones the current charge distribution surface and returns a deep copy.
      *
@@ -2038,8 +2054,7 @@ class charge_distribution_surface<Lyt, ExtPotType, false> : public Lyt
      * @return External electrostatic potential as an unordered map. The cell is used as key and the external
      * electrostatic potential in Volt (unit: V) at its position as value.
      */
-    std::unordered_map<typename Lyt::cell, local_external_potential_map_t>
-    get_local_external_potential_map() const noexcept
+    local_external_potential_map_t get_local_external_potential_map() const noexcept
     {
         return strg->local_external_potential_map;
     }
@@ -2081,21 +2096,21 @@ class charge_distribution_surface<Lyt, ExtPotType, false> : public Lyt
                 // todo use ERROR ipv 0.0??
                 case sidb_charge_state::NEGATIVE:
                     // adjust lower bound
-                    strg->local_ext_pot[i][0] +=
-                        std::min(0.0, (strg->simulation_parameters.mu_minus - constants::ERROR_MARGIN) -
+                    strg->local_external_potential_map[c][0] +=
+                        std::max(0.0, (strg->simulation_parameters.mu_minus - constants::ERROR_MARGIN) -
                                           (*get_local_potential_by_index(i))[0]);
                     break;
                 case sidb_charge_state::POSITIVE:
                     // adjust upper bound
-                    strg->local_ext_pot[i][1] -=
-                        std::min(0.0, (*get_local_potential_by_index(i))[1] - (mu_p + constants::ERROR_MARGIN));
+                    strg->local_external_potential_map[c][1] -=
+                        std::max(0.0, (*get_local_potential_by_index(i))[1] - (mu_p + constants::ERROR_MARGIN));
                     break;
                 case sidb_charge_state::NEUTRAL:
                     // adjust both upper and lower bound
-                    strg->local_ext_pot[i][0] +=
-                        std::min(0.0, (mu_p - constants::ERROR_MARGIN) - (*get_local_potential_by_index(i))[0]);
-                    strg->local_ext_pot[i][1] -=
-                        std::min(0.0, (*get_local_potential_by_index(i))[1] -
+                    strg->local_external_potential_map[c][0] +=
+                        std::max(0.0, (mu_p - constants::ERROR_MARGIN) - (*get_local_potential_by_index(i))[0]);
+                    strg->local_external_potential_map[c][1] -=
+                        std::max(0.0, (*get_local_potential_by_index(i))[1] -
                                           (strg->simulation_parameters.mu_minus + constants::ERROR_MARGIN));
                     break;
                 default: assert(false && "Non-assigned charge state");

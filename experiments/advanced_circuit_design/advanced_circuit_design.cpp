@@ -56,8 +56,8 @@ int main(int argc, char* argv[])  // NOLINT
 {
     using gate_lyt = fiction::hex_even_row_gate_clk_lyt;
     using cell_lyt = fiction::sidb_cell_clk_lyt_cube;
-    using lyt_t    = fiction::sidb_bounded_local_external_potential_wrapper<fiction::sidb_defect_surface<cell_lyt>>;
-    // using lyt_t = fiction::sidb_defect_surface<cell_lyt>;
+    // using lyt_t    = fiction::sidb_bounded_local_external_potential_wrapper<fiction::sidb_defect_surface<cell_lyt>>;
+    using lyt_t = fiction::sidb_defect_surface<cell_lyt>;
 
 #ifdef USE_MINI
     using gate_lib          = fiction::sidb_on_the_fly_mini_gate_library;
@@ -73,7 +73,8 @@ int main(int argc, char* argv[])  // NOLINT
 
     fiction::design_sidb_gates_params<lyt_t> design_gate_params{};
 
-    design_gate_params.operational_params.simulation_parameters = fiction::sidb_simulation_parameters{3, -0.26};
+    design_gate_params.operational_params.simulation_parameters = fiction::sidb_simulation_parameters{3, -0.32};
+    // design_gate_params.operational_params.simulation_parameters = fiction::sidb_simulation_parameters{3, -0.26};
     // design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params.threshold_bdl_interdistance = 3;
     // design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params.bdl_pairs_params.minimum_distance
     // = 0.5;
@@ -93,7 +94,8 @@ int main(int argc, char* argv[])  // NOLINT
     // needs to be changed if a different skeleton is used.
     if constexpr (std::is_same_v<gate_lib, fiction::sidb_on_the_fly_mini_gate_library>)
     {
-        design_gate_params.canvas = {{13, 12}, {22, 23}};  // smaller canvas
+        // design_gate_params.canvas = {{13, 12}, {22, 23}};  // smaller canvas
+        design_gate_params.canvas = {{12, 8}, {21, 17}};  // smaller canvas
     }
     else
     {
@@ -104,7 +106,7 @@ int main(int argc, char* argv[])  // NOLINT
     design_gate_params.operational_params.sim_engine = fiction::sidb_simulation_engine::CLUSTERCOMPLETE;
     design_gate_params.termination_cond =
         fiction::design_sidb_gates_params<lyt_t>::termination_condition::OBTAINED_N_SOLUTIONS;
-    design_gate_params.maximum_number_of_solutions = 1000;
+    design_gate_params.maximum_number_of_solutions = 200;
     // design_gate_params.design_mode = fiction::design_sidb_gates_params<
     //     lyt_t>::design_sidb_gates_mode::EXHAUSTIVE_GATE_DESIGNER;
 
@@ -113,12 +115,14 @@ int main(int argc, char* argv[])  // NOLINT
     fiction::design_sidb_gates_params<lyt_t> design_gate_params_complex_gates{};
     design_gate_params_complex_gates.operational_params.simulation_parameters =
         design_gate_params.operational_params.simulation_parameters;
-    design_gate_params_complex_gates.number_of_canvas_sidbs = 6;
+    design_gate_params_complex_gates.number_of_canvas_sidbs = 4;
+    // design_gate_params_complex_gates.number_of_canvas_sidbs = 6;
     design_gate_params_complex_gates.design_mode =
         fiction::design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::RANDOM;
     design_gate_params_complex_gates.termination_cond =
         fiction::design_sidb_gates_params<lyt_t>::termination_condition::OBTAINED_N_SOLUTIONS;
-    design_gate_params_complex_gates.canvas = {{11, 12}, {24, 23}};
+    design_gate_params_complex_gates.canvas = {{10, 8}, {23, 17}};
+    // design_gate_params_complex_gates.canvas = {{11, 12}, {24, 23}};
     // design_gate_params.operational_params.op_condition_kinks =
     // is_operational_params<cell<CellLyt>>::operational_condition_kinks::TOLERATE_KINKS;
 
@@ -133,7 +137,7 @@ int main(int argc, char* argv[])  // NOLINT
     design_gate_params_complex_gates.operational_params.strategy_to_analyze_operational_status =
         // fiction::is_operational_params<fiction::cell<cell_lyt>>::operational_analysis_strategy::FILTER_THEN_SIMULATION;
         fiction::is_operational_params<fiction::cell<cell_lyt>>::operational_analysis_strategy::SIMULATION_ONLY;
-    design_gate_params_complex_gates.maximum_number_of_solutions   = 1000;
+    design_gate_params_complex_gates.maximum_number_of_solutions   = 200;
     design_gate_params_complex_gates.operational_params.sim_engine = fiction::sidb_simulation_engine::CLUSTERCOMPLETE;
 
     // // save atomic defects which their respective physical parameters as experimentally determined by T. R. Huff, T.
@@ -272,20 +276,31 @@ int main(int argc, char* argv[])  // NOLINT
 
         if (argc == 2)
         {
-            design_gate_params_complex_gates.number_of_canvas_sidbs = atoi(argv[1]);
+            design_gate_params_complex_gates.number_of_canvas_sidbs = std::stoull(argv[1]);
         }
         else if (argc == 3)
         {
-            design_gate_params.number_of_canvas_sidbs               = atoi(argv[1]);
-            design_gate_params_complex_gates.number_of_canvas_sidbs = atoi(argv[2]);
+            design_gate_params.number_of_canvas_sidbs               = std::stoull(argv[1]);
+            design_gate_params_complex_gates.number_of_canvas_sidbs = std::stoull(argv[2]);
+        }
+        else if (argc == 9)
+        {
+            design_gate_params.number_of_canvas_sidbs                    = std::stoull(argv[1]);
+            design_gate_params_complex_gates.number_of_canvas_sidbs      = std::stoull(argv[2]);
+            design_gate_params.maximum_number_of_solutions               = std::stoull(argv[3]);
+            design_gate_params_complex_gates.maximum_number_of_solutions = std::stoull(argv[4]);
+            params.num_trials                                            = std::stoull(argv[5]);
+            params.selectivity                                           = std::stod(argv[6]);
+            params.num_trials_for_global_scope                           = std::stoull(argv[7]);
+            params.selectivity_for_global_scope                          = std::stod(argv[8]);
         }
         else if (argc != 1)
         {
-            design_gate_params.maximum_number_of_solutions               = std::stoi(argv[1]);
-            design_gate_params_complex_gates.maximum_number_of_solutions = std::stoi(argv[2]);
-            params.num_trials                                            = std::stoi(argv[3]);
+            design_gate_params.maximum_number_of_solutions               = std::stoull(argv[1]);
+            design_gate_params_complex_gates.maximum_number_of_solutions = std::stoull(argv[2]);
+            params.num_trials                                            = std::stoull(argv[3]);
             params.selectivity                                           = std::stod(argv[4]);
-            params.num_trials_for_global_scope                           = std::stoi(argv[5]);
+            params.num_trials_for_global_scope                           = std::stoull(argv[5]);
             params.selectivity_for_global_scope                          = std::stod(argv[6]);
         }
 

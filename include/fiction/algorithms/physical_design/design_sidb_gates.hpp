@@ -172,7 +172,7 @@ struct design_sidb_gates_stats
 namespace detail
 {
 
-template <typename Lyt, typename TT>
+template <typename Lyt, typename TT, local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED>
 class design_sidb_gates_impl
 {
   public:
@@ -345,8 +345,8 @@ class design_sidb_gates_impl
                                 });
                         }
 
-                        if (const operational_assessment<Lyt>& assessment_results =
-                                is_operational(result_lyt.value(), truth_table, params.operational_params,
+                        if (const operational_assessment<Lyt, ExtPotType>& assessment_results =
+                                is_operational<Lyt, TT, ExtPotType>(result_lyt.value(), truth_table, params.operational_params,
                                                input_bdl_wires, output_bdl_wires);
                             assessment_results.status == operational_status::OPERATIONAL)
                         {
@@ -469,12 +469,12 @@ class design_sidb_gates_impl
             return std::vector<Lyt>{};
         }
 
-        designed_sidb_gates<Lyt> designed_gate_layouts{};
+        designed_sidb_gates<Lyt, ExtPotType> designed_gate_layouts{};
 
         if (!params.post_design_process.empty())
         {
             designed_gate_layouts.simulation_results =
-                std::make_optional<std::vector<typename designed_sidb_gates<Lyt>::simulation_results_per_input>>();
+                std::make_optional<std::vector<typename designed_sidb_gates<Lyt, ExtPotType>::simulation_results_per_input>>();
         }
 
         std::mutex mutex_to_protect_designed_gate_layouts{};
@@ -512,7 +512,7 @@ class design_sidb_gates_impl
             // canvas SiDBs are added to the skeleton
             const auto layout_with_added_cells = skeleton_layout_with_canvas_sidbs(combination);
 
-            if (const operational_assessment<Lyt>& assessment_results = is_operational(
+            if (const operational_assessment<Lyt, ExtPotType>& assessment_results = is_operational<Lyt, TT, ExtPotType>(
                     layout_with_added_cells, truth_table, params.operational_params, input_bdl_wires, output_bdl_wires);
                 assessment_results.status == operational_status::OPERATIONAL)
             {
@@ -849,13 +849,14 @@ class design_sidb_gates_impl
  *
  * @tparam Lyt SiDB cell-level layout type.
  * @tparam TT The type of the truth table specifying the gate behavior.
+ * todo
  * @param skeleton The skeleton layout used for gate design.
  * @param spec Expected Boolean function of the layout given as a multi-output truth table.
  * @param params Parameters for the *SiDB Gate Designer*.
  * @param stats Statistics.
  * @return A vector of designed SiDB gate layouts.
  */
-template <typename Lyt, typename TT>
+template <typename Lyt, typename TT, local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED>
 [[nodiscard]] std::vector<Lyt> design_sidb_gates(const Lyt& skeleton, const std::vector<TT>& spec,
                                                  const design_sidb_gates_params<Lyt>& params = {},
                                                  design_sidb_gates_stats*             stats  = nullptr) noexcept
@@ -874,7 +875,7 @@ template <typename Lyt, typename TT>
                               [](const auto& a, const auto& b) { return a.num_vars() != b.num_vars(); }) == spec.end());
 
     design_sidb_gates_stats                 st{};
-    detail::design_sidb_gates_impl<Lyt, TT> p{skeleton, spec, params, st};
+    detail::design_sidb_gates_impl<Lyt, TT, ExtPotType> p{skeleton, spec, params, st};
 
     std::vector<Lyt> result{};
 

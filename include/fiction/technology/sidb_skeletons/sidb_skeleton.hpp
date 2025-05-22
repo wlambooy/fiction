@@ -206,7 +206,7 @@ class sidb_skeleton : public Lyt
 
             bool failed = false;
 
-            for (auto i = 0; !failed && i < w.size(); i++)
+            for (uint64_t i = 0; !failed && i < w.size(); i++)
             {
                 if (w[i] != (*it)[i])
                 {

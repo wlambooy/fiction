@@ -26,14 +26,16 @@ namespace fiction
  * Each wire comprises 2 BDL pairs. The library contains all mirrored versions, a double wire and a crossing.
  */
 class sidb_skeleton_bestagon_mini_library
-        : public fcn_gate_library<sidb_technology, 36, 32>  // width and height of a hexagon
+        // : public fcn_gate_library<sidb_technology, 36, 32>  // width and height of a hexagon
+        : public fcn_gate_library<sidb_technology, 34, 25>  // width and height of a hexagon
 {
   public:
     using sidb_skeleton_t = sidb_skeleton<sidb_100_cell_clk_lyt, gate_x_size(), gate_y_size()>;
 
     sidb_skeleton_bestagon_mini_library(
         const std::string_view& filename =
-            "/home/willem/fiction/include/fiction/technology/sidb_skeletons/mini_bestagon.sqd") noexcept :
+            // "/home/willem/fiction/include/fiction/technology/sidb_skeletons/mini_bestagon.sqd") noexcept :
+            "/home/willem/fiction/include/fiction/technology/sidb_skeletons/mini_test.sqd") noexcept :
             fcn_gate_library(),
             skeleton_producer{read_sqd_layout<sidb_skeleton_t>(filename, "skeleton")}
     {}

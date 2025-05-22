@@ -42,7 +42,7 @@ namespace detail
 template <typename CellLyt, typename GateLibrary, typename GateLyt>
 class apply_gate_library_impl
 {
-public:
+  public:
     explicit apply_gate_library_impl(const GateLyt& lyt) :
             gate_lyt{lyt},
             cell_lyt{determine_aspect_ratio_for_cell_level_layout(gate_lyt)}
@@ -145,7 +145,7 @@ public:
                 auto copy_lyt = cell_lyt.clone();
                 // copy the original defects over to the circuit since they are gone when converting the gate-level
                 // layout to the cell-level layout.
-                defect_surface.value().foreach_sidb_defect([this, &copy_lyt](const auto& def)
+                defect_surface.value().foreach_sidb_defect([&copy_lyt](const auto& def)
                                                            { copy_lyt.assign_sidb_defect(def.first, def.second); });
                 return copy_lyt;
             }
@@ -171,8 +171,8 @@ public:
      * @return A `CellLyt` object representing the generated cell layout.
      */
     template <typename Params>
-    [[nodiscard]] auto run_parameterized_gate_library(const Params&                                       params,
-                                                      const std::optional<CellLyt>& defect_surface = std::nullopt,
+    [[nodiscard]] auto
+    run_parameterized_gate_library(const Params& params, const std::optional<CellLyt>& defect_surface = std::nullopt,
                                    const std::optional<std::set<tile<GateLyt>>>& whitelist = std::nullopt,
                                    const std::optional<std::set<tile<GateLyt>>>& blacklist = std::nullopt)
     {
@@ -201,8 +201,8 @@ public:
                             relative_to_absolute_cell_position<GateLibrary::gate_x_size(), GateLibrary::gate_y_size(),
                                                                GateLyt, CellLyt>(gate_lyt, t, cell<CellLyt>{0, 0});
 
-                        const auto gate =
-                            GateLibrary::template set_up_gate<GateLyt, CellLyt, Params>(gate_lyt, t, params, defect_surface);
+                        const auto gate = GateLibrary::template set_up_gate<GateLyt, CellLyt, Params>(
+                            gate_lyt, t, params, defect_surface);
 
                         assign_gate<CellLyt, GateLibrary, GateLyt>(cell_lyt, c, gate, gate_lyt, n);
                     }
@@ -235,7 +235,7 @@ public:
         return cell_lyt;
     }
 
-private:
+  private:
     /**
      * Gate-level layout.
      */
@@ -380,7 +380,6 @@ template <typename CellLyt, typename GateLibrary, typename GateLyt, typename Par
 
     return p.template run_parameterized_gate_library<Params>(params, whitelist, blacklist);
 }
-
 
 /**
  * Applies a defect-aware parameterized gate library to a given
