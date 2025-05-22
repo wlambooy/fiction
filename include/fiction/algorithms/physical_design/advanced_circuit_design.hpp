@@ -138,10 +138,8 @@ class advanced_circuit_design_impl
                 gate_lyt->foreach_node(
                     [&, this](const auto& n, [[maybe_unused]] auto i)
                     {
-                        std::cout << "yes " << gate_lyt->get_tile(n) << std::endl;
                         if (!skip_physical_design_for_node(*gate_lyt, n))
                         {
-                            std::cout << "wa" << std::endl;
                             const auto t = gate_lyt->get_tile(n);
 
                             operational_gate_designs[n] =

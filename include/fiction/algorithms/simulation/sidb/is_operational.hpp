@@ -616,11 +616,10 @@ class is_operational_impl
                     if (op_status == operational_status::OPERATIONAL)
                     {
                         status = operational_status::OPERATIONAL;
+                        reason = non_op_reason;
 
                         break;
                     }
-
-                    reason = non_op_reason;
                 }
             }
             else
@@ -636,11 +635,10 @@ class is_operational_impl
                     if (op_status == operational_status::NON_OPERATIONAL)
                     {
                         status = operational_status::NON_OPERATIONAL;
+                        reason = non_op_reason;
 
                         break;
                     }
-
-                    reason = non_op_reason;
                 }
             }
 
@@ -659,25 +657,28 @@ class is_operational_impl
                 // all input combinations are being assessed
 
                 assessment_results_for_this_input_combination.status = operational_status::NON_OPERATIONAL;
+            }
 
-                if (parameters.print)
+            if (parameters.print)
+            {
+                std::cout << "STATUS: " << (status == operational_status::NON_OPERATIONAL ? "NON-" : "")
+                          << "OPERATIONAL" << std::endl;
+
+                switch (reason)
                 {
-                    switch (reason)
-                    {
-                        case non_operationality_reason::NONE:
-                            std::cout << "NO NON-OPERATIONALITY REASON" << std::endl;
+                    case non_operationality_reason::NONE:
+                        std::cout << "NO NON-OPERATIONALITY REASON" << std::endl;
                         break;
-                        case non_operationality_reason::LOGIC_MISMATCH:
-                            std::cout << "NON-OPERATIONALITY REASON: LOGIC_MISMATCH" << std::endl;
+                    case non_operationality_reason::LOGIC_MISMATCH:
+                        std::cout << "NON-OPERATIONALITY REASON: LOGIC_MISMATCH" << std::endl;
                         break;
-                        case non_operationality_reason::POTENTIAL_POSITIVE_CHARGES:
-                            std::cout << "NON-OPERATIONALITY REASON: POTENTIAL_POSITIVE_CHARGES" << std::endl;
+                    case non_operationality_reason::POTENTIAL_POSITIVE_CHARGES:
+                        std::cout << "NON-OPERATIONALITY REASON: POTENTIAL_POSITIVE_CHARGES" << std::endl;
                         break;
-                        case non_operationality_reason::KINKS:
-                            std::cout << "NON-OPERATIONALITY REASON: KINKS" << std::endl;
+                    case non_operationality_reason::KINKS:
+                        std::cout << "NON-OPERATIONALITY REASON: KINKS" << std::endl;
                         break;
-                        default: break;
-                    }
+                    default: break;
                 }
             }
 
@@ -1239,22 +1240,22 @@ class is_operational_impl
             {
                 // perform ClusterComplete exact simulation
 
-                if ((*bdl_iterator).num_cells() > 60)
+                if (parameters.print)
                 {
-                    std::cout << "starting large exact simulation task (#SiDBs: " << (*bdl_iterator).num_cells() << ")"
+                    std::cout << "\nstarting exact simulation task (#SiDBs: " << (*bdl_iterator).num_cells() << ")"
                               << std::endl;
                 }
 
                 clustercomplete_params<cell<Lyt>> cc_params{parameters.simulation_parameters};
                 const auto&                       res = clustercomplete(*bdl_iterator, cc_params);
 
-                if ((*bdl_iterator).num_cells() > 60)
+                if (parameters.print)
                 {
                     std::cout << "exact simulation terminated in " << res.simulation_runtime.count() << " seconds"
                               << std::endl;
                 }
 
-                if ((*bdl_iterator).num_cells() > 60 || parameters.print)
+                if (parameters.print)
                 {
                     std::cout << std::endl;
                     if (res.charge_distributions.empty())
@@ -1449,8 +1450,9 @@ is_operational(const Lyt& lyt, const std::vector<TT>& spec,
 
     if (params.print)
     {
-        std::cout << "STATUS: " << (assessment_result.status == operational_status::NON_OPERATIONAL ? "NON-" : "")
-                  << "OPERATIONAL" << std::endl;
+        std::cout << "\n\nOVERALL STATUS: "
+                  << (assessment_result.status == operational_status::NON_OPERATIONAL ? "NON-" : "") << "OPERATIONAL"
+                  << std::endl;
 
         switch (non_op_reason)
         {
@@ -1468,6 +1470,8 @@ is_operational(const Lyt& lyt, const std::vector<TT>& spec,
                 break;
             default: break;
         }
+
+        std::cout << std::endl;
     }
 
     return assessment_result;

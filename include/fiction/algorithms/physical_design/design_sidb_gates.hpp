@@ -172,7 +172,8 @@ struct design_sidb_gates_stats
 namespace detail
 {
 
-template <typename Lyt, typename TT, local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED>
+template <typename Lyt, typename TT,
+          local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED>
 class design_sidb_gates_impl
 {
   public:
@@ -346,8 +347,8 @@ class design_sidb_gates_impl
                         }
 
                         if (const operational_assessment<Lyt, ExtPotType>& assessment_results =
-                                is_operational<Lyt, TT, ExtPotType>(result_lyt.value(), truth_table, params.operational_params,
-                                               input_bdl_wires, output_bdl_wires);
+                                is_operational<Lyt, TT, ExtPotType>(result_lyt.value(), truth_table,
+                                                                    params.operational_params, input_bdl_wires, output_bdl_wires);
                             assessment_results.status == operational_status::OPERATIONAL)
                         {
                             const std::lock_guard lock{mutex_to_protect_designed_gate_layouts};
@@ -473,8 +474,8 @@ class design_sidb_gates_impl
 
         if (!params.post_design_process.empty())
         {
-            designed_gate_layouts.simulation_results =
-                std::make_optional<std::vector<typename designed_sidb_gates<Lyt, ExtPotType>::simulation_results_per_input>>();
+            designed_gate_layouts.simulation_results = std::make_optional<
+                std::vector<typename designed_sidb_gates<Lyt, ExtPotType>::simulation_results_per_input>>();
         }
 
         std::mutex mutex_to_protect_designed_gate_layouts{};
@@ -856,7 +857,8 @@ class design_sidb_gates_impl
  * @param stats Statistics.
  * @return A vector of designed SiDB gate layouts.
  */
-template <typename Lyt, typename TT, local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED>
+template <typename Lyt, typename TT,
+          local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED>
 [[nodiscard]] std::vector<Lyt> design_sidb_gates(const Lyt& skeleton, const std::vector<TT>& spec,
                                                  const design_sidb_gates_params<Lyt>& params = {},
                                                  design_sidb_gates_stats*             stats  = nullptr) noexcept
@@ -874,7 +876,7 @@ template <typename Lyt, typename TT, local_external_potential_type ExtPotType = 
     assert(std::adjacent_find(spec.begin(), spec.end(),
                               [](const auto& a, const auto& b) { return a.num_vars() != b.num_vars(); }) == spec.end());
 
-    design_sidb_gates_stats                 st{};
+    design_sidb_gates_stats                             st{};
     detail::design_sidb_gates_impl<Lyt, TT, ExtPotType> p{skeleton, spec, params, st};
 
     std::vector<Lyt> result{};
