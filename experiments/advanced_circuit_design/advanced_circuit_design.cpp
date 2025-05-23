@@ -85,7 +85,7 @@ int main(int argc, char* argv[])  // NOLINT
         fiction::cell<lyt_t>>::operational_condition_positive_charges::TOLERATE_POSITIVE_CHARGES;
     design_gate_params.operational_params.op_condition_kinks =
         fiction::is_operational_params<fiction::cell<lyt_t>>::operational_condition_kinks::REJECT_KINKS;
-    design_gate_params.design_mode = fiction::design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::RANDOM;
+    design_gate_params.design_mode = fiction::design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::EXHAUSTIVE;
 
     // design_gate_params.post_design_process = {
     //     std::make_unique<fiction::compare_by_minimum_ground_state_isolation<lyt_t>>(),
@@ -95,7 +95,7 @@ int main(int argc, char* argv[])  // NOLINT
     if constexpr (std::is_same_v<gate_lib, fiction::sidb_on_the_fly_mini_gate_library>)
     {
         // design_gate_params.canvas = {{13, 12}, {22, 23}};  // smaller canvas
-        design_gate_params.canvas = {{12, 8}, {21, 17}};  // smaller canvas
+        design_gate_params.canvas = {{12, 12}, {21, 21}};  // smaller canvas
     }
     else
     {
@@ -118,10 +118,10 @@ int main(int argc, char* argv[])  // NOLINT
     design_gate_params_complex_gates.number_of_canvas_sidbs = 4;
     // design_gate_params_complex_gates.number_of_canvas_sidbs = 6;
     design_gate_params_complex_gates.design_mode =
-        fiction::design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::RANDOM;
+        fiction::design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::EXHAUSTIVE;
     design_gate_params_complex_gates.termination_cond =
         fiction::design_sidb_gates_params<lyt_t>::termination_condition::OBTAINED_N_SOLUTIONS;
-    design_gate_params_complex_gates.canvas = {{10, 8}, {23, 17}};
+    design_gate_params_complex_gates.canvas = {{10, 12}, {23, 21}};
     // design_gate_params_complex_gates.canvas = {{11, 12}, {24, 23}};
     // design_gate_params.operational_params.op_condition_kinks =
     // is_operational_params<cell<CellLyt>>::operational_condition_kinks::TOLERATE_KINKS;

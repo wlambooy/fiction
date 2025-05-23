@@ -164,8 +164,9 @@ class advanced_circuit_design_impl
             // }
         }
 
-        if (!prune_gate_designs(*gate_lyt, operational_gate_designs) ||
-            !find_operational_circuit(*gate_lyt, operational_gate_designs, lyt))
+        if (!prune_gate_designs_by_gate_connections(*gate_lyt, operational_gate_designs) ||
+            !prune_gate_designs_at_global_level(*gate_lyt, operational_gate_designs, lyt) ||
+            !look_for_operational_circuit_exhaustively(*gate_lyt, operational_gate_designs, lyt))
         {
             std::cout << "\n\nFAILURE: NO OPERATIONAL CIRCUIT COULD BE GENERATED" << std::endl;
         }
@@ -383,7 +384,7 @@ class advanced_circuit_design_impl
     /**
      *
      */
-    bool prune_gate_designs(
+    bool prune_gate_designs_by_gate_connections(
         const GateLyt& gate_lyt,
         std::unordered_map<mockturtle::node<GateLyt>, sidb_on_the_fly_mini_gate_library::designed_fcn_gates>&
             operational_gate_designs) const noexcept
@@ -456,6 +457,9 @@ class advanced_circuit_design_impl
                 {
                     is_operational_params operational_params =
                         params.sidb_on_the_fly_gate_library_parameters.design_gate_params.operational_params;
+
+                    operational_params.termination_cond =
+                        is_operational_params<cell<CellLyt>>::termination_condition::ALL_INPUT_COMBINATIONS_ASSESSED;
 
                     operational_params.cc_map = skeleton_influence_bounds<CellLyt, SkeletonGateLibrary, GateLyt>(
                         gate_lyt, {t, gate_lyt.get_tile(connecting_n)},
@@ -556,7 +560,7 @@ class advanced_circuit_design_impl
                                                    static_cast<int64_t>(j)),
                                         gate_lyt, n);
 
-                                    uint64_t successful_trials = 0;
+                                    double successful_trials = 0;
 
                                     // uint64_t gate_connection_ix = 0;
                                     for (const auto& connecting_n : gate_connections_to_simulate.at(n))
@@ -592,17 +596,36 @@ class advanced_circuit_design_impl
                                             // {
                                             //     mockturtle::stopwatch stop{time_counter};
 
-                                            if (is_operational<CellLyt, tt, local_external_potential_type::BOUNDED>(
+                                            const operational_assessment<
+                                                CellLyt, local_external_potential_type::BOUNDED>& op_assessment =
+                                                is_operational<CellLyt, tt, local_external_potential_type::BOUNDED>(
                                                     cell_lyt_clone,
                                                     spec_and_operational_params_for_joint_simulation.at(n)
                                                         .at(connecting_n)
                                                         .first,
                                                     spec_and_operational_params_for_joint_simulation.at(n)
                                                         .at(connecting_n)
-                                                        .second)
-                                                    .status == operational_status::OPERATIONAL)
+                                                        .second);
+
+                                            assert(op_assessment.assessment_per_input.has_value() &&
+                                                   "ALL_COMBINATIONS_ENUMERATED is not set.");
+
+                                            if (op_assessment.status == operational_status::OPERATIONAL)
                                             {
-                                                successful_trials++;
+                                                double valid_groundstate_probabilty_sum_for_all_inputs = 0.0;
+
+                                                for (const typename operational_assessment<
+                                                         CellLyt, local_external_potential_type::BOUNDED>::
+                                                         operational_assessment_for_input& op_assessment_for_input :
+                                                     *op_assessment.assessment_per_input)
+                                                {
+                                                    valid_groundstate_probabilty_sum_for_all_inputs +=
+                                                        op_assessment_for_input.valid_ground_state_probability;
+                                                }
+
+                                                successful_trials +=
+                                                    valid_groundstate_probabilty_sum_for_all_inputs /
+                                                    static_cast<double>(op_assessment.assessment_per_input->size());
                                             }
                                             // }
 
@@ -636,7 +659,7 @@ class advanced_circuit_design_impl
 #endif
 
                                     const double successful_trial_ratio =
-                                        static_cast<double>(successful_trials) /
+                                        successful_trials /
                                         static_cast<double>(params.num_trials *
                                                             gate_connections_to_simulate.at(n).size());
 
@@ -697,7 +720,7 @@ class advanced_circuit_design_impl
         return !exit_by_failure;
     }
 
-    bool find_operational_circuit(
+    bool prune_gate_designs_at_global_level(
         const GateLyt& gate_lyt,
         std::unordered_map<mockturtle::node<GateLyt>, sidb_on_the_fly_mini_gate_library::designed_fcn_gates>&
                  operational_gate_designs,
@@ -711,7 +734,7 @@ class advanced_circuit_design_impl
             decltype(params.sidb_on_the_fly_gate_library_parameters.design_gate_params
                          .operational_params)::termination_condition::ALL_INPUT_COMBINATIONS_ASSESSED;
 
-        params.sidb_on_the_fly_gate_library_parameters.design_gate_params.operational_params.print = true;
+        // params.sidb_on_the_fly_gate_library_parameters.design_gate_params.operational_params.print = true;
 
         const uint64_t num_input_combinations = 1 << gate_lyt.num_pis();
 
@@ -909,6 +932,74 @@ class advanced_circuit_design_impl
 
                     operational_gate_designs[n].designed_gates = std::move(selected_gate_implementations);
                 });
+        }
+
+        return false;
+    }
+    /**
+     * todo
+     */
+    bool look_for_operational_circuit_exhaustively(
+        const GateLyt& gate_lyt,
+        std::unordered_map<mockturtle::node<GateLyt>, sidb_on_the_fly_mini_gate_library::designed_fcn_gates>&
+                 operational_gate_designs,
+        CellLyt& lyt) const noexcept
+    {
+
+        std::cout << "\n\nLOOKING FOR OPERATIONAL CIRCUIT EXHAUSTIVELY" << std::endl;
+
+        std::vector<uint64_t> indices(operational_gate_designs.size(), 0);
+
+        while (true)
+        {
+            CellLyt operational_circuit_candidate{};
+            for (uint64_t i = 0; i < operational_gate_designs.size(); i++)
+            {
+                const auto& [n, op_gate_designs_for_gate] =
+                    *std::next(operational_gate_designs.cbegin(), static_cast<int64_t>(i));
+                // select a random gate implementation for the tile that connects as input to n
+                assign_gate<CellLyt, GateLibrary, GateLyt>(
+                    operational_circuit_candidate,
+                    relative_to_absolute_cell_position<GateLibrary::gate_x_size(), GateLibrary::gate_y_size(), GateLyt,
+                                                       CellLyt>(gate_lyt, gate_lyt.get_tile(n), cell<CellLyt>{0, 0}),
+                    op_gate_designs_for_gate.designed_gates.at(indices.at(i)), gate_lyt, n);
+            }
+
+            std::cout << "trying combination: ";
+            for (uint64_t i = 0; i < operational_gate_designs.size(); i++)
+            {
+                std::cout << indices.at(i) << " ";
+            }
+            std::cout << std::endl;
+
+            if (is_operational(operational_circuit_candidate, params.spec,
+                               params.sidb_on_the_fly_gate_library_parameters.design_gate_params.operational_params)
+                    .status == operational_status::OPERATIONAL)
+            {
+                lyt = operational_circuit_candidate;
+
+                std::cout << "\n\nFINAL GENERATED CIRCUIT:" << std::endl;
+                print_layout(lyt);
+
+                return true;
+            }
+
+            // Increment indices like an odometer
+            for (uint64_t i = 0; i < indices.size(); ++i)
+            {
+                if (++indices[i] <
+                    std::next(operational_gate_designs.cbegin(), static_cast<int64_t>(i))->second.designed_gates.size())
+                {
+                    break;  // No carry needed
+                }
+
+                indices[i] = 0;  // Reset this index and carry over to the next
+
+                if (i == indices.size() - 1)
+                {
+                    return false;  // Stop when the last index overflows
+                }
+            }
         }
 
         return false;

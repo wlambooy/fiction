@@ -212,6 +212,10 @@ struct operational_assessment
          */
         operational_status status;
         /**
+         *
+         */
+        double valid_ground_state_probability = 1;
+        /**
          * The charge distributions obtained for one input combination that was tested.
          */
         std::optional<simulation_results_t> simulation_results{};
@@ -601,12 +605,15 @@ class is_operational_impl
                 continue;
             }
 
-            auto status = operational_status::NON_OPERATIONAL;
-            auto reason = non_operationality_reason::NONE;
+            auto   status              = operational_status::NON_OPERATIONAL;
+            auto   reason              = non_operationality_reason::NONE;
+            double passing_probability = 1.0;
 
             if constexpr (ExtPotType == local_external_potential_type::BOUNDED)
             {
                 simulation_results.reduce_to_groundstates_under_bounded_energy();
+
+                uint64_t passing_count = 0;
 
                 // disregard degenerate states
                 for (const auto& gs : simulation_results.charge_distributions)
@@ -615,12 +622,18 @@ class is_operational_impl
 
                     if (op_status == operational_status::OPERATIONAL)
                     {
-                        status = operational_status::OPERATIONAL;
-                        reason = non_op_reason;
-
-                        break;
+                        passing_count++;
                     }
                 }
+
+                if (passing_count > 0)
+                {
+                    status = operational_status::OPERATIONAL;
+                    reason = non_operationality_reason::LOGIC_MISMATCH;
+                }
+
+                passing_probability = static_cast<double>(passing_count) /
+                                      static_cast<double>(simulation_results.charge_distributions.size());
             }
             else
             {
@@ -634,8 +647,9 @@ class is_operational_impl
 
                     if (op_status == operational_status::NON_OPERATIONAL)
                     {
-                        status = operational_status::NON_OPERATIONAL;
-                        reason = non_op_reason;
+                        status              = operational_status::NON_OPERATIONAL;
+                        reason              = non_op_reason;
+                        passing_probability = 0.0;
 
                         break;
                     }
@@ -657,6 +671,7 @@ class is_operational_impl
                 // all input combinations are being assessed
 
                 assessment_results_for_this_input_combination.status = operational_status::NON_OPERATIONAL;
+                assessment_results_for_this_input_combination.valid_ground_state_probability = passing_probability;
             }
 
             if (parameters.print)
