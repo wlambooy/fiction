@@ -5305,15 +5305,17 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl_determine_f
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_determine_truth_table_of_gate_connection = R"doc()doc";
 
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_find_operational_circuit = R"doc()doc";
-
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_lattice_tiling = R"doc(Gate-level layout.)doc";
+
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_look_for_operational_circuit_exhaustively = R"doc(todo)doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_network = R"doc(Network.)doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_params = R"doc(Parameters for the on-the-fly circuit design.)doc";
 
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_prune_gate_designs = R"doc()doc";
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_prune_gate_designs_at_global_level = R"doc()doc";
+
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_prune_gate_designs_by_gate_connections = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_select_gate_implementations_by_successful_trial_ratio = R"doc()doc";
 
@@ -17746,6 +17748,8 @@ tested.)doc";
 static const char *__doc_fiction_operational_assessment_operational_assessment_for_input_status =
 R"doc(The assessed operational status of the given layout under one input
 combination.)doc";
+
+static const char *__doc_fiction_operational_assessment_operational_assessment_for_input_valid_ground_state_probability = R"doc()doc";
 
 static const char *__doc_fiction_operational_assessment_simulator_invocations = R"doc(The number of input combinations tested.)doc";
 
