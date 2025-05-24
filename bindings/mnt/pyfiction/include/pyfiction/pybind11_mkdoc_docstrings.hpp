@@ -5313,9 +5313,13 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl_network = R
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_params = R"doc(Parameters for the on-the-fly circuit design.)doc";
 
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_print_success_rate_histogram = R"doc()doc";
+
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_prune_gate_designs_at_global_level = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_prune_gate_designs_by_gate_connections = R"doc()doc";
+
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_prune_gate_designs_by_two_gate_connections = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_select_gate_implementations_by_successful_trial_ratio = R"doc()doc";
 
