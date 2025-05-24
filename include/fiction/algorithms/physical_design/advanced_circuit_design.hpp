@@ -370,10 +370,11 @@ class advanced_circuit_design_impl
     }
 
     [[nodiscard]] uint64_t determine_first_passing_gate_ix(
-        const std::vector<std::pair<double, uint64_t>>& successful_trial_ratio_per_gate_implementation) const noexcept
+        const std::vector<std::pair<double, uint64_t>>& successful_trial_ratio_per_gate_implementation,
+        const double                                    selectivity) const noexcept
     {
         uint64_t first_passing_gate_ix = static_cast<uint64_t>(
-            params.selectivity * static_cast<double>(successful_trial_ratio_per_gate_implementation.size()));
+            selectivity * static_cast<double>(successful_trial_ratio_per_gate_implementation.size()));
 
         // walk down (i.e., decrementing success ratio) to the first gate implementation with a different success ratio
         for (; first_passing_gate_ix > 0 &&
@@ -389,14 +390,15 @@ class advanced_circuit_design_impl
     }
 
     [[nodiscard]] std::vector<uint64_t> select_gate_implementations_by_successful_trial_ratio(
-        std::vector<std::pair<double, uint64_t>>&& successful_trial_ratio_per_gate_implementation) const noexcept
+        std::vector<std::pair<double, uint64_t>>&& successful_trial_ratio_per_gate_implementation,
+        const double                               selectivity) const noexcept
     {
         std::sort(successful_trial_ratio_per_gate_implementation.begin(),
                   successful_trial_ratio_per_gate_implementation.end(),
                   [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });
 
         const uint64_t first_passing_gate_ix =
-            determine_first_passing_gate_ix(successful_trial_ratio_per_gate_implementation);
+            determine_first_passing_gate_ix(successful_trial_ratio_per_gate_implementation, selectivity);
 
         std::vector<uint64_t> selected_gate_implementation_indices{};
         selected_gate_implementation_indices.reserve(successful_trial_ratio_per_gate_implementation.size() -
@@ -713,7 +715,7 @@ class advanced_circuit_design_impl
                     }
 
                     selected_gate_implementation_indices[n] = select_gate_implementations_by_successful_trial_ratio(
-                        std::move(successful_trial_ratio_per_gate_implementation));
+                        std::move(successful_trial_ratio_per_gate_implementation), params.selectivity);
 
                     if (selected_gate_implementation_indices.at(n).empty())
                     {
@@ -1051,7 +1053,7 @@ class advanced_circuit_design_impl
                     }
 
                     selected_gate_implementation_indices[n] = select_gate_implementations_by_successful_trial_ratio(
-                        std::move(successful_trial_ratio_per_gate_implementation));
+                        std::move(successful_trial_ratio_per_gate_implementation), params.selectivity);
 
                     if (selected_gate_implementation_indices.at(n).empty())
                     {
@@ -1259,7 +1261,7 @@ class advanced_circuit_design_impl
                     }
 
                     selected_gate_implementation_indices[n] = select_gate_implementations_by_successful_trial_ratio(
-                        std::move(successful_trial_ratio_per_gate_implementation));
+                        std::move(successful_trial_ratio_per_gate_implementation), params.selectivity_for_global_scope);
 
                     if (selected_gate_implementation_indices.at(n).empty())
                     {
