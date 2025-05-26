@@ -331,33 +331,24 @@ class advanced_circuit_design_impl
             count_by_success_rate[rate]++;
         }
 
-        // Find max count for normalization
-        uint64_t max_count = 0;
-        for (const auto& [rate, count] : count_by_success_rate)
-        {
-            max_count = std::max(max_count, count);
-        }
+        // Total number of gates
+        const uint64_t total_gates = success_ratios.size();
+
+        assert(total_gates > 0 && "The distribution is empty.");
 
         std::cout << "Success Rate | Status | Gate Count | Graph\n";
-        std::cout << "-------------|--------|------------|------------------------\n";
+        std::cout << "-------------|--------|------------|--------------------------------------------------------------\n";
 
         for (const auto& [rate, count] : count_by_success_rate)
         {
-            const bool is_kept = rate >= selectivity_threshold;
+            constexpr size_t max_bar_length = 60;
 
-            std::string status = rate >= selectivity_threshold ? "KEPT" : "PRUNED";
+            const bool        is_kept = rate >= selectivity_threshold;
+            const std::string status  = is_kept ? "KEPT" : "PRUNED";
 
-            constexpr size_t max_bar_length = 22;
-            size_t           bar_len        = 0;
-            if (max_count > 0)
-            {
-                bar_len =
-                    static_cast<size_t>((static_cast<double>(count) / static_cast<double>(max_count)) * max_bar_length);
-                if (count > 0 && bar_len == 0)
-                {
-                    bar_len = 1;  // Ensure at least one character if count > 0
-                }
-            }
+            // Bar length proportional to total count
+            const auto bar_len = 1 + static_cast<size_t>(static_cast<double>(count) / static_cast<double>(total_gates) *
+                                                         (max_bar_length - 1));
 
             std::string bar(bar_len, is_kept ? 'O' : 'X');
 
