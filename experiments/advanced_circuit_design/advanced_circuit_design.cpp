@@ -95,7 +95,7 @@ int main(int argc, char* argv[])  // NOLINT
     if constexpr (std::is_same_v<gate_lib, fiction::sidb_on_the_fly_mini_gate_library>)
     {
         // design_gate_params.canvas = {{13, 12}, {22, 23}};  // smaller canvas
-        design_gate_params.canvas = {{12, 12}, {21, 21}};  // smaller canvas
+        design_gate_params.canvas = {{13, 8}, {24, 19}};  // smaller canvas
     }
     else
     {
@@ -121,7 +121,7 @@ int main(int argc, char* argv[])  // NOLINT
         fiction::design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::EXHAUSTIVE;
     design_gate_params_complex_gates.termination_cond =
         fiction::design_sidb_gates_params<lyt_t>::termination_condition::OBTAINED_N_SOLUTIONS;
-    design_gate_params_complex_gates.canvas = {{10, 12}, {23, 21}};
+    design_gate_params_complex_gates.canvas = {{11, 8}, {26, 19}};
     // design_gate_params_complex_gates.canvas = {{11, 12}, {24, 23}};
     // design_gate_params.operational_params.op_condition_kinks =
     // is_operational_params<cell<CellLyt>>::operational_condition_kinks::TOLERATE_KINKS;
@@ -244,7 +244,7 @@ int main(int argc, char* argv[])  // NOLINT
         // compute depth
         const mockturtle::depth_view depth_xag{xag};
 
-        const fiction::technology_mapping_params tech_map_params = fiction::all_standard_2_input_functions();
+        const fiction::technology_mapping_params tech_map_params = fiction::and_or_not();
 
         // parameters for cut rewriting
         mockturtle::cut_rewriting_params cut_params{};

@@ -38,7 +38,9 @@ enum class bdl_wire_selection : std::uint8_t
     /**
      * Select only BDL wires that end with output cells.
      */
-    OUTPUT
+    OUTPUT,
+    // todo
+    NON_IO
 };
 
 /**
@@ -498,6 +500,11 @@ class detect_bdl_wires_impl
                 return filter_wires_by_type(technology<Lyt>::cell_type::OUTPUT);
             }
 
+            case bdl_wire_selection::NON_IO:
+            {
+                return filter_wires_by_type(technology<Lyt>::cell_type::NORMAL);
+            }
+
             default:
             {
                 return bdl_wires;
@@ -621,8 +628,18 @@ class detect_bdl_wires_impl
 
         for (const auto& wire : bdl_wires)
         {
-            if (std::any_of(wire.pairs.cbegin(), wire.pairs.cend(),
-                            [&type](const auto& bdl) { return bdl.type == type; }))
+            using Iter = decltype(wire.pairs.cbegin());
+            using Elem = typename decltype(wire.pairs)::value_type;
+
+            std::function<bool(Iter, Iter, const std::function<bool(const Elem&)>&)> check =
+                (type == technology<Lyt>::cell_type::NORMAL) ?
+                    [](Iter begin, Iter end, const std::function<bool(const Elem&)>& pred)
+            { return std::all_of(begin, end, pred); } :
+                    [](Iter begin, Iter end, const std::function<bool(const Elem&)>& pred)
+            { return std::any_of(begin, end, pred); };
+
+            if (check(wire.pairs.cbegin(), wire.pairs.cend(),
+                      std::function<bool(const Elem&)>([&type](const auto& bdl) { return bdl.type == type; })))
             {
                 if (filtered_out_bdl_pair_type.has_value())
                 {

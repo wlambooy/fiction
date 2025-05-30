@@ -178,8 +178,6 @@ struct sidb_simulation_result
     {
         static_assert(ExtPotType == local_external_potential_type::BOUNDED, "ExtPotType needs to be BOUNDED.");
 
-        std::vector<charge_distribution_surface<Lyt, ExtPotType>> groundstate_charge_distributions;
-
         // Sort by energy[0] ascending, then energy[1] descending
         std::sort(charge_distributions.begin(), charge_distributions.end(),
                   [](const auto& a, const auto& b)

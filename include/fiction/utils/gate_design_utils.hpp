@@ -33,7 +33,6 @@ class gate_design_exception : public std::exception
      */
     explicit gate_design_exception(const tile<GateLyt>& ti, const TT& spec,
                                    const port_list<port_direction>& portlist) noexcept :
-            std::exception(),
             error_tile{ti},
             truth_table{spec},
             p{portlist}
@@ -102,13 +101,21 @@ class unsuccessful_gate_design_error : public std::runtime_error
  * @param n Corresponding node in the gate-level layout.
  */
 template <typename CellLyt, typename GateLibrary, typename GateLyt>
-static void assign_gate(CellLyt& cell_lyt, const cell<CellLyt>& c, const typename GateLibrary::fcn_gate& g,
-                        const GateLyt& gate_lyt, const mockturtle::node<GateLyt>& n)
+static void assign_gate(CellLyt& cell_lyt, const typename GateLibrary::fcn_gate& g, const GateLyt& gate_lyt,
+                        const tile<GateLyt>& t)
 {
+    const mockturtle::node<GateLyt>& n = gate_lyt.get_node(t);
+
+    // physical design is skipped for input and output ports
     if (gate_lyt.is_pi(n) || gate_lyt.is_po(n))
     {
         return;
     }
+
+    // retrieve the top-leftmost cell in tile t
+    const auto c =
+        relative_to_absolute_cell_position<GateLibrary::gate_x_size(), GateLibrary::gate_y_size(), GateLyt, CellLyt>(
+            gate_lyt, t, cell<CellLyt>{0, 0});
 
     const auto start_x = c.x;
     const auto start_y = c.y;
@@ -129,10 +136,18 @@ static void assign_gate(CellLyt& cell_lyt, const cell<CellLyt>& c, const typenam
             // overwrites always make a NORMAL type cell
             if (!technology<CellLyt>::is_empty_cell(cell_lyt.get_cell_type(pos)))
             {
+                // the cell tile is not overwritten for output cells
+                if (!technology<CellLyt>::is_output_cell(cell_lyt.get_cell_type(pos)))
+                {
+                    cell_lyt.assign_cell_tile(pos, typename CellLyt::clock_zone{t.x, t.y, t.z});
+                }
+
                 cell_lyt.assign_cell_type(pos, sidb_technology::cell_type::NORMAL);
 
                 continue;
             }
+
+            cell_lyt.assign_cell_tile(pos, typename CellLyt::clock_zone{t.x, t.y, t.z});
 
             cell_lyt.assign_cell_type(pos, type);
 

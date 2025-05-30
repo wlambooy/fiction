@@ -72,6 +72,7 @@ class cell_level_layout : public ClockedLayout
 
         phmap::parallel_flat_hash_map<Cell, cell_type> cell_type_map{};
         phmap::parallel_flat_hash_map<Cell, cell_mode> cell_mode_map{};
+        phmap::parallel_flat_hash_map<Cell, typename ClockedLayout::clock_zone> cell_tile_map{};
 
         phmap::flat_hash_map<Cell, std::string> cell_name_map{};
 
@@ -274,6 +275,32 @@ class cell_level_layout : public ClockedLayout
     [[nodiscard]] cell_mode get_cell_mode(const cell& c) const noexcept
     {
         if (auto it = strg->cell_mode_map.find(c); it != strg->cell_mode_map.cend())
+        {
+            return it->second;
+        }
+
+        return {};
+    }
+    /**
+     * Assigns a cell mode `m` to a cell position `c` in the layout. If `m` is the normal cell mode, a potentially
+     * stored cell mode is being erased.
+     *
+     * @param c Cell position to assign cell mode `m` to. todo
+     * @param m Cell mode to assign to cell position `c`.
+     */
+    void assign_cell_tile(const cell& c, const typename ClockedLayout::clock_zone& tile) noexcept
+    {
+        strg->cell_tile_map[c] = tile;
+    }
+    /**
+     * Returns the cell mode assigned to cell position `c`. If no cell mode is assigned, the default mode is returned.
+     *
+     * @param c Cell position whose assigned cell mode is desired. todo
+     * @return Cell mode assigned to cell position `c`.
+     */
+    [[nodiscard]] typename ClockedLayout::clock_zone get_cell_tile(const cell& c) const noexcept
+    {
+        if (auto it = strg->cell_tile_map.find(c); it != strg->cell_tile_map.cend())
         {
             return it->second;
         }

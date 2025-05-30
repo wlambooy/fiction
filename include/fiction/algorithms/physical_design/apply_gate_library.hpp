@@ -100,21 +100,15 @@ class apply_gate_library_impl
                         (!blacklist.has_value() || blacklist.value().count(t) == 0) &&
                         (!whitelist.has_value() || whitelist.value().count(t) != 0))
                     {
-
-                        // retrieve the top-leftmost cell in tile t
-                        const auto c =
-                            relative_to_absolute_cell_position<GateLibrary::gate_x_size(), GateLibrary::gate_y_size(),
-                                                               GateLyt, CellLyt>(gate_lyt, t, cell<CellLyt>{0, 0});
-
                         if constexpr (std::is_same_v<GateLibrary, sidb_skeleton_bestagon_mini_library>)
                         {
                             assign_gate<CellLyt, GateLibrary, GateLyt>(
-                                cell_lyt, c, GateLibrary{}.set_up_gate(gate_lyt, t), gate_lyt, n);
+                                cell_lyt, GateLibrary{}.set_up_gate(gate_lyt, t), gate_lyt, t);
                         }
                         else
                         {
                             assign_gate<CellLyt, GateLibrary, GateLyt>(
-                                cell_lyt, c, GateLibrary::set_up_gate(gate_lyt, t), gate_lyt, n);
+                                cell_lyt, GateLibrary::set_up_gate(gate_lyt, t), gate_lyt, t);
                         }
                     }
                 }
@@ -196,15 +190,10 @@ class apply_gate_library_impl
                         (!blacklist.has_value() || blacklist.value().count(t) == 0) &&
                         (!whitelist.has_value() || whitelist.value().count(t) != 0))
                     {
-                        // retrieve the top-leftmost cell in tile t
-                        const auto c =
-                            relative_to_absolute_cell_position<GateLibrary::gate_x_size(), GateLibrary::gate_y_size(),
-                                                               GateLyt, CellLyt>(gate_lyt, t, cell<CellLyt>{0, 0});
-
                         const auto gate = GateLibrary::template set_up_gate<GateLyt, CellLyt, Params>(
                             gate_lyt, t, params, defect_surface);
 
-                        assign_gate<CellLyt, GateLibrary, GateLyt>(cell_lyt, c, gate, gate_lyt, n);
+                        assign_gate<CellLyt, GateLibrary, GateLyt>(cell_lyt, gate, gate_lyt, t);
                     }
                 }
 #if (PROGRESS_BARS)

@@ -61,11 +61,14 @@ class skeleton_influence_bounds_impl
             tiles_of_interest{ts},
             cell_lyt_with_all_skeletons{apply_gate_library<CellLyt, SkeletonGateLibrary, GateLyt>(gate_lyt)},
             cell_lyt_of_tiles_of_interest{apply_gate_library<CellLyt, SkeletonGateLibrary, GateLyt>(
-                gate_lyt, std::set(tiles_of_interest.cbegin(), tiles_of_interest.cend()))}
+                gate_lyt, std::set(tiles_of_interest.cbegin(), tiles_of_interest.cend()))},
+            bdl_wires_of_skeleton_with_other_tile_for_all_tiles_of_interest{
+                obtain_bdl_wires_for_all_tile_pairs(gate_lyt, tiles_of_interest)}
     {}
 
     [[nodiscard]] std::unordered_map<cell<CellLyt>, std::array<double, 2>> run() noexcept
     {
+        uint64_t tile_counter = 0;
         for (const tile<GateLyt>& current_tile : tiles_of_interest)
         {
             bool first_one_passed = false;
@@ -133,7 +136,7 @@ class skeleton_influence_bounds_impl
                             gate_lyt, current_tile, {0, 0});
 
                     collect_influence_bounds_for_sidb(
-                        {absolute_c.x - absolute_offset.x, absolute_c.y - absolute_offset.y}, absolute_c);
+                        {absolute_c.x - absolute_offset.x, absolute_c.y - absolute_offset.y}, absolute_c, tile_counter);
                 });
 
             const auto canvas = is_complex_gate<GateLyt>(gate_lyt, gate_lyt.get_node(current_tile)) ?
@@ -146,18 +149,31 @@ class skeleton_influence_bounds_impl
                     relative_to_absolute_cell_position<SkeletonGateLibrary::gate_x_size(),
                                                        SkeletonGateLibrary::gate_y_size(), GateLyt, CellLyt>(
                         gate_lyt, current_tile, relative_c);
-                collect_influence_bounds_for_sidb(relative_c, absolute_c);
+                collect_influence_bounds_for_sidb(relative_c, absolute_c, tile_counter);
             }
+
+            tile_counter++;
         }
 
         return skeleton_influence_bounds_map;
     }
 
   private:
-    void collect_influence_bounds_for_sidb(const cell<CellLyt>& relative_sidb,
-                                           const cell<CellLyt>& absolute_sidb) noexcept
+    const skeleton_influence_bounds_params<cell<CellLyt>>& params;
+    GateLyt                                                gate_lyt{};
+    const std::vector<tile<GateLyt>>&                      tiles_of_interest{};
+    const CellLyt                                          cell_lyt_with_all_skeletons{};
+    const CellLyt                                          cell_lyt_of_tiles_of_interest{};
+    const std::vector<std::vector<std::vector<bdl_wire<CellLyt>>>>
+        bdl_wires_of_skeleton_with_other_tile_for_all_tiles_of_interest{};
+    std::unordered_map<cell<CellLyt>, std::array<double, 2>> skeleton_influence_bounds_map{};
+
+    void collect_influence_bounds_for_sidb(const cell<CellLyt>& relative_sidb, const cell<CellLyt>& absolute_sidb,
+                                           const uint64_t tile_of_interest_counter) noexcept
     {
         std::array<double, 2> bounds{{0, 0}};
+
+        uint64_t node_counter = 0;
 
         gate_lyt.foreach_node(
             [&](const auto& n)
@@ -196,6 +212,13 @@ class skeleton_influence_bounds_impl
                         cell_lyt_with_c_and_bound_pair.assign_cell_type(absolute_sidb,
                                                                         sidb_technology::cell_type::NORMAL);
 
+                        // todo ENABLE ... OR NOT ???
+                        // make_pair_sidbs_respect_io_connections(
+                        //     absolute_sidb,
+                        //     bdl_wires_of_skeleton_with_other_tile_for_all_tiles_of_interest.at(tile_of_interest_counter)
+                        //         .at(node_counter),
+                        //     pair);
+
                         cell_lyt_with_c_and_bound_pair.assign_cell_type(pair.upper, sidb_technology::cell_type::NORMAL);
                         cell_lyt_with_c_and_bound_pair.assign_cell_type(pair.lower, sidb_technology::cell_type::NORMAL);
 
@@ -218,6 +241,8 @@ class skeleton_influence_bounds_impl
                     bounds[0] += potential_from_wire[0];
                     bounds[1] += potential_from_wire[1];
                 }
+
+                node_counter++;
             });
 
         // include influence from the output perturbers if they are part of a different tile
@@ -317,12 +342,107 @@ class skeleton_influence_bounds_impl
         return found;
     }
 
-    const skeleton_influence_bounds_params<cell<CellLyt>>&   params;
-    GateLyt                                                  gate_lyt{};
-    const std::vector<tile<GateLyt>>&                        tiles_of_interest{};
-    const CellLyt                                            cell_lyt_with_all_skeletons{};
-    const CellLyt                                            cell_lyt_of_tiles_of_interest{};
-    std::unordered_map<cell<CellLyt>, std::array<double, 2>> skeleton_influence_bounds_map{};
+    [[nodiscard]] static bool is_upper_in_wire(const cell<CellLyt>& sidb, const bdl_wire<CellLyt>& wire) noexcept
+    {
+
+        for (const bdl_pair<cell<CellLyt>>& pair : wire.pairs)
+        {
+            if (pair.upper == sidb)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    [[nodiscard]] static bool is_lower_in_wire(const cell<CellLyt>& sidb, const bdl_wire<CellLyt>& wire) noexcept
+    {
+
+        for (const bdl_pair<cell<CellLyt>>& pair : wire.pairs)
+        {
+            if (pair.lower == sidb)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    void make_pair_sidbs_respect_io_connections(const cell<CellLyt>&                  absolute_sidb,
+                                                const std::vector<bdl_wire<CellLyt>>& bdl_wires_in_gates_together,
+                                                bdl_pair<cell<CellLyt>>&              pair) const noexcept
+    {
+        // check if the biggest wire is unique, otherwise the gates are not in connection
+        if (bdl_wires_in_gates_together.front().pairs.size() == bdl_wires_in_gates_together.at(1).pairs.size() ||
+            !is_upper_in_wire(pair.upper, bdl_wires_in_gates_together.front()))
+        {
+            return;
+        }
+
+        if (is_upper_in_wire(absolute_sidb, bdl_wires_in_gates_together.front()))
+        {
+            pair.lower = pair.upper;
+
+            return;
+        }
+
+        if (!is_lower_in_wire(absolute_sidb, bdl_wires_in_gates_together.front()))
+        {
+            return;
+        }
+
+        pair.upper = pair.lower;
+    }
+
+    [[nodiscard]] static std::vector<std::vector<std::vector<bdl_wire<CellLyt>>>>
+    obtain_bdl_wires_for_all_tile_pairs(const GateLyt&                    gate_lyt,
+                                        const std::vector<tile<GateLyt>>& tiles_of_interest) noexcept
+    {
+        std::vector<std::vector<std::vector<bdl_wire<CellLyt>>>>
+            bdl_wires_of_skeleton_with_other_tile_for_all_tiles_of_interest{};
+
+        for (const tile<GateLyt>& current_tile : tiles_of_interest)
+        {
+            std::vector<std::vector<bdl_wire<CellLyt>>> bdl_wires_of_skeleton_current_tile_with_other_tile{};
+
+            gate_lyt.foreach_node(
+                [&](const auto& n)
+                {
+                    if (gate_lyt.is_constant(n))
+                    {
+                        return;
+                    }
+
+                    const tile<GateLyt>& t = gate_lyt.get_tile(n);
+
+                    if (std::find(tiles_of_interest.cbegin(), tiles_of_interest.cend(), t) != tiles_of_interest.cend())
+                    {
+                        return;
+                    }
+
+                    CellLyt designed_gates_together =
+                        apply_gate_library<CellLyt, SkeletonGateLibrary, GateLyt>(gate_lyt, std::set{current_tile, t});
+
+                    std::vector<bdl_wire<CellLyt>> bdl_wires_of_designed_gates_together =
+                        detect_bdl_wires(designed_gates_together);
+
+                    // sort by wire length, first will be biggest
+                    std::sort(bdl_wires_of_designed_gates_together.begin(), bdl_wires_of_designed_gates_together.end(),
+                              [](const bdl_wire<CellLyt>& lhs, const bdl_wire<CellLyt>& rhs)
+                              { return lhs.pairs.size() > rhs.pairs.size(); });
+
+                    bdl_wires_of_skeleton_current_tile_with_other_tile.push_back(
+                        std::move(bdl_wires_of_designed_gates_together));
+                });
+
+            bdl_wires_of_skeleton_with_other_tile_for_all_tiles_of_interest.push_back(
+                std::move(bdl_wires_of_skeleton_current_tile_with_other_tile));
+        }
+
+        return bdl_wires_of_skeleton_with_other_tile_for_all_tiles_of_interest;
+    }
 };
 
 }  // namespace detail

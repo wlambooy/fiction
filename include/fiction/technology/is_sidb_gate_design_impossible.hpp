@@ -65,49 +65,35 @@ template <typename Lyt, typename TT>
 
     assert(output_pairs.empty() == false && "lyt needs output BDL pairs");
 
-    auto bdl_iter = bdl_input_iterator<Lyt>{skeleton_with_defects, params.bdl_iterator_params};
+    auto charge_lyt = charge_distribution_surface<Lyt>{skeleton_with_defects, params.simulation_params};
+    charge_lyt.assign_all_charge_states(sidb_charge_state::NEUTRAL);
+    charge_lyt.update_after_charge_change();
 
-    for (auto i = 0u; i < spec.front().num_bits(); ++i, ++bdl_iter)
+    // checks if parts of the bdl pairs are already neutrally charged due to nearby charged atomic defects.
+    for (const auto& bdl : output_pairs)
     {
-        auto charge_lyt = charge_distribution_surface<Lyt>{skeleton_with_defects, params.simulation_params};
-        charge_lyt.assign_all_charge_states(sidb_charge_state::NEUTRAL);
-        charge_lyt.update_after_charge_change();
+        const int64_t ix_lower = charge_lyt.cell_to_index(bdl.lower);
 
-        skeleton_with_defects.foreach_sidb_defect(
-            [&charge_lyt](const auto& cd)
-            {
-                if (const auto& [defect_pos, defect] = cd; is_charged_defect_type(defect))
-                {
-                    charge_lyt.add_sidb_defect_to_potential_landscape(defect_pos, defect);
-                }
-            });
+        assert(ix_lower >= 0 && "Lower cell of BDL pair is not part of the layout.");
 
-        // checks if parts of the bdl pairs are already neutrally charged due to nearby charged atomic defects.
-        for (const auto& bdl : output_pairs)
+        if (-*charge_lyt.get_local_internal_potential_by_index(static_cast<uint64_t>(ix_lower)) >
+            charge_lyt.get_effective_charge_transition_thresholds(static_cast<uint64_t>(
+                ix_lower))[static_cast<std::size_t>(charge_transition_threshold_bounds::NEUTRAL_LOWER_BOUND)])
         {
-            const int64_t ix_lower = charge_lyt.cell_to_index(bdl.lower);
+            return true;  // the lower part can never be negatively charged. Thus, BDL property is not fulfilled
+                          // anymore
+        }
 
-            assert(ix_lower >= 0 && "Lower cell of BDL pair is not part of the layout.");
+        const int64_t ix_upper = charge_lyt.cell_to_index(bdl.upper);
 
-            if (-*charge_lyt.get_local_internal_potential_by_index(static_cast<uint64_t>(ix_lower)) >
-                charge_lyt.get_effective_charge_transition_thresholds(static_cast<uint64_t>(
-                    ix_lower))[static_cast<std::size_t>(charge_transition_threshold_bounds::NEUTRAL_LOWER_BOUND)])
-            {
-                return true;  // the lower part can never be negatively charged. Thus, BDL property is not fulfilled
-                              // anymore
-            }
+        assert(ix_upper >= 0 && "Upper cell of BDL pair is not part of the layout.");
 
-            const int64_t ix_upper = charge_lyt.cell_to_index(bdl.lower);
-
-            assert(ix_upper >= 0 && "Upper cell of BDL pair is not part of the layout.");
-
-            if (-*charge_lyt.get_local_internal_potential_by_index(static_cast<uint64_t>(ix_upper)) >
-                charge_lyt.get_effective_charge_transition_thresholds(static_cast<uint64_t>(
-                    ix_upper))[static_cast<std::size_t>(charge_transition_threshold_bounds::NEUTRAL_LOWER_BOUND)])
-            {
-                return true;  // the upper part can never be negatively charged. Thus, BDL property is not fulfilled
-                              // anymore
-            }
+        if (-*charge_lyt.get_local_internal_potential_by_index(static_cast<uint64_t>(ix_upper)) >
+            charge_lyt.get_effective_charge_transition_thresholds(static_cast<uint64_t>(
+                ix_upper))[static_cast<std::size_t>(charge_transition_threshold_bounds::NEUTRAL_LOWER_BOUND)])
+        {
+            return true;  // the upper part can never be negatively charged. Thus, BDL property is not fulfilled
+                          // anymore
         }
     }
 

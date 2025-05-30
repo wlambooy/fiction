@@ -27,7 +27,7 @@ namespace fiction
  */
 class sidb_skeleton_bestagon_mini_library
         // : public fcn_gate_library<sidb_technology, 36, 32>  // width and height of a hexagon
-        : public fcn_gate_library<sidb_technology, 34, 30>  // width and height of a hexagon
+        : public fcn_gate_library<sidb_technology, 38, 27>  // width and height of a hexagon
 {
   public:
     using sidb_skeleton_t = sidb_skeleton<sidb_100_cell_clk_lyt, gate_x_size(), gate_y_size()>;
