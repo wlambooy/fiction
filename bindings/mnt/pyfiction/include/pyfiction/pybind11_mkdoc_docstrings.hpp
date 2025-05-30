@@ -1211,6 +1211,8 @@ static const char *__doc_fiction_bdl_wire_selection_ALL = R"doc(Select all BDL w
 
 static const char *__doc_fiction_bdl_wire_selection_INPUT = R"doc(Select only BDL wires that start with input cells.)doc";
 
+static const char *__doc_fiction_bdl_wire_selection_NON_IO = R"doc(Select only BDL wires that end with output cells.)doc";
+
 static const char *__doc_fiction_bdl_wire_selection_OUTPUT = R"doc(Select only BDL wires that end with output cells.)doc";
 
 static const char *__doc_fiction_bdl_wire_update_direction = R"doc(Update the port of the wire based on the current BDL pairs.)doc";
@@ -2243,6 +2245,17 @@ Parameter ``c``:
 Parameter ``n``:
     Cell name to assign to cell position `c`.)doc";
 
+static const char *__doc_fiction_cell_level_layout_assign_cell_tile =
+R"doc(Assigns a cell mode `m` to a cell position `c` in the layout. If `m`
+is the normal cell mode, a potentially stored cell mode is being
+erased.
+
+Parameter ``c``:
+    Cell position to assign cell mode `m` to. todo
+
+Parameter ``m``:
+    Cell mode to assign to cell position `c`.)doc";
+
 static const char *__doc_fiction_cell_level_layout_assign_cell_type =
 R"doc(Assigns a cell type `ct` to a cell position `c` in the layout. If `ct`
 is the empty cell, a potentially stored cell type is being erased. If
@@ -2311,6 +2324,8 @@ static const char *__doc_fiction_cell_level_layout_cell_level_layout_storage_cel
 static const char *__doc_fiction_cell_level_layout_cell_level_layout_storage_cell_mode_map = R"doc()doc";
 
 static const char *__doc_fiction_cell_level_layout_cell_level_layout_storage_cell_name_map = R"doc()doc";
+
+static const char *__doc_fiction_cell_level_layout_cell_level_layout_storage_cell_tile_map = R"doc()doc";
 
 static const char *__doc_fiction_cell_level_layout_cell_level_layout_storage_cell_type_map = R"doc()doc";
 
@@ -2392,6 +2407,16 @@ Parameter ``c``:
 
 Returns:
     Cell name assigned to cell position `c`.)doc";
+
+static const char *__doc_fiction_cell_level_layout_get_cell_tile =
+R"doc(Returns the cell mode assigned to cell position `c`. If no cell mode
+is assigned, the default mode is returned.
+
+Parameter ``c``:
+    Cell position whose assigned cell mode is desired. todo
+
+Returns:
+    Cell mode assigned to cell position `c`.)doc";
 
 static const char *__doc_fiction_cell_level_layout_get_cell_type =
 R"doc(Returns the cell type assigned to cell position `c`.
@@ -5313,13 +5338,11 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl_network = R
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_params = R"doc(Parameters for the on-the-fly circuit design.)doc";
 
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_print_success_rate_histogram = R"doc()doc";
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_print_success_rate_distribution = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_prune_gate_designs_at_global_level = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_prune_gate_designs_by_gate_connections = R"doc()doc";
-
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_prune_gate_designs_by_two_gate_connections = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_select_gate_implementations_by_successful_trial_ratio = R"doc()doc";
 
@@ -9128,6 +9151,8 @@ Returns:
     `true` if any input wire contains a kink (i.e., an unexpected
     charge state), `false` otherwise.)doc";
 
+static const char *__doc_fiction_detail_is_operational_impl_check_existence_of_kinks_in_non_io_wires = R"doc()doc";
+
 static const char *__doc_fiction_detail_is_operational_impl_check_existence_of_kinks_in_output_wires =
 R"doc(This function iterates through the output wires and evaluates their
 charge states against the expected states derived from the truth
@@ -9156,6 +9181,8 @@ Returns:
     which the layout is non-operational. The second entry indicates
     the reason why the layout is non-operational
     (`non_operationality_reason`) for the given input pattern.)doc";
+
+static const char *__doc_fiction_detail_is_operational_impl_determine_truth_value_of_connecting_wire = R"doc()doc";
 
 static const char *__doc_fiction_detail_is_operational_impl_encodes_bit_one =
 R"doc(This function returns `true` if `1` is encoded in the charge state of
@@ -9188,6 +9215,8 @@ Parameter ``port``:
 
 Returns:
     `true` if `0` is encoded, `false` otherwise.)doc";
+
+static const char *__doc_fiction_detail_is_operational_impl_gate_layout = R"doc(SiDB cell-level layout. todo)doc";
 
 static const char *__doc_fiction_detail_is_operational_impl_input_bdl_wires = R"doc(Input BDL wires.)doc";
 
@@ -9324,6 +9353,8 @@ Returns:
     found, `std::nullopt` otherwise.)doc";
 
 static const char *__doc_fiction_detail_is_operational_impl_layout = R"doc(SiDB cell-level layout.)doc";
+
+static const char *__doc_fiction_detail_is_operational_impl_non_io_bdl_wires = R"doc()doc";
 
 static const char *__doc_fiction_detail_is_operational_impl_number_of_input_wires = R"doc(Number of input BDL wires.)doc";
 
@@ -10979,11 +11010,27 @@ static const char *__doc_fiction_detail_search_space_graph_planar = R"doc(Create
 
 static const char *__doc_fiction_detail_skeleton_influence_bounds_impl = R"doc()doc";
 
+static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_bdl_wires_of_skeleton_with_other_tile_for_all_tiles_of_interest = R"doc()doc";
+
 static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_cell_lyt_of_tiles_of_interest = R"doc()doc";
 
 static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_cell_lyt_with_all_skeletons = R"doc()doc";
 
+static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_collect_influence_bounds_for_sidb = R"doc()doc";
+
 static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_gate_lyt = R"doc()doc";
+
+static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_is_contained_in_tile_of_interest = R"doc()doc";
+
+static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_is_lower_in_wire = R"doc()doc";
+
+static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_is_output_perturber_in_tile_of_interest = R"doc()doc";
+
+static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_is_upper_in_wire = R"doc()doc";
+
+static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_make_pair_sidbs_respect_io_connections = R"doc()doc";
+
+static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_obtain_bdl_wires_for_all_tile_pairs = R"doc()doc";
 
 static const char *__doc_fiction_detail_skeleton_influence_bounds_impl_skeleton_influence_bounds_impl = R"doc()doc";
 
@@ -16559,75 +16606,6 @@ Returns:
 
 static const char *__doc_fiction_is_hexagonal_layout = R"doc()doc";
 
-static const char *__doc_fiction_is_kink_induced_non_operational =
-R"doc(This function determines if the layout is only considered non-
-operational because of kinks. This means that the layout would be
-considered as operational, if kinks were accepted.
-
-@note "Kink induced non-operational" refers to the non-operational
-status being exclusively caused by kinks with an otherwise correct
-logic match.
-
-Template parameter ``Lyt``:
-    SiDB cell-level layout type.
-
-Template parameter ``TT``:
-    Type of the truth table.
-
-Parameter ``lyt``:
-    The SiDB cell-level layout to be checked.
-
-Parameter ``spec``:
-    Expected Boolean function of the layout given as a multi-output
-    truth table.
-
-Parameter ``params``:
-    Parameters for the `is_operational` algorithm.
-
-Returns:
-    Bool that indicates whether kinks induce the layout to become non-
-    operational. `true` if the layout is non-operational due to kinks,
-    `false` otherwise.)doc";
-
-static const char *__doc_fiction_is_kink_induced_non_operational_2 =
-R"doc(This function determines if the layout is only considered non-
-operational because of kinks. This means that the layout would be
-considered as operational, if kinks were accepted.
-
-@note "Kink induced non-operational" refers to the non-operational
-status being exclusively caused by kinks with an otherwise correct
-logic match.
-
-Template parameter ``Lyt``:
-    SiDB cell-level layout type.
-
-Template parameter ``TT``:
-    Type of the truth table.
-
-Parameter ``lyt``:
-    The SiDB cell-level layout to be checked.
-
-Parameter ``spec``:
-    Expected Boolean function of the layout given as a multi-output
-    truth table.
-
-Parameter ``params``:
-    Parameters for the `is_operational` algorithm.
-
-Parameter ``input_bdl_wire``:
-    Optional BDL input wires of lyt.
-
-Parameter ``output_bdl_wire``:
-    Optional BDL output wires of lyt.
-
-Parameter ``canvas_lyt``:
-    Optional canvas layout.
-
-Returns:
-    Bool that indicates whether kinks induce the layout to become non-
-    operational. `true` if the layout is non-operational due to kinks,
-    `false` otherwise.)doc";
-
 static const char *__doc_fiction_is_linear_scheme =
 R"doc(Checks whether a given clocking scheme is registered as a cycle-free
 one. These currently are
@@ -16700,7 +16678,7 @@ Parameter ``spec``:
     truth table.
 
 Parameter ``params``:
-    Parameters for the `is_operational` algorithm.
+    Parameters for the `is_operational` algorithm. todo
 
 Returns:
     A datatype containing the operational status of the gate-level
@@ -16741,7 +16719,7 @@ Parameter ``output_bdl_wire``:
     Optional BDL output wires of lyt.
 
 Parameter ``canvas_lyt``:
-    Optional canvas layout.
+    Optional canvas layout. todo
 
 Returns:
     A datatype containing the operational status of the gate-level
@@ -16980,71 +16958,6 @@ Parameter ``dist_fn``:
 Returns:
     The shortest loop-less path in `layout` from `objective.source` to
     `objective.target`.)doc";
-
-static const char *__doc_fiction_kink_induced_non_operational_input_patterns =
-R"doc(This function determines all input combinations for which kinks induce
-the SiDB layout to become non-operational. This means that the layout
-is operational if kinks would be accepted.
-
-@note "Kink induced non-operational" refers to the non-operational
-status being exclusively caused by kinks with an otherwise correct
-logic match.
-
-Template parameter ``Lyt``:
-    SiDB cell-level layout type.
-
-Template parameter ``TT``:
-    Type of the truth table.
-
-Parameter ``lyt``:
-    The SiDB layout.
-
-Parameter ``spec``:
-    Vector of truth table specifications.
-
-Parameter ``params``:
-    Parameters for the `is_operational` algorithm.
-
-Returns:
-    The input combinations where kinks induce the SiDB layout to
-    become non-operational.)doc";
-
-static const char *__doc_fiction_kink_induced_non_operational_input_patterns_2 =
-R"doc(This function determines all input combinations for which kinks induce
-the SiDB layout to become non-operational. This means that the layout
-is operational if kinks would be accepted.
-
-@note "Kink induced non-operational" refers to the non-operational
-status being exclusively caused by kinks with an otherwise correct
-logic match.
-
-Template parameter ``Lyt``:
-    SiDB cell-level layout type.
-
-Template parameter ``TT``:
-    Type of the truth table.
-
-Parameter ``lyt``:
-    The SiDB layout.
-
-Parameter ``spec``:
-    Vector of truth table specifications.
-
-Parameter ``params``:
-    Parameters for the `is_operational` algorithm.
-
-Parameter ``input_bdl_wire``:
-    Optional BDL input wires of lyt.
-
-Parameter ``output_bdl_wire``:
-    Optional BDL output wires of lyt.
-
-Parameter ``canvas_lyt``:
-    Optional canvas layout.
-
-Returns:
-    The input combinations where kinks induce the SiDB layout to
-    become non-operational.)doc";
 
 static const char *__doc_fiction_layout_coordinate_path =
 R"doc(A path in a layout defined as an ordered sequence of coordinates.
@@ -18118,59 +18031,6 @@ static const char *__doc_fiction_operational_domain_value_range_max = R"doc(The 
 static const char *__doc_fiction_operational_domain_value_range_min = R"doc(The minimum value of the dimension sweep.)doc";
 
 static const char *__doc_fiction_operational_domain_value_range_step = R"doc(The step size of the dimension sweep.)doc";
-
-static const char *__doc_fiction_operational_input_patterns =
-R"doc(This function determines the input combinations for which the layout
-is operational.
-
-Template parameter ``Lyt``:
-    SiDB cell-level layout type.
-
-Template parameter ``TT``:
-    Type of the truth table.
-
-Parameter ``lyt``:
-    The SiDB layout.
-
-Parameter ``spec``:
-    Vector of truth table specifications.
-
-Parameter ``params``:
-    Parameters to simulate if an input combination is operational.
-
-Returns:
-    The operational input combinations.)doc";
-
-static const char *__doc_fiction_operational_input_patterns_2 =
-R"doc(This function determines the input combinations for which the layout
-is operational.
-
-Template parameter ``Lyt``:
-    SiDB cell-level layout type.
-
-Template parameter ``TT``:
-    Type of the truth table.
-
-Parameter ``lyt``:
-    The SiDB layout.
-
-Parameter ``spec``:
-    Vector of truth table specifications.
-
-Parameter ``params``:
-    Parameters to simulate if an input combination is operational.
-
-Parameter ``input_bdl_wire``:
-    Optional BDL input wires of lyt.
-
-Parameter ``output_bdl_wire``:
-    Optional BDL output wires of lyt.
-
-Parameter ``canvas_lyt``:
-    Optional canvas layout.
-
-Returns:
-    The count of operational input combinations.)doc";
 
 static const char *__doc_fiction_operational_status = R"doc(Possible operational status of a layout.)doc";
 
