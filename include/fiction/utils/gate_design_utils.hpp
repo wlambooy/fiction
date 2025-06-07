@@ -6,6 +6,7 @@
 #define GATE_DESIGN_UTILS_HPP
 
 #include "fiction/traits.hpp"
+#include "fiction/utils/layout_utils.hpp"
 #include "mockturtle/traits.hpp"
 
 #include <cstdint>
@@ -136,8 +137,9 @@ static void assign_gate(CellLyt& cell_lyt, const typename GateLibrary::fcn_gate&
             // overwrites always make a NORMAL type cell
             if (!technology<CellLyt>::is_empty_cell(cell_lyt.get_cell_type(pos)))
             {
-                // the cell tile is not overwritten for output cells
-                if (!technology<CellLyt>::is_output_cell(cell_lyt.get_cell_type(pos)))
+                // the cell tile is only overwritten for input cells and output perturber cells
+                if (technology<CellLyt>::is_input_cell(cell_lyt.get_cell_type(pos)) ||
+                    technology<CellLyt>::is_output_perturber_cell(cell_lyt.get_cell_type(pos)))
                 {
                     cell_lyt.assign_cell_tile(pos, typename CellLyt::clock_zone{t.x, t.y, t.z});
                 }

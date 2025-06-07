@@ -275,6 +275,11 @@ class write_sqd_layout_impl
                             type_str = fmt::format(siqad::DOT_TYPE, "output");
                             break;
                         }
+                        case (sidb_technology::cell_type::OUTPUT_PERTURBER):
+                        {
+                            type_str = fmt::format(siqad::DOT_TYPE, "output_perturber");
+                            break;
+                        }
                         case (sidb_technology::cell_type::LOGIC):
                         {
                             type_str = fmt::format(siqad::DOT_TYPE, "logic");

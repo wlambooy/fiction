@@ -141,3 +141,71 @@ TEMPLATE_TEST_CASE("Determine the groundstate of a two BDL pair wire with input 
     const auto ground_state = results.groundstates();
     REQUIRE(ground_state.size() == 2);
 }
+
+TEMPLATE_TEST_CASE("get_ordered_weights_under_bounded_energy() with bounded local potentials", "[sidb-simulation-result]", sidb_100_cell_clk_lyt, sidb_cell_clk_lyt)
+{
+    using lyt = TestType;
+    using cds_t = charge_distribution_surface<lyt, local_external_potential_type::BOUNDED>;
+    using result_t = sidb_simulation_result<lyt, local_external_potential_type::BOUNDED>;
+
+    lyt layout{};
+
+    cell<lyt> c0 = {0, 0}, c1 = {2,0}, c2 = {4,0};
+
+    layout.assign_cell_type(c0, lyt::cell_type::NORMAL);
+    layout.assign_cell_type(c1, lyt::cell_type::NORMAL);
+    layout.assign_cell_type(c2, lyt::cell_type::NORMAL);
+
+    const std::unordered_map<cell<lyt>, std::array<double, 2>> potential_1{
+        {c0, {-0.1, 0.1}}, {c1, {-0.1, 0.1}}, {c2, {-0.1, 0.1}}};
+    const std::unordered_map<cell<lyt>, std::array<double, 2>> potential_2{
+        {c0, {-0.2, 0.2}}, {c1, {-0.1, 0.15}}, {c2, {-0.1, 0.1}}};
+    const std::unordered_map<cell<lyt>, std::array<double, 2>> potential_3{
+        {c0, {-0.3, 0.3}}, {c1, {-0.2, 0.2}}, {c2, {-0.1, 0.1}}};
+
+    // Charge distribution 1: lowest uncertainty
+    cds_t cds1{layout};
+    cds1.assign_local_external_potential(potential_1);
+    cds1.assign_charge_state(c0, sidb_charge_state::NEGATIVE);
+    cds1.assign_charge_state(c1, sidb_charge_state::NEUTRAL);
+    cds1.assign_charge_state(c2, sidb_charge_state::NEUTRAL);
+    cds1.update_after_charge_change();
+
+    // Charge distribution 2: medium uncertainty
+    cds_t cds2{layout};
+    cds2.assign_local_external_potential(potential_2);
+    cds2.assign_charge_state(c0, sidb_charge_state::NEGATIVE);
+    cds2.assign_charge_state(c1, sidb_charge_state::NEGATIVE);
+    cds2.assign_charge_state(c2, sidb_charge_state::NEUTRAL);
+    cds2.update_after_charge_change();
+
+    // Charge distribution 3: highest uncertainty
+    cds_t cds3{layout};
+    cds3.assign_local_external_potential(potential_3);
+    cds3.assign_charge_state(c0, sidb_charge_state::NEGATIVE);
+    cds3.assign_charge_state(c1, sidb_charge_state::NEGATIVE);
+    cds3.assign_charge_state(c2, sidb_charge_state::NEGATIVE);
+    cds3.update_after_charge_change();
+
+    result_t result{};
+    result.charge_distributions = {cds3, cds1, cds2};  // shuffled on purpose
+
+    result.reduce_to_groundstates_under_bounded_energy();
+    const auto weights = result.get_ordered_weights_under_bounded_energy();
+
+    REQUIRE(weights.size() == result.charge_distributions.size());
+
+    // Check weight range and normalization
+    for (const auto& w : weights)
+    {
+        CHECK(w >= 0.0);
+        CHECK(w <= 1.0);
+    }
+
+    const double sum = std::accumulate(weights.begin(), weights.end(), 0.0);
+    CHECK_THAT(sum, Catch::Matchers::WithinAbs(1.0, 1e-6));
+
+    // Since cds1 has the smallest energy and least uncertainty, it should get the highest weight
+    CHECK(weights.front() > weights[1]);
+    CHECK(weights[1] > weights.back());
+}

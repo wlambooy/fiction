@@ -9,14 +9,13 @@
 #include <fiction/algorithms/network_transformation/technology_mapping.hpp>
 #include <fiction/algorithms/physical_design/advanced_circuit_design.hpp>
 #include <fiction/algorithms/physical_design/design_sidb_gates.hpp>
-#include <fiction/algorithms/simulation/sidb/compare_by_ground_state_isolation.hpp>
 #include <fiction/algorithms/simulation/sidb/sidb_simulation_engine.hpp>
 #include <fiction/io/print_layout.hpp>
 #include <fiction/io/read_sidb_surface_defects.hpp>
+#include <fiction/io/write_sqd_layout.hpp>
 #include <fiction/layouts/bounding_box.hpp>
 #include <fiction/technology/area.hpp>
 #include <fiction/technology/cell_technologies.hpp>
-#include <fiction/technology/sidb_bounded_local_external_potential_wrapper.hpp>
 #include <fiction/technology/sidb_defect_surface.hpp>
 #include <fiction/technology/sidb_defects.hpp>
 #include <fiction/technology/sidb_on_the_fly_gate_library.hpp>
@@ -41,6 +40,7 @@
 #include <cassert>
 #include <cstdint>
 #include <cstdlib>
+#include <optional>
 #include <string>
 
 // This script conducts defect-aware placement and routing with defect-aware on-the-fly SiDB gate design. Thereby, SiDB
@@ -67,8 +67,6 @@ int main(int argc, char* argv[])  // NOLINT
     using skeleton_gate_lib = fiction::sidb_skeleton_bestagon_library;
 #endif
 
-    lyt_t lyt{};
-
     /// DESIGN GATE PARAMS
 
     fiction::design_sidb_gates_params<lyt_t> design_gate_params{};
@@ -85,7 +83,7 @@ int main(int argc, char* argv[])  // NOLINT
         fiction::cell<lyt_t>>::operational_condition_positive_charges::TOLERATE_POSITIVE_CHARGES;
     design_gate_params.operational_params.op_condition_kinks =
         fiction::is_operational_params<fiction::cell<lyt_t>>::operational_condition_kinks::REJECT_KINKS;
-    design_gate_params.design_mode = fiction::design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::EXHAUSTIVE;
+    design_gate_params.design_mode = fiction::design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::RANDOM;
 
     // design_gate_params.post_design_process = {
     //     std::make_unique<fiction::compare_by_minimum_ground_state_isolation<lyt_t>>(),
@@ -108,7 +106,7 @@ int main(int argc, char* argv[])  // NOLINT
         fiction::design_sidb_gates_params<lyt_t>::termination_condition::OBTAINED_N_SOLUTIONS;
     design_gate_params.maximum_number_of_solutions = 200;
     // design_gate_params.design_mode = fiction::design_sidb_gates_params<
-    //     lyt_t>::design_sidb_gates_mode::EXHAUSTIVE_GATE_DESIGNER;
+    //     lyt_t>::design_sidb_gates_mode::RANDOM_GATE_DESIGNER;
 
     /// COMPLEX DESIGN GATE PARAMS
 
@@ -118,7 +116,7 @@ int main(int argc, char* argv[])  // NOLINT
     design_gate_params_complex_gates.number_of_canvas_sidbs = 4;
     // design_gate_params_complex_gates.number_of_canvas_sidbs = 6;
     design_gate_params_complex_gates.design_mode =
-        fiction::design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::EXHAUSTIVE;
+        fiction::design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::RANDOM;
     design_gate_params_complex_gates.termination_cond =
         fiction::design_sidb_gates_params<lyt_t>::termination_condition::OBTAINED_N_SOLUTIONS;
     design_gate_params_complex_gates.canvas = {{11, 8}, {26, 19}};
@@ -283,7 +281,7 @@ int main(int argc, char* argv[])  // NOLINT
             design_gate_params.number_of_canvas_sidbs               = std::stoull(argv[1]);
             design_gate_params_complex_gates.number_of_canvas_sidbs = std::stoull(argv[2]);
         }
-        else if (argc == 9)
+        else if (argc == 11)
         {
             design_gate_params.number_of_canvas_sidbs                    = std::stoull(argv[1]);
             design_gate_params_complex_gates.number_of_canvas_sidbs      = std::stoull(argv[2]);
@@ -293,6 +291,22 @@ int main(int argc, char* argv[])  // NOLINT
             params.selectivity                                           = std::stod(argv[6]);
             params.num_trials_for_global_scope                           = std::stoull(argv[7]);
             params.selectivity_for_global_scope                          = std::stod(argv[8]);
+            params.quantization_factor                                   = std::stod(argv[9]);
+            params.excited_state_alpha                                   = std::stod(argv[10]);
+        }
+        else if (argc == 12)
+        {
+            design_gate_params.number_of_canvas_sidbs                    = std::stoull(argv[1]);
+            design_gate_params_complex_gates.number_of_canvas_sidbs      = std::stoull(argv[2]);
+            design_gate_params.maximum_number_of_solutions               = std::stoull(argv[3]);
+            design_gate_params_complex_gates.maximum_number_of_solutions = std::stoull(argv[4]);
+            params.num_trials                                            = std::stoull(argv[5]);
+            params.selectivity                                           = std::stod(argv[6]);
+            params.num_trials_for_global_scope                           = std::stoull(argv[7]);
+            params.selectivity_for_global_scope                          = std::stod(argv[8]);
+            params.quantization_factor                                   = std::stod(argv[9]);
+            params.excited_state_alpha                                   = std::stod(argv[10]);
+            params.available_threads                                     = std::stoull(argv[11]);
         }
         else if (argc != 1)
         {
@@ -324,24 +338,30 @@ int main(int argc, char* argv[])  // NOLINT
 
         fiction::advanced_circuit_design_stats<gate_lyt> st{};
 
-        lyt = fiction::advanced_circuit_design<decltype(mapped_network), lyt_t, gate_lyt, gate_lib, skeleton_gate_lib>(
-            mapped_network, lattice_tiling, params, &st);
+        const std::optional<lyt_t>& lyt =
+            fiction::advanced_circuit_design<decltype(mapped_network), lyt_t, gate_lyt, gate_lib, skeleton_gate_lib>(
+                mapped_network, lattice_tiling, params, &st);
+
+        if (!lyt.has_value())
+        {
+            return EXIT_FAILURE;
+        }
 
         params.sidb_on_the_fly_gate_library_parameters.design_gate_params.operational_params.print = true;
 
         std::cout << "\nassessing operational status for each input combination of the generated circuit..."
                   << std::endl;
 
-        if (is_operational(lyt, params.spec,
+        if (is_operational(*lyt, params.spec,
                            params.sidb_on_the_fly_gate_library_parameters.design_gate_params.operational_params)
-                .status == fiction::operational_status::OPERATIONAL)
-        {
-            std::cout << "\n\nCIRCUIT OPERATION VERIFICATION COMPLETED: PASS" << std::endl;
-        }
-        else
+                .status != fiction::operational_status::OPERATIONAL)
         {
             std::cout << "\n\nCIRCUIT OPERATION VERIFICATION COMPLETED: FAILED" << std::endl;
+
+            return EXIT_FAILURE;
         }
+
+        std::cout << "\n\nCIRCUIT OPERATION VERIFICATION COMPLETED: PASS" << std::endl;
 
         // check equivalence
         const auto miter = mockturtle::miter<mockturtle::klut_network>(mapped_network, st.gate_layout.value());
@@ -349,7 +369,10 @@ int main(int argc, char* argv[])  // NOLINT
         assert(eq.has_value());
 
         // determine bounding box and exclude atomic defects
-        const auto bb = fiction::bounding_box_2d<cell_lyt>(static_cast<cell_lyt>(lyt));
+        const auto bb = fiction::bounding_box_2d<cell_lyt>(static_cast<cell_lyt>(*lyt));
+
+        // write a SiQAD simulation file
+        fiction::write_sqd_layout(*lyt, fmt::format("{}/{}.sqd", layouts_folder, benchmark));
 
         // compute area
         fiction::area_stats                            area_stats{};
@@ -360,9 +383,6 @@ int main(int argc, char* argv[])  // NOLINT
                                    *eq);
         sidb_circuits_with_defects.save();
         sidb_circuits_with_defects.table();
-
-        // write a SiQAD simulation file
-        // fiction::write_sqd_layout(result, fmt::format("{}/{}.sqd", layouts_folder, benchmark));
     }
 
     return EXIT_SUCCESS;

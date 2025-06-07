@@ -105,7 +105,7 @@ struct design_sidb_gates_params
      * @note This parameter has no effect unless the gate design is exhaustive. For random gate design, termination
      * always occurs after finding the given amount of solutions.
      */
-    termination_condition termination_cond  = termination_condition::ALL_COMBINATIONS_ENUMERATED;
+    termination_condition termination_cond = termination_condition::ALL_COMBINATIONS_ENUMERATED;
     /**
      * Number of solutions that needs to be obtained before termination.
      *
@@ -172,8 +172,9 @@ struct design_sidb_gates_stats
 namespace detail
 {
 
-template <typename Lyt, typename TT,
-          local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED>
+template <
+    typename Lyt, typename TT, local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED,
+    typename GateLyt = hex_even_row_gate_clk_lyt, typename SkeletonGateLibrary = sidb_skeleton_bestagon_mini_library>
 class design_sidb_gates_impl
 {
   public:
@@ -187,11 +188,18 @@ class design_sidb_gates_impl
      * @param st Statistics for the gate design process.
      */
     design_sidb_gates_impl(const Lyt& skeleton, const std::vector<TT>& spec, const design_sidb_gates_params<Lyt>& ps,
-                           design_sidb_gates_stats& st) :
+                           design_sidb_gates_stats&                                                  st,
+                           const std::optional<sidb_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>>& bdl_circuit,
+                           const std::optional<sidb_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>>& bdl_super_circuit,
+                           const std::optional<is_circuit_operational_params>&                       op_params) :
             skeleton_layout{skeleton},
             truth_table{spec},
             params{set_operational_params_accordingly(ps)},
-            all_sidbs_in_canvas{all_coordinates_in_spanned_area(params.canvas.first, params.canvas.second)},
+            circuit{bdl_circuit},
+            super_circuit{bdl_super_circuit},
+            circuit_operational_params{op_params},
+            all_sidbs_in_canvas{all_coordinates_in_spanned_area(convert_canvas_coordinate(params.canvas.first),
+                                                                convert_canvas_coordinate(params.canvas.second))},
             stats{st},
             input_bdl_wires{detect_bdl_wires(skeleton_layout,
                                              params.operational_params.input_bdl_iterator_params.bdl_wire_params,
@@ -277,8 +285,10 @@ class design_sidb_gates_impl
 
         // Allow positive charges here, as a layout that displays positive charges without inputs may not exhibit them
         // once inputs are applied.
+
         const generate_random_sidb_layout_params<cell<Lyt>> parameter{
-            params.canvas, params.number_of_canvas_sidbs,
+            {convert_canvas_coordinate(params.canvas.first), convert_canvas_coordinate(params.canvas.second)},
+            params.number_of_canvas_sidbs,
             generate_random_sidb_layout_params<cell<Lyt>>::positive_charges::ALLOWED};
 
         std::vector<std::thread> threads{};
@@ -326,7 +336,7 @@ class design_sidb_gates_impl
                 {
                     while (num_solutions_found < max_number_of_solutions)
                     {
-                        auto result_lyt = generate_random_sidb_layout<Lyt>(parameter, skeleton_layout);
+                        auto result_lyt = generate_random_sidb_layout<Lyt>(parameter, circuit->skeleton);
 
                         if (!result_lyt.has_value())
                         {
@@ -346,10 +356,6 @@ class design_sidb_gates_impl
                                 });
                         }
 
-                        if (const operational_assessment<Lyt, ExtPotType>& assessment_results =
-                                is_operational<Lyt, TT, ExtPotType>(result_lyt.value(), truth_table,
-                                                                    params.operational_params, input_bdl_wires, output_bdl_wires);
-                            assessment_results.status == operational_status::OPERATIONAL)
                         {
                             const std::lock_guard lock{mutex_to_protect_designed_gate_layouts};
 
@@ -357,31 +363,55 @@ class design_sidb_gates_impl
                             {
                                 continue;
                             }
+                        }
 
-                            if constexpr (has_get_sidb_defect_v<Lyt>)
+                        if (!circuit.has_value())
+                        {
+                            if (is_operational<Lyt, TT, ExtPotType>(result_lyt.value(), truth_table,
+                                                                    params.operational_params, input_bdl_wires,
+                                                                    output_bdl_wires)
+                                    .status != operational_status::OPERATIONAL)
                             {
-                                skeleton_layout.foreach_sidb_defect(
-                                    [&result_lyt](const auto& cd)
-                                    {
-                                        if (is_neutrally_charged_defect(cd.second))
-                                        {
-                                            result_lyt.value().assign_sidb_defect(cd.first, cd.second);
-                                        }
-                                    });
+                                continue;
                             }
+                        }
+                        else
+                        {
+                            if (is_circuit_operational<Lyt, GateLyt, ExtPotType, SkeletonGateLibrary>(
+                                    sidb_cell_level_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>{result_lyt.value(),
+                                                                                                   *circuit},
+                                    *circuit_operational_params, std::make_optional(std::cref(*super_circuit)))
+                                    .status != operational_status::OPERATIONAL)
+                            {
+                                continue;
+                            }
+                        }
 
-                            randomly_designed_gate_layouts.push_back(std::move(result_lyt.value()));
+                        const std::lock_guard lock{mutex_to_protect_designed_gate_layouts};
 
-                            ++num_solutions_found;
+                        if constexpr (has_get_sidb_defect_v<Lyt>)
+                        {
+                            skeleton_layout.foreach_sidb_defect(
+                                [&result_lyt](const auto& cd)
+                                {
+                                    if (is_neutrally_charged_defect(cd.second))
+                                    {
+                                        result_lyt.value().assign_sidb_defect(cd.first, cd.second);
+                                    }
+                                });
+                        }
+
+                        randomly_designed_gate_layouts.push_back(std::move(result_lyt.value()));
+
+                        ++num_solutions_found;
 
 #if (PROGRESS_BARS)
-                            if (num_solutions_found < params.maximum_number_of_solutions)
-                            {
-                                // update the progress bar
-                                bar(num_solutions_found);
-                            }
-#endif
+                        if (num_solutions_found < params.maximum_number_of_solutions)
+                        {
+                            // update the progress bar
+                            bar(num_solutions_found);
                         }
+#endif
                     }
                 });
         }
@@ -415,6 +445,10 @@ class design_sidb_gates_impl
      * Parameters for the *SiDB Gate Designer*.
      */
     const design_sidb_gates_params<Lyt> params;
+
+    const std::optional<sidb_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>>& circuit{};
+    const std::optional<sidb_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>>& super_circuit{};
+    const std::optional<is_circuit_operational_params>&                       circuit_operational_params{};
     /**
      * All cells within the canvas.
      */
@@ -439,6 +473,7 @@ class design_sidb_gates_impl
      * Number of output BDL wires.
      */
     const std::size_t number_of_output_wires{};
+
     /**
      * Number of discarded layouts at first pruning.
      */
@@ -797,6 +832,17 @@ class design_sidb_gates_impl
 
         return lyt;
     }
+    [[nodiscard]] cell<Lyt> convert_canvas_coordinate(const cell<Lyt>& c) const noexcept
+    {
+        if (!circuit.has_value())
+        {
+            return c;
+        }
+
+        return relative_to_absolute_cell_position<SkeletonGateLibrary::gate_x_size(),
+                                                  SkeletonGateLibrary::gate_y_size(), GateLyt, Lyt>(
+            circuit->gate_layout, *circuit->gate_tile, c);
+    };
     /**
      * This function makes sure that underlying parameters for `is_operational` are set according to the given
      * parameters for `design_sidb_gates`.
@@ -857,11 +903,15 @@ class design_sidb_gates_impl
  * @param stats Statistics.
  * @return A vector of designed SiDB gate layouts.
  */
-template <typename Lyt, typename TT,
-          local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED>
-[[nodiscard]] std::vector<Lyt> design_sidb_gates(const Lyt& skeleton, const std::vector<TT>& spec,
-                                                 const design_sidb_gates_params<Lyt>& params = {},
-                                                 design_sidb_gates_stats*             stats  = nullptr) noexcept
+template <
+    typename Lyt, typename TT, local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED,
+    typename GateLyt = hex_even_row_gate_clk_lyt, typename SkeletonGateLibrary = sidb_skeleton_bestagon_mini_library>
+[[nodiscard]] std::vector<Lyt> design_sidb_gates(
+    const Lyt& skeleton, const std::vector<TT>& spec, const design_sidb_gates_params<Lyt>& params = {},
+    design_sidb_gates_stats*                                                  stats         = nullptr,
+    const std::optional<sidb_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>>& circuit       = std::nullopt,
+    const std::optional<sidb_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>>& super_circuit = std::nullopt,
+    const std::optional<is_circuit_operational_params>&                       op_params     = std::nullopt) noexcept
 {
     static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout");
     static_assert(has_sidb_technology_v<Lyt>, "Lyt is not an SiDB layout");
@@ -876,8 +926,9 @@ template <typename Lyt, typename TT,
     assert(std::adjacent_find(spec.begin(), spec.end(),
                               [](const auto& a, const auto& b) { return a.num_vars() != b.num_vars(); }) == spec.end());
 
-    design_sidb_gates_stats                             st{};
-    detail::design_sidb_gates_impl<Lyt, TT, ExtPotType> p{skeleton, spec, params, st};
+    design_sidb_gates_stats                                                           st{};
+    detail::design_sidb_gates_impl<Lyt, TT, ExtPotType, GateLyt, SkeletonGateLibrary> p{
+        skeleton, spec, params, st, circuit, super_circuit, op_params};
 
     std::vector<Lyt> result{};
 

@@ -7,7 +7,6 @@
 
 #include "fiction/algorithms/physical_design/design_sidb_gates.hpp"
 #include "fiction/algorithms/simulation/sidb/is_operational.hpp"
-#include "fiction/algorithms/simulation/sidb/skeleton_influence_bounds.hpp"
 #include "fiction/layouts/bounding_box.hpp"
 #include "fiction/technology/cell_ports.hpp"
 #include "fiction/technology/cell_technologies.hpp"
@@ -67,9 +66,13 @@ class sidb_on_the_fly_mini_gate_library
      * @return Bestagon gate representation of `t` including mirroring.
      */
     template <typename GateLyt, typename CellLyt, typename Params,
-              local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED>
-    static designed_fcn_gates set_up_gates(const GateLyt& lyt, const tile<GateLyt>& t, Params& params,
-                                           const std::optional<CellLyt>& defect_surface = std::nullopt)
+              local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED,
+              typename SkeletonGateLibrary             = sidb_skeleton_bestagon_mini_library>
+    static designed_fcn_gates set_up_gates(
+        const GateLyt& lyt, const tile<GateLyt>& t, Params& params,
+        const std::optional<CellLyt>&                                                 defect_surface = std::nullopt,
+        const std::optional<sidb_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>>& super_circuit  = std::nullopt,
+        const std::optional<is_circuit_operational_params>&                           op_params      = std::nullopt)
     {
         static_assert(is_gate_level_layout_v<GateLyt>, "GateLyt must be a gate-level layout");
         static_assert(has_cube_coord_v<CellLyt>, "CellLyt must be based on cube coordinates");
@@ -88,21 +91,6 @@ class sidb_on_the_fly_mini_gate_library
         // center cell of the current tile
         auto absolute_cell = relative_to_absolute_cell_position<gate_x_size(), gate_y_size(), GateLyt, CellLyt>(
             lyt, t, cell<CellLyt>{0, 0});
-
-        if (params.use_skeleton_influence_bounds)
-        {
-            std::cout << "starting to determine skeleton influence bounds" << std::endl;
-            params.design_gate_params.operational_params.cc_map =
-                skeleton_influence_bounds<CellLyt, sidb_skeleton_bestagon_mini_library, GateLyt>(
-                    lyt, {t},
-                    skeleton_influence_bounds_params<cell<CellLyt>>{
-                        params.design_gate_params.operational_params.simulation_parameters,
-                        // {{0, 0}, {gate_x_size(), gate_y_size()}},
-                        params.design_gate_params.canvas, params.design_gate_params_complex_gates.canvas,
-                        params.design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params});
-            std::cout << "done determining skeleton influence bounds; size = "
-                      << params.design_gate_params.operational_params.cc_map.value().size() << std::endl;
-        }
 
         const auto cell_list = sidb_skeleton_bestagon_mini_library{}.set_up_gate(lyt, t);
         if (cell_list == EMPTY_GATE)
@@ -128,12 +116,18 @@ class sidb_on_the_fly_mini_gate_library
                                     defect_surface.value(), skeleton, params.influence_radius_charged_defects,
                                     center_cell, absolute_cell);
 
-                                return design_gates<CellLyt, tt, CellLyt, GateLyt, ExtPotType>(
-                                    skeleton_with_defects, create_fan_out_tt(), params, p, t);
+                                return design_gates<CellLyt, tt, CellLyt, GateLyt, ExtPotType, SkeletonGateLibrary>(
+                                    skeleton_with_defects, create_fan_out_tt(), params, p, t,
+                                    make_bdl_circuit_for_tile<CellLyt, GateLyt, SkeletonGateLibrary>(
+                                        lyt, t, op_params->input_bdl_iterator_params.bdl_wire_params),
+                                    super_circuit, op_params);
                             }
                         }
-                        return design_gates<CellLyt, tt, CellLyt, GateLyt, ExtPotType>(skeleton, create_fan_out_tt(),
-                                                                                       params, p, t);
+                        return design_gates<CellLyt, tt, CellLyt, GateLyt, ExtPotType, SkeletonGateLibrary>(
+                            skeleton, create_fan_out_tt(), params, p, t,
+                            make_bdl_circuit_for_tile<CellLyt, GateLyt, SkeletonGateLibrary>(
+                                lyt, t, op_params->input_bdl_iterator_params.bdl_wire_params),
+                            super_circuit, op_params);
                     }
                 }
             }
@@ -165,14 +159,19 @@ class sidb_on_the_fly_mini_gate_library
                                         defect_surface.value(), skeleton, params.influence_radius_charged_defects,
                                         center_cell, absolute_cell);
 
-                                    return design_gates<CellLyt, tt, CellLyt, GateLyt,
-                                                        ExtPotType>(skeleton_with_defects, spec, complex_gate_param, p,
-                                                                    t);
+                                    return design_gates<CellLyt, tt, CellLyt, GateLyt, ExtPotType, SkeletonGateLibrary>(
+                                        skeleton_with_defects, spec, complex_gate_param, p, t,
+                                        make_bdl_circuit_for_tile<CellLyt, GateLyt, SkeletonGateLibrary>(
+                                            lyt, t, op_params->input_bdl_iterator_params.bdl_wire_params),
+                                        super_circuit, op_params);
                                 }
                             }
 
-                            return design_gates<CellLyt, tt, CellLyt, GateLyt, ExtPotType>(skeleton, spec,
-                                                                                           complex_gate_param, p, t);
+                            return design_gates<CellLyt, tt, CellLyt, GateLyt, ExtPotType, SkeletonGateLibrary>(
+                                skeleton, spec, complex_gate_param, p, t,
+                                make_bdl_circuit_for_tile<CellLyt, GateLyt, SkeletonGateLibrary>(
+                                    lyt, t, op_params->input_bdl_iterator_params.bdl_wire_params),
+                                super_circuit, op_params);
                         }
 
                         if constexpr (is_sidb_defect_surface_v<CellLyt>)
@@ -182,13 +181,19 @@ class sidb_on_the_fly_mini_gate_library
                                 const auto skeleton_with_defects = add_defect_to_skeleton(
                                     defect_surface.value(), skeleton, params.influence_radius_charged_defects,
                                     center_cell, absolute_cell);
-                                return design_gates<CellLyt, tt, CellLyt, GateLyt, ExtPotType>(
-                                    skeleton_with_defects, std::vector<tt>{f}, params, p, t);
+                                return design_gates<CellLyt, tt, CellLyt, GateLyt, ExtPotType, SkeletonGateLibrary>(
+                                    skeleton_with_defects, std::vector<tt>{f}, params, p, t,
+                                    make_bdl_circuit_for_tile<CellLyt, GateLyt, SkeletonGateLibrary>(
+                                        lyt, t, op_params->input_bdl_iterator_params.bdl_wire_params),
+                                    super_circuit, op_params);
                             }
                         }
 
-                        return design_gates<CellLyt, tt, CellLyt, GateLyt, ExtPotType>(skeleton, std::vector<tt>{f},
-                                                                                       params, p, t);
+                        return design_gates<CellLyt, tt, CellLyt, GateLyt, ExtPotType, SkeletonGateLibrary>(
+                            skeleton, std::vector<tt>{f}, params, p, t,
+                            make_bdl_circuit_for_tile<CellLyt, GateLyt, SkeletonGateLibrary>(
+                                lyt, t, op_params->input_bdl_iterator_params.bdl_wire_params),
+                            super_circuit, op_params);
                     }
                     return designed_fcn_gates{{EMPTY_GATE}, {}};
                 }
@@ -202,12 +207,19 @@ class sidb_on_the_fly_mini_gate_library
                         add_defect_to_skeleton(defect_surface.value(), skeleton,
                                                params.influence_radius_charged_defects, center_cell, absolute_cell);
 
-                    return design_gates<CellLyt, tt, CellLyt, GateLyt, ExtPotType>(
-                        skeleton_with_defects, std::vector<tt>{f}, params, p, t);
+                    return design_gates<CellLyt, tt, CellLyt, GateLyt, ExtPotType, SkeletonGateLibrary>(
+                        skeleton_with_defects, std::vector<tt>{f}, params, p, t,
+                        make_bdl_circuit_for_tile<CellLyt, GateLyt, SkeletonGateLibrary>(
+                            lyt, t, op_params->input_bdl_iterator_params.bdl_wire_params),
+                        super_circuit, op_params);
                 }
             }
 
-            return design_gates<CellLyt, tt, CellLyt, GateLyt, ExtPotType>(skeleton, std::vector<tt>{f}, params, p, t);
+            return design_gates<CellLyt, tt, CellLyt, GateLyt, ExtPotType, SkeletonGateLibrary>(
+                skeleton, std::vector<tt>{f}, params, p, t,
+                make_bdl_circuit_for_tile<CellLyt, GateLyt, SkeletonGateLibrary>(
+                    lyt, t, op_params->input_bdl_iterator_params.bdl_wire_params),
+                super_circuit, op_params);
         }
 
         catch (const std::out_of_range&)
@@ -219,6 +231,78 @@ class sidb_on_the_fly_mini_gate_library
     }
 
   private:
+    template <typename CellLyt, typename GateLyt, typename SkeletonGateLibrary>
+    [[nodiscard]] static sidb_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>
+    make_bdl_circuit_for_tile(const GateLyt& gate_lyt, const tile<GateLyt>& t,
+                              const detect_bdl_wires_params& bdl_wire_params) noexcept
+    {
+        GateLyt gate_lyt_window{{gate_lyt.x(), gate_lyt.y(), gate_lyt.z()}, row_clocking<GateLyt>()};
+
+        const mockturtle::node<GateLyt>& n = gate_lyt.get_node(t);
+
+        std::vector<mockturtle::signal<GateLyt>> inputs_to_t{};
+
+        for (const auto& in_t : gate_lyt.incoming_data_flow(t))
+        {
+            assert(gate_lyt_window.is_empty_tile(in_t) && "tile on which PI is to be created is already populated");
+            // std::cout << "created pi at " << in_t.x << " " << in_t.y << " " << in_t.z << std::endl;
+            gate_lyt_window.create_pi("", in_t);
+            // std::cout << "num pis" << gate_lyt_window.num_pis() << std::endl;
+
+            inputs_to_t.push_back(static_cast<mockturtle::signal<GateLyt>>(in_t));
+        }
+
+        // std::cout << "created node at " << t.x << " " << t.y << " " << t.z << std::endl;
+        assert(gate_lyt_window.is_empty_tile(t) && "tile on which node is to be created is already populated");
+        gate_lyt_window.create_node(inputs_to_t, gate_lyt.node_function(n), t);
+
+        for (const auto& out_t : gate_lyt.outgoing_data_flow(t))
+        {
+            assert(gate_lyt_window.is_empty_tile(out_t) && "tile on which PO is to be created is already populated");
+
+            // std::cout << "created po at " << out_t.x << " " << out_t.y << " " << out_t.z << std::endl;
+            gate_lyt_window.create_po(static_cast<mockturtle::signal<GateLyt>>(t), "", out_t);
+        }
+
+        if (gate_lyt.is_buf(n))
+        {
+            if (const auto above_t = gate_lyt.above(t); t != above_t && gate_lyt.is_wire_tile(above_t))
+            {
+                // upper_t hosts a crossing or double wire
+
+                std::vector<mockturtle::signal<GateLyt>> inputs_to_above_t{};
+
+                for (const auto& in_t : gate_lyt.incoming_data_flow(above_t))
+                {
+                    assert(gate_lyt_window.is_empty_tile(in_t) &&
+                           "tile on which PI is to be created is already populated");
+                    // std::cout << "created pi at " << in_t.x << " " << in_t.y << " " << in_t.z << std::endl;
+
+                    gate_lyt_window.create_pi("", in_t);
+                    // std::cout << "num pis" << gate_lyt_window.num_pis() << std::endl;
+
+                    inputs_to_above_t.push_back(static_cast<mockturtle::signal<GateLyt>>(in_t));
+                }
+
+                assert(gate_lyt_window.is_empty_tile(above_t) &&
+                       "tile on which node is to be created is already populated");
+                // std::cout << "created node at " << above_t.x << " " << above_t.y << " " << above_t.z << std::endl;
+                gate_lyt_window.create_node(inputs_to_above_t, gate_lyt.node_function(gate_lyt.get_node(above_t)),
+                                            above_t);
+
+                for (const auto& out_t : gate_lyt.outgoing_data_flow(above_t))
+                {
+                    assert(gate_lyt_window.is_empty_tile(out_t) &&
+                           "tile on which PO is to be created is already populated");
+                    // std::cout << "created po at " << out_t.x << " " << out_t.y << " " << out_t.z << std::endl;
+                    gate_lyt_window.create_po(static_cast<mockturtle::signal<GateLyt>>(above_t), "", out_t);
+                }
+            }
+        }
+
+        return sidb_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>{gate_lyt_window, bdl_wire_params,
+                                                                       std::make_optional(t)};
+    }
     /**
      * Generates a cell-level layout as a 2D array of characters based on the provided cell layout information.
      *
@@ -226,13 +310,16 @@ class sidb_on_the_fly_mini_gate_library
      * @param lyt Cell-level layout
      * @return A 2D array of characters representing the cell-level layout.
      */
-    template <typename Lyt>
+    template <typename Lyt, typename GateLyt>
     [[nodiscard]] static std::array<std::array<char, gate_x_size()>, gate_y_size()>
-    cell_level_layout_to_list(const Lyt& lyt, const bool omit_input_cells = true) noexcept
+    cell_level_layout_to_list(const Lyt& lyt, const GateLyt& gate_lyt, const tile<GateLyt>& t,
+                              const bool omit_input_cells = true) noexcept
     {
         std::array<std::array<char, gate_x_size()>, gate_y_size()> result{};
-        const auto                                                 all_coordinates_in_the_spanned_area =
-            all_coordinates_in_spanned_area({0, 0, 0}, cell<Lyt>{gate_x_size() - 1, gate_y_size() - 1});
+        const auto all_coordinates_in_the_spanned_area = all_coordinates_in_spanned_area(
+            relative_to_absolute_cell_position<gate_x_size(), gate_y_size(), GateLyt, Lyt>(gate_lyt, t, {0, 0, 0}),
+            relative_to_absolute_cell_position<gate_x_size(), gate_y_size(), GateLyt, Lyt>(
+                gate_lyt, t, cell<Lyt>{gate_x_size() - 1, gate_y_size() - 1}));
 
         uint64_t cell_index = 0;
 
@@ -305,23 +392,28 @@ class sidb_on_the_fly_mini_gate_library
      * @return An `fcn_gate` object.
      */
     template <typename LytSkeleton, typename TT, typename CellLyt, typename GateLyt,
-              local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED>
-    [[nodiscard]] static designed_fcn_gates design_gates(const LytSkeleton& skeleton, const std::vector<TT>& spec,
-                                                         const sidb_on_the_fly_gate_library_params<CellLyt>& parameters,
-                                                         const port_list<port_direction>& p, const tile<GateLyt>& tile)
+              local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED,
+              typename SkeletonGateLibrary             = sidb_on_the_fly_mini_gate_library>
+    [[nodiscard]] static designed_fcn_gates
+    design_gates(const LytSkeleton& skeleton, const std::vector<TT>& spec,
+                 const sidb_on_the_fly_gate_library_params<CellLyt>& parameters, const port_list<port_direction>& p,
+                 const tile<GateLyt>& tile, sidb_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary> circuit,
+                 const std::optional<sidb_bdl_circuit<LytSkeleton, GateLyt, SkeletonGateLibrary>>& super_circuit,
+                 const std::optional<is_circuit_operational_params>&                               op_params)
     {
         static_assert(is_cell_level_layout_v<CellLyt>, "CellLyt is not a cell-level layout");
         static_assert(has_sidb_technology_v<CellLyt>, "CellLyt is not an SiDB layout");
         static_assert(has_cube_coord_v<CellLyt>, "CellLyt is not based on cube coordinates");
 
-        const auto create_fcn_gates = [&spec](const auto& found_gate_layouts)
+        const auto create_fcn_gates = [&](const auto& found_gate_layouts)
         {
             std::vector<fcn_gate> gates{};
             gates.reserve(found_gate_layouts.size());
 
             for (const auto& gate : found_gate_layouts)
             {
-                gates.emplace_back(cell_list_to_gate<char>(cell_level_layout_to_list(std::move(gate), false)));
+                gates.emplace_back(cell_list_to_gate<char>(
+                    cell_level_layout_to_list(std::move(gate), circuit.gate_layout, tile, false)));
             }
 
             return designed_fcn_gates{gates, spec};
@@ -343,7 +435,9 @@ class sidb_on_the_fly_mini_gate_library
             }
 
             const auto found_gate_layouts =
-                design_sidb_gates<LytSkeleton, TT, ExtPotType>(skeleton, spec, parameters.design_gate_params);
+                design_sidb_gates<LytSkeleton, TT, ExtPotType, GateLyt, SkeletonGateLibrary>(
+                    skeleton, spec, parameters.design_gate_params, nullptr, std::make_optional(std::move(circuit)),
+                    super_circuit, op_params);
 
             std::cout << "number of gate layouts found: " << found_gate_layouts.size() << std::endl;
 
@@ -367,8 +461,9 @@ class sidb_on_the_fly_mini_gate_library
 
         std::cout << "starting gate design for tile " << tile << std::endl;
 
-        const auto found_gate_layouts =
-            design_sidb_gates<LytSkeleton, TT, ExtPotType>(skeleton, spec, parameters.design_gate_params);
+        const auto found_gate_layouts = design_sidb_gates<LytSkeleton, TT, ExtPotType, GateLyt, SkeletonGateLibrary>(
+            skeleton, spec, parameters.design_gate_params, nullptr, std::make_optional(std::move(circuit)),
+            super_circuit, op_params);
 
         std::cout << "number of gate layouts found: " << found_gate_layouts.size() << std::endl;
 

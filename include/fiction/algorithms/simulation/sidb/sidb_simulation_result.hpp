@@ -113,67 +113,6 @@ struct sidb_simulation_result
         return groundstate_charge_distributions;
     }
 
-    /**
-     * This function computes the ground state of the charge distributions.
-     *
-     * @note If degenerate states exist in the simulation result, this function will return multiple ground states that
-     * all possess the same system energy. todo
-     *
-     * @return A vector of charge distributions with the minimal energy.
-     */
-    // [[nodiscard]] std::vector<charge_distribution_surface<Lyt, ExtPotType>> groundstates_under_bounded_energy()
-    // noexcept
-    // {
-    //     static_assert(ExtPotType == local_external_potential_type::BOUNDED, "ExtPotType needs to be BOUNDED.");
-    //
-    //     std::vector<charge_distribution_surface<Lyt, ExtPotType>> groundstate_charge_distributions{};
-    //
-    //     // NB: degenerate states are not regarded here
-    //
-    //     std::set<uint64_t> ground_state_charge_indices{};
-    //
-    //     bool fixed_point = false;
-    //
-    //     double ground_state_energy_ub = std::numeric_limits<double>::infinity();
-    //
-    //     while (!fixed_point)
-    //     {
-    //         fixed_point = true;
-    //
-    //         std::pair<double, std::optional<uint64_t>> min_energy = {ground_state_energy_ub, std::nullopt};
-    //
-    //         for (uint64_t cds_ix = 0; cds_ix < charge_distributions.size(); ++cds_ix)
-    //         {
-    //
-    //             if (const auto& cds = charge_distributions[cds_ix];
-    //                 cds.get_electrostatic_potential_energy()[0] - min_energy.first < constants::ERROR_MARGIN)
-    //             {
-    //                 min_energy = {cds.get_electrostatic_potential_energy()[0], cds_ix};
-    //             }
-    //         }
-    //
-    //         if (!min_energy.second.has_value())
-    //         {
-    //             continue;  // fixed point reached
-    //         }
-    //
-    //         fixed_point = false;
-    //
-    //         if (const double ground_state_energy_ub_candidate =
-    //                 charge_distributions[*min_energy.second].get_electrostatic_potential_energy()[1];
-    //             !std::isinf(ground_state_energy_ub) && ground_state_energy_ub < ground_state_energy_ub_candidate)
-    //         {
-    //             ground_state_energy_ub = ground_state_energy_ub_candidate;
-    //         }
-    //
-    //         // move swap pop
-    //         std::swap(charge_distributions.at(*min_energy.second), charge_distributions.back());
-    //         groundstate_charge_distributions.push_back(std::move(charge_distributions.back()));
-    //         charge_distributions.pop_back();  // erasing...
-    //     }
-    //
-    //     return groundstate_charge_distributions;
-    // }
     void reduce_to_groundstates_under_bounded_energy() noexcept
     {
         static_assert(ExtPotType == local_external_potential_type::BOUNDED, "ExtPotType needs to be BOUNDED.");
@@ -209,6 +148,113 @@ struct sidb_simulation_result
             max_energy = std::max(max_energy, energies[1]);
         }
     }
+
+    std::vector<double> get_ordered_weights_under_bounded_energy(const double alpha = 1.0) noexcept
+    {
+        static_assert(ExtPotType == local_external_potential_type::BOUNDED, "ExtPotType needs to be BOUNDED.");
+
+        if (charge_distributions.empty())
+        {
+            return {};
+        }
+
+        double min_E_low  = charge_distributions.front().get_electrostatic_potential_energy()[0];
+        double min_E_high = charge_distributions.front().get_electrostatic_potential_energy()[1];
+        double max_E_high = min_E_high;
+
+        // Determine min and max high energies
+        for (const auto& cds : charge_distributions)
+        {
+            const auto energies = cds.get_electrostatic_potential_energy();
+            min_E_low           = std::min(min_E_low, energies[0]);
+            min_E_high          = std::min(min_E_high, energies[1]);
+            max_E_high          = std::max(max_E_high, energies[1]);
+        }
+
+        constexpr double    epsilon = 1e-12;
+        std::vector<double> weights;
+
+        for (const auto& cds : charge_distributions)
+        {
+            const auto energies = cds.get_electrostatic_potential_energy();
+
+            const double decay     = std::exp(-alpha * (energies[0] - min_E_low));
+            const double certainty = 1.0 - (max_E_high - energies[1]) / (max_E_high - min_E_high + epsilon);
+
+            weights.push_back(decay * certainty);
+        }
+
+        // Normalize weights
+        const double total_weight = std::accumulate(weights.begin(), weights.end(), 0.0);
+        if (total_weight > epsilon)
+        {
+            for (auto& w : weights)
+            {
+                w /= total_weight;
+            }
+        }
+
+        return weights;
+    }
+
+    // std::vector<double> get_ordered_weights_under_bounded_energy() noexcept
+    // {
+    //     static_assert(ExtPotType == local_external_potential_type::BOUNDED, "ExtPotType needs to be BOUNDED.");
+    //
+    //     if (charge_distributions.empty())
+    //     {
+    //         return {};
+    //     }
+    //
+    //     // // Ensure sorting order matches reduce_to_groundstates_under_bounded_energy
+    //     // std::sort(charge_distributions.begin(), charge_distributions.end(),
+    //     //           [](const auto& a, const auto& b)
+    //     //           {
+    //     //               const auto e1 = a.get_electrostatic_potential_energy();
+    //     //               const auto e2 = b.get_electrostatic_potential_energy();
+    //     //
+    //     //               if (std::abs(e1[0] - e2[0]) < constants::ERROR_MARGIN)
+    //     //               {
+    //     //                   return e1[1] > e2[1];
+    //     //               }
+    //     //
+    //     //               return e1[0] < e2[0];
+    //     //           });
+    //
+    //     const std::size_t   n = charge_distributions.size();
+    //     std::vector<double> raw_weights(n, 0.0);
+    //
+    //     const auto   base_energy = charge_distributions.front().get_electrostatic_potential_energy();
+    //     const double lower_bound = base_energy[0];
+    //     const double upper_bound = base_energy[1];
+    //
+    //     const double bound_width = std::max(upper_bound - lower_bound, constants::ERROR_MARGIN);  // avoid div by 0
+    //
+    //     for (std::size_t i = 0; i < n; ++i)
+    //     {
+    //         const auto energy = charge_distributions[i].get_electrostatic_potential_energy();
+    //
+    //         // Distance from lower bound, normalized by bound width
+    //         const double relative_energy_distance = (energy[0] - lower_bound) / bound_width;
+    //
+    //         // Weight: inverse exponential based on distance to lower bound (more energy = less weight)
+    //         // Modified by number of configurations: more configurations flatten the curve
+    //         raw_weights[i] = std::exp(-relative_energy_distance * static_cast<double>(n));
+    //     }
+    //
+    //     // Normalize weights to sum to 1
+    //     const double weight_sum = std::accumulate(raw_weights.begin(), raw_weights.end(), 0.0);
+    //     // std::cout <<"\nweights:" << weight_sum << std::endl;
+    //     if (weight_sum > 0.0)
+    //     {
+    //         for (auto& w : raw_weights)
+    //         {
+    //             w /= weight_sum;
+    //         }
+    //     }
+    //
+    //     return raw_weights;
+    // }
 };
 
 }  // namespace fiction
