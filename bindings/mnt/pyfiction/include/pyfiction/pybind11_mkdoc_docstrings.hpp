@@ -188,11 +188,17 @@ defective surface.
 Template parameter ``CellLyt``:
     SiDB cell-level layout type.)doc";
 
+static const char *__doc_fiction_advanced_circuit_design_params_available_threads = R"doc()doc";
+
 static const char *__doc_fiction_advanced_circuit_design_params_exact_design_parameters = R"doc(Parameters for the *exact* placement and routing algorithm.)doc";
+
+static const char *__doc_fiction_advanced_circuit_design_params_excited_state_alpha = R"doc()doc";
 
 static const char *__doc_fiction_advanced_circuit_design_params_num_trials = R"doc()doc";
 
 static const char *__doc_fiction_advanced_circuit_design_params_num_trials_for_global_scope = R"doc()doc";
+
+static const char *__doc_fiction_advanced_circuit_design_params_quantization_factor = R"doc()doc";
 
 static const char *__doc_fiction_advanced_circuit_design_params_selectivity = R"doc()doc";
 
@@ -736,6 +742,10 @@ Parameter ``ps``:
 Parameter ``input_wires``:
     Pre-detected input BDL wires.)doc";
 
+static const char *__doc_fiction_bdl_input_iterator_circuit = R"doc()doc";
+
+static const char *__doc_fiction_bdl_input_iterator_circuit_with_sub_circuit = R"doc()doc";
+
 static const char *__doc_fiction_bdl_input_iterator_current_input_index =
 R"doc(The current input index. There are :math:`2^n` possible input states
 for an :math:`n`-input BDL layout.)doc";
@@ -756,6 +766,8 @@ R"doc(Returns the current input index.
 Returns:
     The current input index.)doc";
 
+static const char *__doc_fiction_bdl_input_iterator_get_expected_charge_distribution_with_sub_circuit_neutralized = R"doc()doc";
+
 static const char *__doc_fiction_bdl_input_iterator_input_bdl_wires = R"doc(The detected input BDL wires.)doc";
 
 static const char *__doc_fiction_bdl_input_iterator_input_pairs = R"doc(The detected input BDL pairs.)doc";
@@ -763,6 +775,8 @@ static const char *__doc_fiction_bdl_input_iterator_input_pairs = R"doc(The dete
 static const char *__doc_fiction_bdl_input_iterator_last_bdl_for_each_wire = R"doc(Last BDL pairs for each BDL wire.)doc";
 
 static const char *__doc_fiction_bdl_input_iterator_layout = R"doc(The layout to iterate over.)doc";
+
+static const char *__doc_fiction_bdl_input_iterator_make_circuit_with_sub_circuit = R"doc()doc";
 
 static const char *__doc_fiction_bdl_input_iterator_num_input_pairs =
 R"doc(Returns the total number of input BDL pairs of the given SiDB gate
@@ -975,6 +989,12 @@ index. The input index is interpreted as a binary number, where the
 BDL pair. If the bit is `1`, the lower BDL dot is set and the upper
 BDL dot removed. If the bit is `0`, the upper BDL dot is removed and
 the lower BDL dot set.)doc";
+
+static const char *__doc_fiction_bdl_input_iterator_simulate_bdl_wires_in_circuit = R"doc()doc";
+
+static const char *__doc_fiction_bdl_input_iterator_sub_circuit = R"doc()doc";
+
+static const char *__doc_fiction_bdl_input_iterator_sub_circuit_input_index = R"doc()doc";
 
 static const char *__doc_fiction_bdl_pair =
 R"doc(A Binary-dot Logic (BDL) pair is a pair of SiDBs that are close to
@@ -2723,6 +2743,61 @@ Parameter ``result2``:
 Returns:
     `true` if the two simulation results are equivalent, `false`
     otherwise.)doc";
+
+static const char *__doc_fiction_circuit_operational_assessment =
+R"doc(This struct is used to collect results from the operational status
+assessment.
+
+Template parameter ``Lyt``:
+    SiDB cell-level layout type. todo)doc";
+
+static const char *__doc_fiction_circuit_operational_assessment_assessment_per_input =
+R"doc(When the termination condition is set to
+`ALL_INPUT_COMBINATIONS_ASSESSED`, the operational status for each
+respective input combination is stored here, sorted by their binary
+representation. When the simulation retention is set to
+`KEEP_SIMULATION_RESULTS`, this optional structure is also populated.)doc";
+
+static const char *__doc_fiction_circuit_operational_assessment_circuit_operational_assessment =
+R"doc(Standard constructor that only sets the operational status.
+
+Parameter ``op_status``:
+    The operational status to set.)doc";
+
+static const char *__doc_fiction_circuit_operational_assessment_extract_simulation_results_per_input =
+R"doc(Extracts the simulation results contained in this operational
+assessment through moves.
+
+Returns:
+    A vector containing the simulation results for each respective
+    input that was assessed.)doc";
+
+static const char *__doc_fiction_circuit_operational_assessment_operational_assessment_for_input =
+R"doc(This struct collects the information for a specific input combination
+that was obtained during the assessment.)doc";
+
+static const char *__doc_fiction_circuit_operational_assessment_operational_assessment_for_input_logic_match = R"doc(todo)doc";
+
+static const char *__doc_fiction_circuit_operational_assessment_operational_assessment_for_input_operational_assessment_for_input =
+R"doc(Standard constructor that only sets the operational status.
+
+Parameter ``op_status``:
+    The operational status to set.)doc";
+
+static const char *__doc_fiction_circuit_operational_assessment_operational_assessment_for_input_simulation_results =
+R"doc(The charge distributions obtained for the input combination that was
+tested.)doc";
+
+static const char *__doc_fiction_circuit_operational_assessment_operational_assessment_for_input_status =
+R"doc(The assessed operational status of the given layout under one input
+combination.)doc";
+
+static const char *__doc_fiction_circuit_operational_assessment_simulator_invocations = R"doc(The number of input combinations tested.)doc";
+
+static const char *__doc_fiction_circuit_operational_assessment_status =
+R"doc(The assessed operational status of the given layout. The status
+`OPERATIONAL` is given if and only the layout is operational under all
+input combinations.)doc";
 
 static const char *__doc_fiction_clear_routing =
 R"doc(Removes the entire wire routing from the passed layout. This involves
@@ -5324,11 +5399,13 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl = R"doc()do
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_advanced_circuit_design_impl = R"doc()doc";
 
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_apply_quantization = R"doc()doc";
+
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_circuit = R"doc()doc";
+
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_design_circuit_on_defective_surface = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_determine_first_passing_gate_ix = R"doc()doc";
-
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_determine_truth_table_of_gate_connection = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_lattice_tiling = R"doc(Gate-level layout.)doc";
 
@@ -6468,6 +6545,10 @@ static const char *__doc_fiction_detail_design_sidb_gates_impl = R"doc()doc";
 
 static const char *__doc_fiction_detail_design_sidb_gates_impl_all_sidbs_in_canvas = R"doc(All cells within the canvas.)doc";
 
+static const char *__doc_fiction_detail_design_sidb_gates_impl_circuit = R"doc()doc";
+
+static const char *__doc_fiction_detail_design_sidb_gates_impl_circuit_operational_params = R"doc()doc";
+
 static const char *__doc_fiction_detail_design_sidb_gates_impl_convert_canvas_cell_indices_to_layout =
 R"doc(This function generates canvas SiDB layouts.
 
@@ -6476,6 +6557,8 @@ Parameter ``cell_indices``:
 
 Returns:
     An SiDB cell-level layout consisting of canvas SiDBs.)doc";
+
+static const char *__doc_fiction_detail_design_sidb_gates_impl_convert_canvas_coordinate = R"doc()doc";
 
 static const char *__doc_fiction_detail_design_sidb_gates_impl_design_sidb_gates_impl =
 R"doc(This constructor initializes an instance of the *SiDB Gate Designer*
@@ -6594,6 +6677,8 @@ Returns:
     added at specified indices.)doc";
 
 static const char *__doc_fiction_detail_design_sidb_gates_impl_stats = R"doc(The statistics of the gate design.)doc";
+
+static const char *__doc_fiction_detail_design_sidb_gates_impl_super_circuit = R"doc()doc";
 
 static const char *__doc_fiction_detail_design_sidb_gates_impl_truth_table = R"doc(Truth table of the given gate.)doc";
 
@@ -9093,6 +9178,106 @@ static const char *__doc_fiction_detail_is_balanced_impl_ntk_depth = R"doc()doc"
 static const char *__doc_fiction_detail_is_balanced_impl_ps = R"doc()doc";
 
 static const char *__doc_fiction_detail_is_balanced_impl_run = R"doc()doc";
+
+static const char *__doc_fiction_detail_is_circuit_operational_impl =
+R"doc(Implementation of the `is_operational` algorithm for a given SiDB
+layout.
+
+This class provides an implementation of the `is_operational`
+algorithm for a specified SiDB layout and parameters. It checks
+whether the SiDB layout is operational by simulating its behavior for
+different input combinations and comparing the results to expected
+outputs from a truth table.
+
+Template parameter ``Lyt``:
+    SiDB cell-level layout type.
+
+Template parameter ``TT``:
+    Type of the truth table.
+
+Template parameter ``todo``:
+    .)doc";
+
+static const char *__doc_fiction_detail_is_circuit_operational_impl_assess_logic_match_of_charge_distribution =
+R"doc(todo
+
+Parameter ``given_cds``:
+    The charge distribution surface to be checked for operation.
+
+Parameter ``input_pattern``:
+    Input pattern represented by the position of perturbers.
+
+Returns:
+    Pair with the first element indicating the operational status
+    (either `OPERATIONAL` or `NON_OPERATIONAL`) and the second element
+    indicating the reason if it is non-operational.)doc";
+
+static const char *__doc_fiction_detail_is_circuit_operational_impl_circuit = R"doc()doc";
+
+static const char *__doc_fiction_detail_is_circuit_operational_impl_encodes_bit_one =
+R"doc(This function returns `true` if `1` is encoded in the charge state of
+the given BDL pair. `false` otherwise. Assumes row clocking.
+
+Parameter ``ground_state``:
+    The ground state charge distribution surface.
+
+Parameter ``bdl``:
+    BDL pair to be evaluated.
+
+Returns:
+    `true` if `1` is encoded, `false` otherwise.)doc";
+
+static const char *__doc_fiction_detail_is_circuit_operational_impl_encodes_bit_zero =
+R"doc(This function returns `true` if `0` is encoded in the charge state of
+the given BDL pair. `false` otherwise. Assumes row clocking.
+
+Parameter ``ground_state``:
+    The ground state charge distribution surface.
+
+Parameter ``bdl``:
+    BDL pair to be evaluated.
+
+Returns:
+    `true` if `0` is encoded, `false` otherwise.)doc";
+
+static const char *__doc_fiction_detail_is_circuit_operational_impl_is_circuit_operational_impl =
+R"doc(Constructor to initialize the algorithm with a layout and parameters.
+
+Parameter ``lyt``:
+    The SiDB cell-level layout to be checked.
+
+Parameter ``spec``:
+    Expected Boolean function of the layout given as a multi-output
+    truth table.
+
+Parameter ``params``:
+    Parameters for the `is_operational` algorithm.)doc";
+
+static const char *__doc_fiction_detail_is_circuit_operational_impl_parameters = R"doc(Parameters for the `is_operational` algorithm.)doc";
+
+static const char *__doc_fiction_detail_is_circuit_operational_impl_physical_simulation_of_layout =
+R"doc(This function conducts physical simulation of the given SiDB layout.
+The simulation results are stored in the `sim_result` variable.
+
+Parameter ``bdl_iterator``:
+    BDL input iterator representing the SiDB layout with a given input
+    combination.
+
+Returns:
+    Simulation results.)doc";
+
+static const char *__doc_fiction_detail_is_circuit_operational_impl_run =
+R"doc(Run the `is_operational` algorithm.
+
+This function executes the operational status checking algorithm for
+the given SiDB layout and parameters provided during initialization.
+
+Returns:
+    Pair with the first element indicating the operational status
+    (either `OPERATIONAL` or `NON_OPERATIONAL`) and the second element
+    indicating the reason if it is non-operational.)doc";
+
+static const char *__doc_fiction_detail_is_circuit_operational_impl_super_circuit = R"doc()doc";
 
 static const char *__doc_fiction_detail_is_east_south_colored = R"doc()doc";
 
@@ -16529,6 +16714,76 @@ Parameter ``defect``:
 Returns:
     `true` iff `defect` is of a charged type.)doc";
 
+static const char *__doc_fiction_is_circuit_operational =
+R"doc(Determine the operational status of an SiDB layout.
+
+This function checks the operational status of a given SiDB layout
+using the `is_operational` algorithm. It determines whether the SiDB
+layout is operational and returns the correct result for all
+:math:`2^n` input combinations.
+
+Template parameter ``Lyt``:
+    SiDB cell-level layout type.
+
+Template parameter ``TT``:
+    Type of the truth table.
+
+Parameter ``lyt``:
+    The SiDB cell-level layout to be checked.
+
+Parameter ``spec``:
+    Expected Boolean function of the layout given as a multi-output
+    truth table.
+
+Parameter ``params``:
+    Parameters for the `is_operational` algorithm. todo
+
+Returns:
+    A datatype containing the operational status of the gate-level
+    layout (either `OPERATIONAL` or `NON_OPERATIONAL`) along with
+    auxiliary statistics.)doc";
+
+static const char *__doc_fiction_is_circuit_operational_params = R"doc(Parameters for the `is_operational` algorithm. TODO)doc";
+
+static const char *__doc_fiction_is_circuit_operational_params_excited_state_alpha = R"doc()doc";
+
+static const char *__doc_fiction_is_circuit_operational_params_input_bdl_iterator_params = R"doc(Parameters for the BDL input iterator.)doc";
+
+static const char *__doc_fiction_is_circuit_operational_params_print = R"doc()doc";
+
+static const char *__doc_fiction_is_circuit_operational_params_simulation_parameters =
+R"doc(The simulation parameters for the physical simulation of the ground
+state.)doc";
+
+static const char *__doc_fiction_is_circuit_operational_params_simulation_results_mode = R"doc(Selector for the different ways to handle obtained simulation results.)doc";
+
+static const char *__doc_fiction_is_circuit_operational_params_simulation_results_mode_DISCARD_SIMULATION_RESULTS =
+R"doc(The simulation results are discarded after the operational status was
+assessed.)doc";
+
+static const char *__doc_fiction_is_circuit_operational_params_simulation_results_mode_KEEP_SIMULATION_RESULTS =
+R"doc(The simulation results for each input pattern are returned for
+operational gates.)doc";
+
+static const char *__doc_fiction_is_circuit_operational_params_simulation_results_retention =
+R"doc(Simulation results that are used to certify the status `OPERATIONAL`
+are not kept by default.)doc";
+
+static const char *__doc_fiction_is_circuit_operational_params_termination_cond =
+R"doc(Condition to decide when to terminate the assessment of the
+operational status of the given layout.)doc";
+
+static const char *__doc_fiction_is_circuit_operational_params_termination_condition =
+R"doc(The termination condition for assessment of the operational status of
+the given layout.)doc";
+
+static const char *__doc_fiction_is_circuit_operational_params_termination_condition_ALL_INPUT_COMBINATIONS_ASSESSED = R"doc(The operational status is assessed for all input combinations.)doc";
+
+static const char *__doc_fiction_is_circuit_operational_params_termination_condition_ON_FIRST_NON_OPERATIONAL =
+R"doc(The assessment for the given layout terminates either when it is found
+to be operational for all input combinations, or an input combination
+is found for which the layout is not operational.)doc";
+
 static const char *__doc_fiction_is_clocked_layout = R"doc()doc";
 
 static const char *__doc_fiction_is_complex_gate = R"doc()doc";
@@ -20197,6 +20452,28 @@ static const char *__doc_fiction_sidb_111_lattice = R"doc(H-Si(111)-1x1 surface.
 
 static const char *__doc_fiction_sidb_111_lattice_sidb_111_lattice = R"doc()doc";
 
+static const char *__doc_fiction_sidb_bdl_circuit = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_circuit_bdl_wires = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_circuit_create_gate_lyt_window_for_gate_connection = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_circuit_gate_layout = R"doc(SiDB gate-level layout.)doc";
+
+static const char *__doc_fiction_sidb_bdl_circuit_gate_tile = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_circuit_input_bdl_pairs = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_circuit_num_bdl_pairs = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_circuit_num_inputs = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_circuit_sidb_bdl_circuit = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_circuit_sidb_bdl_circuit_2 = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_circuit_skeleton = R"doc()doc";
+
 static const char *__doc_fiction_sidb_bestagon_library =
 R"doc(A gate library for the SiDB technology that is based on Y-shaped gates
 in hexagonal tiles. Y-shaped gates have been first introduced in
@@ -20290,6 +20567,14 @@ R"doc(This struct stores parameters for the
 `sidb_bounded_local_external_potential_wrapper`)doc";
 
 static const char *__doc_fiction_sidb_bounded_local_external_potential_wrapper_sidb_bounded_local_external_potential_wrapper = R"doc()doc";
+
+static const char *__doc_fiction_sidb_cell_level_bdl_circuit = R"doc()doc";
+
+static const char *__doc_fiction_sidb_cell_level_bdl_circuit_cell_layout = R"doc(SiDB cell-level layout.)doc";
+
+static const char *__doc_fiction_sidb_cell_level_bdl_circuit_circuit = R"doc()doc";
+
+static const char *__doc_fiction_sidb_cell_level_bdl_circuit_sidb_cell_level_bdl_circuit = R"doc()doc";
 
 static const char *__doc_fiction_sidb_charge_space_composition =
 R"doc(A charge space composition holds a number of projector states of
@@ -21164,6 +21449,8 @@ Parameter ``lyt``:
 Returns:
     port directions of the given tile are returned as `port_list`.)doc";
 
+static const char *__doc_fiction_sidb_on_the_fly_mini_gate_library_make_bdl_circuit_for_tile = R"doc()doc";
+
 static const char *__doc_fiction_sidb_on_the_fly_mini_gate_library_set_up_gates =
 R"doc(Overrides the corresponding function in fcn_gate_library. Given a tile
 `t`, this function takes all necessary information from the stored
@@ -21362,6 +21649,8 @@ value of the parameter.)doc";
 static const char *__doc_fiction_sidb_simulation_result_algorithm_name = R"doc(Name of the algorithm used to determine the charge distributions.)doc";
 
 static const char *__doc_fiction_sidb_simulation_result_charge_distributions = R"doc(Charge distributions determined by the algorithm.)doc";
+
+static const char *__doc_fiction_sidb_simulation_result_get_ordered_weights_under_bounded_energy = R"doc()doc";
 
 static const char *__doc_fiction_sidb_simulation_result_groundstates =
 R"doc(This function computes the ground state of the charge distributions.
@@ -21690,6 +21979,12 @@ static const char *__doc_fiction_simple_gate_layout_tile_drawer_tile_fillcolor =
 static const char *__doc_fiction_simple_gate_layout_tile_drawer_tile_id = R"doc()doc";
 
 static const char *__doc_fiction_simple_gate_layout_tile_drawer_tile_label = R"doc()doc";
+
+static const char *__doc_fiction_simulate_bdl_wire_logic = R"doc()doc";
+
+static const char *__doc_fiction_simulate_bdl_wire_logic_COLLECT_EXPECTED_CHARGE_DISTRIBUTIONS = R"doc()doc";
+
+static const char *__doc_fiction_simulate_bdl_wire_logic_DO_NOT_COLLECT_EXPECTED_CHARGE_DISTRIBUTIONS = R"doc()doc";
 
 static const char *__doc_fiction_singleton_multiset_conf_to_charge_state =
 R"doc(Function to convert a singleton cluster charge state in its compressed
