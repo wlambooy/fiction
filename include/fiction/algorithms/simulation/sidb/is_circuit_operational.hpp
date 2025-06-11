@@ -360,6 +360,7 @@ class is_circuit_operational_impl
             {
                 std::cout << "STATUS: " << (status == operational_status::NON_OPERATIONAL ? "NON-" : "")
                           << "OPERATIONAL" << std::endl;
+                std::cout << fmt::format("logic match: {:.3f}", logic_match) << std::endl;
             }
 
             // store the assessment results for this input combination when the termination condition is set to
@@ -593,7 +594,7 @@ class is_circuit_operational_impl
         {
             std::cout << "successful bdl pairs:" << successful_bdl_pairs_count << std::endl;
             std::cout << "total number of bdl pairs: " << circuit.circuit.num_bdl_pairs << std::endl;
-            std::cout << "logic match: " << op_assessment.logic_match << '\n' << std::endl;
+            std::cout << fmt::format("logic match: {:.3f}\n", op_assessment.logic_match) << std::endl;
         }
         return op_assessment;
     }

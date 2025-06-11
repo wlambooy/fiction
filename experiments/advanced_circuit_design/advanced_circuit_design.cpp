@@ -281,32 +281,40 @@ int main(int argc, char* argv[])  // NOLINT
             design_gate_params.number_of_canvas_sidbs               = std::stoull(argv[1]);
             design_gate_params_complex_gates.number_of_canvas_sidbs = std::stoull(argv[2]);
         }
-        else if (argc == 11)
+        else if (argc == 15)
         {
             design_gate_params.number_of_canvas_sidbs                    = std::stoull(argv[1]);
             design_gate_params_complex_gates.number_of_canvas_sidbs      = std::stoull(argv[2]);
             design_gate_params.maximum_number_of_solutions               = std::stoull(argv[3]);
             design_gate_params_complex_gates.maximum_number_of_solutions = std::stoull(argv[4]);
             params.num_trials                                            = std::stoull(argv[5]);
-            params.selectivity                                           = std::stod(argv[6]);
-            params.num_trials_for_global_scope                           = std::stoull(argv[7]);
-            params.selectivity_for_global_scope                          = std::stod(argv[8]);
-            params.quantization_factor                                   = std::stod(argv[9]);
-            params.excited_state_alpha                                   = std::stod(argv[10]);
+            params.quantization_factor                                   = std::stod(argv[6]);
+            params.selectivity                                           = std::stod(argv[7]);
+            params.num_trials_for_double_scope                           = std::stoull(argv[8]);
+            params.quantization_factor_for_double_scope                  = std::stod(argv[9]);
+            params.selectivity_for_double_scope                          = std::stod(argv[10]);
+            params.num_trials_for_global_scope                           = std::stoull(argv[11]);
+            params.quantization_factor_for_global_scope                  = std::stod(argv[12]);
+            params.selectivity_for_global_scope                          = std::stod(argv[13]);
+            params.excited_state_alpha                                   = std::stod(argv[14]);
         }
-        else if (argc == 12)
+        else if (argc == 16)
         {
             design_gate_params.number_of_canvas_sidbs                    = std::stoull(argv[1]);
             design_gate_params_complex_gates.number_of_canvas_sidbs      = std::stoull(argv[2]);
             design_gate_params.maximum_number_of_solutions               = std::stoull(argv[3]);
             design_gate_params_complex_gates.maximum_number_of_solutions = std::stoull(argv[4]);
             params.num_trials                                            = std::stoull(argv[5]);
-            params.selectivity                                           = std::stod(argv[6]);
-            params.num_trials_for_global_scope                           = std::stoull(argv[7]);
-            params.selectivity_for_global_scope                          = std::stod(argv[8]);
-            params.quantization_factor                                   = std::stod(argv[9]);
-            params.excited_state_alpha                                   = std::stod(argv[10]);
-            params.available_threads                                     = std::stoull(argv[11]);
+            params.quantization_factor                                   = std::stod(argv[6]);
+            params.selectivity                                           = std::stod(argv[7]);
+            params.num_trials_for_double_scope                           = std::stoull(argv[8]);
+            params.quantization_factor_for_double_scope                  = std::stod(argv[9]);
+            params.selectivity_for_double_scope                          = std::stod(argv[10]);
+            params.num_trials_for_global_scope                           = std::stoull(argv[11]);
+            params.quantization_factor_for_global_scope                  = std::stod(argv[12]);
+            params.selectivity_for_global_scope                          = std::stod(argv[13]);
+            params.excited_state_alpha                                   = std::stod(argv[14]);
+            params.available_threads                                     = std::stoull(argv[15]);
         }
         else if (argc != 1)
         {
