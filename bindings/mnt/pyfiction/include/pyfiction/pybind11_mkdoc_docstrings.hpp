@@ -196,11 +196,19 @@ static const char *__doc_fiction_advanced_circuit_design_params_excited_state_al
 
 static const char *__doc_fiction_advanced_circuit_design_params_num_trials = R"doc()doc";
 
+static const char *__doc_fiction_advanced_circuit_design_params_num_trials_for_double_scope = R"doc()doc";
+
 static const char *__doc_fiction_advanced_circuit_design_params_num_trials_for_global_scope = R"doc()doc";
 
 static const char *__doc_fiction_advanced_circuit_design_params_quantization_factor = R"doc()doc";
 
+static const char *__doc_fiction_advanced_circuit_design_params_quantization_factor_for_double_scope = R"doc()doc";
+
+static const char *__doc_fiction_advanced_circuit_design_params_quantization_factor_for_global_scope = R"doc()doc";
+
 static const char *__doc_fiction_advanced_circuit_design_params_selectivity = R"doc()doc";
+
+static const char *__doc_fiction_advanced_circuit_design_params_selectivity_for_double_scope = R"doc()doc";
 
 static const char *__doc_fiction_advanced_circuit_design_params_selectivity_for_global_scope = R"doc()doc";
 
@@ -5403,6 +5411,8 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl_apply_quant
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_circuit = R"doc()doc";
 
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_collect_connecting_nodes = R"doc()doc";
+
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_design_circuit_on_defective_surface = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_determine_first_passing_gate_ix = R"doc()doc";
@@ -5420,6 +5430,8 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl_print_succe
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_prune_gate_designs_at_global_level = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_prune_gate_designs_by_gate_connections = R"doc()doc";
+
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_prune_gate_designs_by_two_gate_connections = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_select_gate_implementations_by_successful_trial_ratio = R"doc()doc";
 
@@ -20454,9 +20466,13 @@ static const char *__doc_fiction_sidb_111_lattice_sidb_111_lattice = R"doc()doc"
 
 static const char *__doc_fiction_sidb_bdl_circuit = R"doc()doc";
 
+static const char *__doc_fiction_sidb_bdl_circuit_augment_gate_lyt_window = R"doc()doc";
+
 static const char *__doc_fiction_sidb_bdl_circuit_bdl_wires = R"doc()doc";
 
 static const char *__doc_fiction_sidb_bdl_circuit_create_gate_lyt_window_for_gate_connection = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_circuit_create_gate_lyt_window_for_two_gate_connections = R"doc()doc";
 
 static const char *__doc_fiction_sidb_bdl_circuit_gate_layout = R"doc(SiDB gate-level layout.)doc";
 
@@ -20471,6 +20487,8 @@ static const char *__doc_fiction_sidb_bdl_circuit_num_inputs = R"doc()doc";
 static const char *__doc_fiction_sidb_bdl_circuit_sidb_bdl_circuit = R"doc()doc";
 
 static const char *__doc_fiction_sidb_bdl_circuit_sidb_bdl_circuit_2 = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_circuit_sidb_bdl_circuit_3 = R"doc()doc";
 
 static const char *__doc_fiction_sidb_bdl_circuit_skeleton = R"doc()doc";
 
