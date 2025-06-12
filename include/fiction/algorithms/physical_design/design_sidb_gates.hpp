@@ -548,32 +548,47 @@ class design_sidb_gates_impl
             // canvas SiDBs are added to the skeleton
             const auto layout_with_added_cells = skeleton_layout_with_canvas_sidbs(combination);
 
-            if (const operational_assessment<Lyt, ExtPotType>& assessment_results = is_operational<Lyt, TT, ExtPotType>(
-                    layout_with_added_cells, truth_table, params.operational_params, input_bdl_wires, output_bdl_wires);
-                assessment_results.status == operational_status::OPERATIONAL)
+            if (!circuit.has_value())
             {
-                const std::lock_guard lock_vector{mutex_to_protect_designed_gate_layouts};
-
-                designed_gate_layouts.gate_layouts.emplace_back(std::move(layout_with_added_cells));
-
-                if (designed_gate_layouts.simulation_results.has_value())
+                if (is_operational<Lyt, TT, ExtPotType>(layout_with_added_cells, truth_table, params.operational_params,
+                                                        input_bdl_wires, output_bdl_wires)
+                        .status != operational_status::OPERATIONAL)
                 {
-                    designed_gate_layouts.simulation_results.value().push_back(
-                        assessment_results.extract_simulation_results_per_input());
+                    return;
                 }
+            }
+            else
+            {
+                if (is_circuit_operational<Lyt, GateLyt, ExtPotType, SkeletonGateLibrary>(
+                        sidb_cell_level_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>{layout_with_added_cells,
+                                                                                       *circuit},
+                        *circuit_operational_params, std::make_optional(std::cref(*super_circuit)))
+                        .status != operational_status::OPERATIONAL)
+                {
+                    return;
+                }
+            }
 
-                ++num_solutions_found;
+            const std::lock_guard lock_vector{mutex_to_protect_designed_gate_layouts};
+
+            designed_gate_layouts.gate_layouts.emplace_back(std::move(layout_with_added_cells));
+
+            // if (designed_gate_layouts.simulation_results.has_value())
+            // {
+            //     designed_gate_layouts.simulation_results.value().push_back(
+            //         assessment_results.extract_simulation_results_per_input());
+            // }
+
+            ++num_solutions_found;
 
 #if (PROGRESS_BARS)
-                if (params.termination_cond ==
-                        design_sidb_gates_params<Lyt>::termination_condition::OBTAINED_N_SOLUTIONS &&
-                    num_solutions_found < params.maximum_number_of_solutions)
-                {
-                    // update the progress bar
-                    bar(num_solutions_found);
-                }
-#endif
+            if (params.termination_cond == design_sidb_gates_params<Lyt>::termination_condition::OBTAINED_N_SOLUTIONS &&
+                num_solutions_found < params.maximum_number_of_solutions)
+            {
+                // update the progress bar
+                bar(num_solutions_found);
             }
+#endif
         };
 
         std::vector<std::thread> threads{};
@@ -780,19 +795,21 @@ class design_sidb_gates_impl
      */
     [[nodiscard]] Lyt skeleton_layout_with_canvas_sidbs(const canvas_combination& cell_indices) const noexcept
     {
-        Lyt lyt_copy{skeleton_layout.clone()};
+        Lyt lyt = apply_gate_library<Lyt, sidb_skeleton_bestagon_mini_library, GateLyt>(
+            circuit->gate_layout, std::make_optional(std::set<tile<GateLyt>>{*circuit->gate_tile}));
 
         for (const auto i : cell_indices)
         {
             assert(i < all_sidbs_in_canvas.size() && "cell indices are out-of-range");
 
-            if (lyt_copy.get_cell_type(all_sidbs_in_canvas[i]) == sidb_technology::cell_type::EMPTY)
+            if (lyt.get_cell_type(all_sidbs_in_canvas[i]) == sidb_technology::cell_type::EMPTY)
             {
-                lyt_copy.assign_cell_type(all_sidbs_in_canvas[i], sidb_technology::cell_type::LOGIC);
+                lyt.assign_cell_type(all_sidbs_in_canvas[i], sidb_technology::cell_type::LOGIC);
             }
         }
 
-        return lyt_copy;
+        return lyt;
+        print_layout(lyt);
     }
     /**
      * This function generates canvas SiDB layouts.

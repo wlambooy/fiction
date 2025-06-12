@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<siqad>
+    <!--Program Flags-->
+    <program>
+        <file_purpose>save</file_purpose>
+        <version>0.3.3</version>
+        <date>2025-06-11 19:26:02</date>
+    </program>
+    <!--GUI Flags-->
+    <gui>
+        <zoom>0.124829</zoom>
+        <displayed_region x1="-40.2149" y1="37.1707" x2="188.097" y2="159.097"/>
+        <scroll x="473" y="-493"/>
+    </gui>
+    <!--Layer Properties-->
+    <!--Layer ID is intrinsic to the layer order-->
+    <layers>
+        <layer_prop>
+            <name>Lattice</name>
+            <type>Lattice</type>
+            <role>Design</role>
+            <zoffset>0</zoffset>
+            <zheight>0</zheight>
+            <visible>1</visible>
+            <active>0</active>
+            <lat_vec>
+                <a1 x="3.84" y="0"/>
+                <a2 x="0" y="7.68"/>
+                <N>2</N>
+                <b1 x="0" y="0"/>
+                <b2 x="0" y="2.25"/>
+            </lat_vec>
+        </layer_prop>
+        <layer_prop>
+            <name>Screenshot Overlay</name>
+            <type>Misc</type>
+            <role>Overlay</role>
+            <zoffset>0</zoffset>
+            <zheight>0</zheight>
+            <visible>1</visible>
+            <active>0</active>
+        </layer_prop>
+        <layer_prop>
+            <name>Surface</name>
+            <type>DB</type>
+            <role>Design</role>
+            <zoffset>0</zoffset>
+            <zheight>0</zheight>
+            <visible>1</visible>
+            <active>0</active>
+        </layer_prop>
+        <layer_prop>
+            <name>Metal</name>
+            <type>Electrode</type>
+            <role>Design</role>
+            <zoffset>1000</zoffset>
+            <zheight>100</zheight>
+            <visible>1</visible>
+            <active>0</active>
+        </layer_prop>
+    </layers>
+    <!--Item Hierarchy-->
+    <design>
+        <!--Lattice-->
+        <layer type="Lattice"/>
+        <!--Screenshot Overlay-->
+        <layer type="Misc"/>
+        <!--Surface-->
+        <layer type="DB">
+            <dbdot>
+                <layer_id>2</layer_id>
+                <latcoord n="12" m="5" l="0"/>
+                <physloc x="46.08" y="38.4"/>
+                <color>#ffc8c8c8</color>
+            </dbdot>
+            <dbdot>
+                <layer_id>2</layer_id>
+                <latcoord n="15" m="6" l="0"/>
+                <physloc x="57.6" y="46.08"/>
+                <color>#ffc8c8c8</color>
+            </dbdot>
+            <dbdot>
+                <layer_id>2</layer_id>
+                <latcoord n="19" m="7" l="0"/>
+                <physloc x="72.96" y="53.76"/>
+                <color>#ffc8c8c8</color>
+            </dbdot>
+            <dbdot>
+                <layer_id>2</layer_id>
+                <latcoord n="20" m="8" l="1"/>
+                <physloc x="76.8" y="63.69"/>
+                <color>#ffc8c8c8</color>
+            </dbdot>
+            <dbdot>
+                <layer_id>2</layer_id>
+                <latcoord n="33" m="8" l="1"/>
+                <physloc x="126.72" y="63.69"/>
+                <color>#ffc8c8c8</color>
+            </dbdot>
+            <dbdot>
+                <layer_id>2</layer_id>
+                <latcoord n="34" m="7" l="0"/>
+                <physloc x="130.56" y="53.76"/>
+                <color>#ffc8c8c8</color>
+            </dbdot>
+            <dbdot>
+                <layer_id>2</layer_id>
+                <latcoord n="38" m="6" l="0"/>
+                <physloc x="145.92" y="46.08"/>
+                <color>#ffc8c8c8</color>
+            </dbdot>
+            <dbdot>
+                <layer_id>2</layer_id>
+                <latcoord n="41" m="5" l="0"/>
+                <physloc x="157.44" y="38.4"/>
+                <color>#ffc8c8c8</color>
+            </dbdot>
+            <dbdot>
+                <layer_id>2</layer_id>
+                <latcoord n="33" m="15" l="0"/>
+                <physloc x="126.72" y="115.2"/>
+                <color>#ffc8c8c8</color>
+            </dbdot>
+            <dbdot>
+                <layer_id>2</layer_id>
+                <latcoord n="36" m="16" l="0"/>
+                <physloc x="138.24" y="122.88"/>
+                <color>#ffc8c8c8</color>
+            </dbdot>
+            <dbdot>
+                <layer_id>2</layer_id>
+                <latcoord n="40" m="17" l="0"/>
+                <physloc x="153.6" y="130.56"/>
+                <color>#ffc8c8c8</color>
+            </dbdot>
+            <dbdot>
+                <layer_id>2</layer_id>
+                <latcoord n="20" m="15" l="0"/>
+                <physloc x="76.8" y="115.2"/>
+                <color>#ffc8c8c8</color>
+            </dbdot>
+            <dbdot>
+                <layer_id>2</layer_id>
+                <latcoord n="17" m="16" l="0"/>
+                <physloc x="65.28" y="122.88"/>
+                <color>#ffc8c8c8</color>
+            </dbdot>
+            <dbdot>
+                <layer_id>2</layer_id>
+                <latcoord n="13" m="17" l="0"/>
+                <physloc x="49.92" y="130.56"/>
+                <color>#ffc8c8c8</color>
+            </dbdot>
+        </layer>
+        <!--Metal-->
+        <layer type="Electrode">
+            <electrode>
+                <layer_id>3</layer_id>
+                <dim x1="40.22" y1="35.14" x2="90.37" y2="73.54"/>
+                <pixel_per_angstrom>100</pixel_per_angstrom>
+                <angle>0</angle>
+                <color>#aad2be74</color>
+                <property_map>
+                    <net>
+                        <val>0</val>
+                    </net>
+                    <phase>
+                        <val>0</val>
+                    </phase>
+                    <pot_offset>
+                        <val>0</val>
+                    </pot_offset>
+                    <potential>
+                        <val>0</val>
+                    </potential>
+                    <type>
+                        <val>Fixed</val>
+                    </type>
+                </property_map>
+            </electrode>
+            <electrode>
+                <layer_id>3</layer_id>
+                <dim x1="111.62" y1="32.58" x2="166.68" y2="71.09"/>
+                <pixel_per_angstrom>100</pixel_per_angstrom>
+                <angle>0</angle>
+                <color>#aad2be74</color>
+                <property_map>
+                    <net>
+                        <val>0</val>
+                    </net>
+                    <phase>
+                        <val>0</val>
+                    </phase>
+                    <pot_offset>
+                        <val>0</val>
+                    </pot_offset>
+                    <potential>
+                        <val>0</val>
+                    </potential>
+                    <type>
+                        <val>Fixed</val>
+                    </type>
+                </property_map>
+            </electrode>
+            <electrode>
+                <layer_id>3</layer_id>
+                <dim x1="44.2" y1="108.17" x2="88.23" y2="145.97"/>
+                <pixel_per_angstrom>100</pixel_per_angstrom>
+                <angle>0</angle>
+                <color>#aad2be74</color>
+                <property_map>
+                    <net>
+                        <val>0</val>
+                    </net>
+                    <phase>
+                        <val>0</val>
+                    </phase>
+                    <pot_offset>
+                        <val>0</val>
+                    </pot_offset>
+                    <potential>
+                        <val>0</val>
+                    </potential>
+                    <type>
+                        <val>Fixed</val>
+                    </type>
+                </property_map>
+            </electrode>
+            <electrode>
+                <layer_id>3</layer_id>
+                <dim x1="117.95" y1="108.48" x2="161.98" y2="148.11"/>
+                <pixel_per_angstrom>100</pixel_per_angstrom>
+                <angle>0</angle>
+                <color>#aad2be74</color>
+                <property_map>
+                    <net>
+                        <val>0</val>
+                    </net>
+                    <phase>
+                        <val>0</val>
+                    </phase>
+                    <pot_offset>
+                        <val>0</val>
+                    </pot_offset>
+                    <potential>
+                        <val>0</val>
+                    </potential>
+                    <type>
+                        <val>Fixed</val>
+                    </type>
+                </property_map>
+            </electrode>
+            <electrode>
+                <layer_id>3</layer_id>
+                <dim x1="119.79" y1="99.9" x2="157.79" y2="154.24"/>
+                <pixel_per_angstrom>100</pixel_per_angstrom>
+                <angle>0</angle>
+                <color>#aad2be74</color>
+                <property_map>
+                    <net>
+                        <val>0</val>
+                    </net>
+                    <phase>
+                        <val>0</val>
+                    </phase>
+                    <pot_offset>
+                        <val>0</val>
+                    </pot_offset>
+                    <potential>
+                        <val>0</val>
+                    </potential>
+                    <type>
+                        <val>Fixed</val>
+                    </type>
+                </property_map>
+            </electrode>
+            <electrode>
+                <layer_id>3</layer_id>
+                <dim x1="45.02" y1="97.65" x2="84.45" y2="150.26"/>
+                <pixel_per_angstrom>100</pixel_per_angstrom>
+                <angle>0</angle>
+                <color>#aad2be74</color>
+                <property_map>
+                    <net>
+                        <val>0</val>
+                    </net>
+                    <phase>
+                        <val>0</val>
+                    </phase>
+                    <pot_offset>
+                        <val>0</val>
+                    </pot_offset>
+                    <potential>
+                        <val>0</val>
+                    </potential>
+                    <type>
+                        <val>Fixed</val>
+                    </type>
+                </property_map>
+            </electrode>
+        </layer>
+    </design>
+</siqad>

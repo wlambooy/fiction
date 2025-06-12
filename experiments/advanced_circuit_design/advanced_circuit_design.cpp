@@ -93,7 +93,8 @@ int main(int argc, char* argv[])  // NOLINT
     if constexpr (std::is_same_v<gate_lib, fiction::sidb_on_the_fly_mini_gate_library>)
     {
         // design_gate_params.canvas = {{13, 12}, {22, 23}};  // smaller canvas
-        design_gate_params.canvas = {{13, 8}, {24, 19}};  // smaller canvas
+        // design_gate_params.canvas = {{13, 8}, {24, 19}};  // smaller canvas
+        design_gate_params.canvas = {{15, 10}, {26, 19}};  // smaller canvas
     }
     else
     {
@@ -119,7 +120,8 @@ int main(int argc, char* argv[])  // NOLINT
         fiction::design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::RANDOM;
     design_gate_params_complex_gates.termination_cond =
         fiction::design_sidb_gates_params<lyt_t>::termination_condition::OBTAINED_N_SOLUTIONS;
-    design_gate_params_complex_gates.canvas = {{11, 8}, {26, 19}};
+    design_gate_params_complex_gates.canvas = {{13, 10}, {28, 19}};
+    // design_gate_params_complex_gates.canvas = {{11, 8}, {26, 19}};
     // design_gate_params_complex_gates.canvas = {{11, 12}, {24, 23}};
     // design_gate_params.operational_params.op_condition_kinks =
     // is_operational_params<cell<CellLyt>>::operational_condition_kinks::TOLERATE_KINKS;
@@ -185,7 +187,8 @@ int main(int argc, char* argv[])  // NOLINT
     // constexpr const uint64_t bench_select = fiction_experiments::cx;
     // constexpr const uint64_t bench_select = fiction_experiments::and3;
     // constexpr const uint64_t bench_select = fiction_experiments::xor3;
-    constexpr const uint64_t bench_select = fiction_experiments::supertile;
+    // constexpr const uint64_t bench_select = fiction_experiments::supertile;
+    constexpr const uint64_t bench_select = fiction_experiments::supertile_ho;
     // constexpr const uint64_t bench_select = fiction_experiments::xor5_maj;
     // fiction_experiments::all & ~fiction_experiments::parity & ~fiction_experiments::two_bit_add_maj &
     // ~fiction_experiments::b1_r2 & ~fiction_experiments::clpl & ~fiction_experiments::iscas85 &
@@ -224,11 +227,19 @@ int main(int argc, char* argv[])  // NOLINT
         return std::vector{fiction::create_and_tt(), or_not_tb};
     };
 
+    const auto create_supertile_ho_tt = []
+    {
+        static constexpr const char* or_not_tt_string = "1111";  // Output 1
+        kitty::dynamic_truth_table   or_not_tb{2};
+        kitty::create_from_binary_string(or_not_tb, or_not_tt_string);
+        return std::vector{fiction::create_id_tt(), or_not_tb};
+    };
+
     std::map<std::string, std::vector<kitty::dynamic_truth_table>> tt_map{
         {"TEST/fo", fiction::create_fan_out_tt()}, {"TEST/cx", fiction::create_crossing_wire_tt()},
         {"TEST/and3", create_and3_tt()},           {"TEST/xor3", create_xor3_tt()},
         {"fontes18/xor5_r1", create_xor5_tt()},    {"fontes18/xor5Maj", create_xor5_tt()},
-        {"TEST/supertile", create_supertile_tt()}};
+        {"TEST/supertile", create_supertile_tt()}, {"TEST/supertile_ho", create_supertile_ho_tt()}};
 
     for (const auto& benchmark : fiction_experiments::all_benchmarks(bench_select))
     {

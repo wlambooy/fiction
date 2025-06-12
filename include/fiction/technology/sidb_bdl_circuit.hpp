@@ -97,19 +97,19 @@ class sidb_bdl_circuit
 
                 gate_lyt_window.create_pi("", in_t);
 
-                std::cout << "created pi at " << in_t.x << " " << in_t.y << " " << in_t.z << std::endl;
+                // std::cout << "created pi at " << in_t.x << " " << in_t.y << " " << in_t.z << std::endl;
             }
 
             inputs_to_current_t.push_back(static_cast<mockturtle::signal<GateLyt>>(in_t));
         }
 
-        std::cout << "created node at " << current_t.x << " " << current_t.y << " " << current_t.z << " with inputs: ";
-        for (const auto& s : inputs_to_current_t)
-        {
-            const auto& t = static_cast<tile<GateLyt>>(s);
-            std::cout << t.x << " " << t.y << " " << t.z << " \t ";
-        }
-        std::cout << std::endl;
+        // std::cout << "created node at " << current_t.x << " " << current_t.y << " " << current_t.z << " with inputs: ";
+        // for (const auto& s : inputs_to_current_t)
+        // {
+        //     const auto& t = static_cast<tile<GateLyt>>(s);
+        //     std::cout << t.x << " " << t.y << " " << t.z << " \t ";
+        // }
+        // std::cout << std::endl;
         assert(gate_lyt_window.is_empty_tile(current_t) && "tile on which node is to be created is already populated");
 
         gate_lyt_window.create_node(inputs_to_current_t, gate_lyt.node_function(gate_lyt.get_node(current_t)),
@@ -124,8 +124,8 @@ class sidb_bdl_circuit
                     out_t.z = 1 - out_t.z;
                 }
 
-                std::cout << "created po at " << out_t.x << " " << out_t.y << " " << out_t.z << " with input "
-                          << current_t.x << " " << current_t.y << " " << current_t.z << std::endl;
+                // std::cout << "created po at " << out_t.x << " " << out_t.y << " " << out_t.z << " with input "
+                //           << current_t.x << " " << current_t.y << " " << current_t.z << std::endl;
 
                 gate_lyt_window.create_po(static_cast<mockturtle::signal<GateLyt>>(current_t), "", out_t);
             }
@@ -228,12 +228,12 @@ class sidb_bdl_circuit
 
             for (const bdl_pair<cell<CellLyt>>& pair : wire.pairs)
             {
-                std::cout << "\ncell: " << pair.upper.x << " " << pair.upper.y << " at tile "
-                          << lyt.get_cell_tile(pair.upper).x << ',' << lyt.get_cell_tile(pair.upper).y << ','
-                          << lyt.get_cell_tile(pair.upper).z << std::endl;
-                std::cout << "cell: " << pair.lower.x << " " << pair.lower.y << " at tile "
-                          << lyt.get_cell_tile(pair.lower).x << ',' << lyt.get_cell_tile(pair.lower).y << ','
-                          << lyt.get_cell_tile(pair.lower).z << std::endl;
+                // std::cout << "\ncell: " << pair.upper.x << " " << pair.upper.y << " at tile "
+                //           << lyt.get_cell_tile(pair.upper).x << ',' << lyt.get_cell_tile(pair.upper).y << ','
+                //           << lyt.get_cell_tile(pair.upper).z << std::endl;
+                // std::cout << "cell: " << pair.lower.x << " " << pair.lower.y << " at tile "
+                //           << lyt.get_cell_tile(pair.lower).x << ',' << lyt.get_cell_tile(pair.lower).y << ','
+                //           << lyt.get_cell_tile(pair.lower).z << std::endl;
                 assert(lyt.get_cell_tile(pair.upper) == lyt.get_cell_tile(pair.lower));
 
                 tiles_in_wire.insert(
@@ -242,7 +242,7 @@ class sidb_bdl_circuit
                         const tile<GateLyt> t = {this_t.x, this_t.y};
                         auto                z = 0;
 
-                        std::cout << "current tile: " << t.x << ", " << t.y << std::endl;
+                        // std::cout << "current tile: " << t.x << ", " << t.y << std::endl;
 
                         if (const auto at = gate_lyt.above(t); at != t && gate_lyt.is_wire_tile(at))
                         {
@@ -326,7 +326,7 @@ class sidb_bdl_circuit
                             }
                         }
 
-                        std::cout << "z: " << z << std::endl;
+                        // std::cout << "z: " << z << std::endl;
 
                         return tile<GateLyt>{t.x, t.y, z};
                     }(lyt.get_cell_tile(pair.upper)));
@@ -339,12 +339,13 @@ class sidb_bdl_circuit
 
             const auto get_tile_pair = [&]
             {
-                std::cout << "\ntile in wire: " << tiles_in_wire.cbegin()->x << ',' << tiles_in_wire.cbegin()->y << ','
-                          << tiles_in_wire.cbegin()->z << std::endl;
+                // std::cout << "\ntile in wire: " << tiles_in_wire.cbegin()->x << ',' << tiles_in_wire.cbegin()->y <<
+                // ','
+                // << tiles_in_wire.cbegin()->z << std::endl;
                 if (tiles_in_wire.size() == 2)
                 {
-                    std::cout << "tile TO wire: " << tiles_in_wire.crbegin()->x << ',' << tiles_in_wire.crbegin()->y
-                              << ',' << tiles_in_wire.crbegin()->z << std::endl;
+                    // std::cout << "tile TO wire: " << tiles_in_wire.crbegin()->x << ',' << tiles_in_wire.crbegin()->y
+                    // << ',' << tiles_in_wire.crbegin()->z << std::endl;
                     const tile<GateLyt>& first_tile  = *tiles_in_wire.cbegin();
                     const tile<GateLyt>& second_tile = *tiles_in_wire.crbegin();
 
@@ -395,7 +396,7 @@ class sidb_bdl_circuit
                         }
                     }
 
-                    std::cout << "tile INP wire: " << upper_tile.x << ',' << upper_tile.y << ',' << z << std::endl;
+                    // std::cout << "tile INP wire: " << upper_tile.x << ',' << upper_tile.y << ',' << z << std::endl;
                     return std::make_pair(tile<GateLyt>{upper_tile.x, upper_tile.y, z}, tile_in_wire);
                 }
 
@@ -425,16 +426,16 @@ class sidb_bdl_circuit
                                                                                  outgoing_tiles.front().z;
                     }
                 }
-                std::cout << "tile OUT wire: " << lower_tile.x << ',' << lower_tile.y << ',' << z << std::endl;
+                // std::cout << "tile OUT wire: " << lower_tile.x << ',' << lower_tile.y << ',' << z << std::endl;
                 return std::make_pair(tile_in_wire, tile<GateLyt>{lower_tile.x, lower_tile.y, z});
             };
 
-            const std::pair<tile<GateLyt>, tile<GateLyt>>& tile_pair_at_gate_connection = get_tile_pair();
-            std::cout << fmt::format("tile pair at gate connection: {},{},{}   {},{},{}",
-                                     tile_pair_at_gate_connection.first.x, tile_pair_at_gate_connection.first.y,
-                                     tile_pair_at_gate_connection.first.z, tile_pair_at_gate_connection.second.x,
-                                     tile_pair_at_gate_connection.second.y, tile_pair_at_gate_connection.second.z)
-                      << std::endl;
+            std::pair<tile<GateLyt>, tile<GateLyt>> tile_pair_at_gate_connection = get_tile_pair();
+            // std::cout << fmt::format("tile pair at gate connection: {},{},{}   {},{},{}",
+            //                          tile_pair_at_gate_connection.first.x, tile_pair_at_gate_connection.first.y,
+            //                          tile_pair_at_gate_connection.first.z, tile_pair_at_gate_connection.second.x,
+            //                          tile_pair_at_gate_connection.second.y, tile_pair_at_gate_connection.second.z)
+            //           << std::endl;
             assert(tile_pair_at_gate_connection.first.y == tile_pair_at_gate_connection.second.y - 1 &&
                    "tiles are not represent a row clocked gate connection");
 
