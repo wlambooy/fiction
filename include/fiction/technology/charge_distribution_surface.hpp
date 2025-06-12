@@ -1133,8 +1133,8 @@ class charge_distribution_surface<Lyt, ExtPotType, false> : public Lyt
             if constexpr (ExtPotType == local_external_potential_type::BOUNDED)
             {
                 return std::make_optional<std::array<double, 2>>(
-                    {strg->local_int_pot[index] + strg->local_ext_pot[index][0],
-                     strg->local_int_pot[index] + strg->local_ext_pot[index][1]});
+                    std::array<double, 2>{strg->local_int_pot[index] + strg->local_ext_pot[index][0],
+                                          strg->local_int_pot[index] + strg->local_ext_pot[index][1]});
             }
             else
             {
