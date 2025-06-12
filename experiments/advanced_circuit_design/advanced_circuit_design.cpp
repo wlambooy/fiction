@@ -187,8 +187,8 @@ int main(int argc, char* argv[])  // NOLINT
     // constexpr const uint64_t bench_select = fiction_experiments::cx;
     // constexpr const uint64_t bench_select = fiction_experiments::and3;
     // constexpr const uint64_t bench_select = fiction_experiments::xor3;
-    // constexpr const uint64_t bench_select = fiction_experiments::supertile;
-    constexpr const uint64_t bench_select = fiction_experiments::supertile_ho;
+    constexpr const uint64_t bench_select = fiction_experiments::supertile;
+    // constexpr const uint64_t bench_select = fiction_experiments::supertile_ho;
     // constexpr const uint64_t bench_select = fiction_experiments::xor5_maj;
     // fiction_experiments::all & ~fiction_experiments::parity & ~fiction_experiments::two_bit_add_maj &
     // ~fiction_experiments::b1_r2 & ~fiction_experiments::clpl & ~fiction_experiments::iscas85 &
@@ -221,7 +221,7 @@ int main(int argc, char* argv[])  // NOLINT
 
     const auto create_supertile_tt = []
     {
-        static constexpr const char* or_not_tt_string = "1110";  // Output 1
+        static constexpr const char* or_not_tt_string = "1101";  // Output 1
         kitty::dynamic_truth_table   or_not_tb{2};
         kitty::create_from_binary_string(or_not_tb, or_not_tt_string);
         return std::vector{fiction::create_and_tt(), or_not_tb};
@@ -232,14 +232,17 @@ int main(int argc, char* argv[])  // NOLINT
         static constexpr const char* or_not_tt_string = "1111";  // Output 1
         kitty::dynamic_truth_table   or_not_tb{2};
         kitty::create_from_binary_string(or_not_tb, or_not_tt_string);
-        return std::vector{fiction::create_id_tt(), or_not_tb};
+        static constexpr const char* and_tt_string = "1010";  // Output 2
+        kitty::dynamic_truth_table   and_tb{2};
+        kitty::create_from_binary_string(and_tb, and_tt_string);
+        return std::vector{and_tb, or_not_tb};
     };
 
     std::map<std::string, std::vector<kitty::dynamic_truth_table>> tt_map{
         {"TEST/fo", fiction::create_fan_out_tt()}, {"TEST/cx", fiction::create_crossing_wire_tt()},
         {"TEST/and3", create_and3_tt()},           {"TEST/xor3", create_xor3_tt()},
         {"fontes18/xor5_r1", create_xor5_tt()},    {"fontes18/xor5Maj", create_xor5_tt()},
-        {"TEST/supertile", create_supertile_tt()}, {"TEST/supertile_ho", create_supertile_ho_tt()}};
+        {"TEST/supertile", create_supertile_tt()}, {"TEST/supertile_HO", create_supertile_ho_tt()}};
 
     for (const auto& benchmark : fiction_experiments::all_benchmarks(bench_select))
     {
