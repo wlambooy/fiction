@@ -424,8 +424,8 @@ class charge_distribution_surface<Lyt, ExtPotType, false> : public Lyt
     }
     // Move constructor
     charge_distribution_surface(charge_distribution_surface&& other) noexcept :
-        Lyt(std::move(other)),
-        strg(std::move(other.strg))
+            Lyt(std::move(other)),
+            strg(std::move(other.strg))
     {}
 
     // Move assignment
@@ -1106,10 +1106,10 @@ class charge_distribution_surface<Lyt, ExtPotType, false> : public Lyt
             if constexpr (ExtPotType == local_external_potential_type::BOUNDED)
             {
                 return std::make_optional<std::array<double, 2>>(
-                    {strg->local_int_pot[static_cast<uint64_t>(index)] +
-                         strg->local_ext_pot[static_cast<uint64_t>(index)][0],
-                     strg->local_int_pot[static_cast<uint64_t>(index)] +
-                         strg->local_ext_pot[static_cast<uint64_t>(index)][1]});
+                    std::array<double, 2>{strg->local_int_pot[static_cast<uint64_t>(index)] +
+                                              strg->local_ext_pot[static_cast<uint64_t>(index)][0],
+                                          strg->local_int_pot[static_cast<uint64_t>(index)] +
+                                              strg->local_ext_pot[static_cast<uint64_t>(index)][1]});
             }
             else
             {
