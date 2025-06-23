@@ -564,9 +564,9 @@ class advanced_circuit_design_impl
                     threads.reserve(num_threads);
 
 #if (PROGRESS_BARS)
-                    mockturtle::progress_bar bar{static_cast<uint32_t>(std::min(chunk_size, operational_gate_designs.at(n).size())),
-                        "[i] Determining successful trial ratio for tile " +
-                                                     fmt::format("({},{})", t.x, t.y) + ": |{0}|"};
+                    mockturtle::progress_bar bar{
+                        static_cast<uint32_t>(std::min(chunk_size, operational_gate_designs.at(n).size())),
+                        "[i] Determining successful trial ratio for tile " + fmt::format("({},{})", t.x, t.y) + ": |{0}|"};
 #endif
 
                     for (uint64_t i = 0; i < num_threads; ++i)
@@ -963,7 +963,7 @@ class advanced_circuit_design_impl
 #if (PROGRESS_BARS)
                     mockturtle::progress_bar bar{static_cast<uint32_t>(std::min(
                                                      chunk_size, operational_gate_designs.at(n).size())),
-                                                 "[i] Determining successful trial ratio for tile " + fmt::format("({},{})", t.x, t.y) +
+                        "[i] Determining successful trial ratio for tile " + fmt::format("({},{})", t.x, t.y) +
                             ": |{0}|"};
 #endif
 
@@ -1277,8 +1277,8 @@ class advanced_circuit_design_impl
 
 #if (PROGRESS_BARS)
                     mockturtle::progress_bar bar{static_cast<uint32_t>(operational_gate_designs.at(n).size()),
-                        "[i] Determining successful trial ratio for tile " + fmt::format("({},{})", t.x, t.y) +
-                            ": |{0}|\t"};
+                                                 "[i] Determining successful trial ratio for tile " +
+                                                     fmt::format("({},{})", t.x, t.y) + ": |{0}|\t"};
 #endif
 
                     for (uint64_t j = 0; !operational_circuit_found && j < operational_gate_designs.at(n).size(); ++j)
