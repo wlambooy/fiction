@@ -30,7 +30,8 @@ namespace detail
  * @return The energetic difference between the ground state and the first excited state.
  */
 template <typename Lyt, local_external_potential_type ExtPotType>
-[[nodiscard]] double get_ground_state_isolation(const std::vector<charge_distribution_surface<Lyt, ExtPotType>>& sim_res) noexcept
+[[nodiscard]] double
+get_ground_state_isolation(const std::vector<charge_distribution_surface<Lyt, ExtPotType>>& sim_res) noexcept
 {
     if (sim_res.size() == 1)
     {

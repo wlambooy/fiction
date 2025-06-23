@@ -5,10 +5,10 @@
 #ifndef FICTION_SIDB_ON_THE_FLY_MINI_GATE_LIBRARY_HPP
 #define FICTION_SIDB_ON_THE_FLY_MINI_GATE_LIBRARY_HPP
 
-#include "fiction/algorithms/physical_design/design_sidb_gates.hpp"
-#include "fiction/algorithms/simulation/sidb/is_operational.hpp"
 #include "fiction/algorithms/physical_design/compare_designed_sidb_gates.hpp"
+#include "fiction/algorithms/physical_design/design_sidb_gates.hpp"
 #include "fiction/algorithms/simulation/sidb/compare_by_ground_state_isolation.hpp"
+#include "fiction/algorithms/simulation/sidb/is_operational.hpp"
 #include "fiction/layouts/bounding_box.hpp"
 #include "fiction/technology/cell_ports.hpp"
 #include "fiction/technology/cell_technologies.hpp"
@@ -417,7 +417,8 @@ class sidb_on_the_fly_mini_gate_library
             }
 
             order_designed_sidb_gates({std::make_shared<compare_by_minimum_ground_state_isolation<LytSkeleton>>(),
-             std::make_shared<compare_by_average_ground_state_isolation<LytSkeleton>>()} , sorted_gates);
+                                       std::make_shared<compare_by_average_ground_state_isolation<LytSkeleton>>()},
+                                      sorted_gates);
 
             print_layout(sorted_gates.gate_layouts.front());
 
