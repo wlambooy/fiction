@@ -115,7 +115,7 @@ class advanced_circuit_design_impl
 
         CellLyt lyt{};
 
-        std::unordered_map<mockturtle::node<GateLyt>, sidb_on_the_fly_mini_gate_library::designed_fcn_gates>
+        std::unordered_map<mockturtle::node<GateLyt>, std::vector<typename GateLibrary::fcn_gate>>
             operational_gate_designs{};
 
         // // generating the blacklist based on neutral defects. The long-range electrostatic influence of charged
@@ -448,7 +448,7 @@ class advanced_circuit_design_impl
      */
     bool prune_gate_designs_by_gate_connections(
         const GateLyt& gate_lyt,
-        std::unordered_map<mockturtle::node<GateLyt>, sidb_on_the_fly_mini_gate_library::designed_fcn_gates>&
+        std::unordered_map<mockturtle::node<GateLyt>, std::vector<typename GateLibrary::fcn_gate>>&
             operational_gate_designs) const noexcept
     {
         std::cout << "\nSTARTING TO PRUNE GATE DESIGNS BY GATE CONNECTIONS" << std::endl;
@@ -545,7 +545,7 @@ class advanced_circuit_design_impl
                                      "Performing {} trials for {} gate connection{} for {} gate implementations",
                                      params.num_trials, gate_lyt_window_for_joint_simulation.at(n).size(),
                                      gate_lyt_window_for_joint_simulation.at(n).size() > 1 ? "s" : "",
-                                     operational_gate_designs.at(n).designed_gates.size())
+                                     operational_gate_designs.at(n).size())
                               << std::endl;
 
                     std::vector<std::pair<double, uint64_t>> successful_trial_ratio_per_gate_implementation{};
@@ -553,12 +553,12 @@ class advanced_circuit_design_impl
 
                     // const uint64_t num_threads = 1;
                     const uint64_t num_threads =
-                        std::min(params.available_threads, operational_gate_designs.at(n).designed_gates.size());
+                        std::min(params.available_threads, operational_gate_designs.at(n).size());
                     //  const uint64_t num_threads = std::min(uint64_t{20},
-                    //  operational_gate_designs.at(n).designed_gates.size());
+                    //  operational_gate_designs.at(n).size());
 
                     const uint64_t chunk_size =
-                        (operational_gate_designs.at(n).designed_gates.size() + num_threads - 1) /
+                        (operational_gate_designs.at(n).size() + num_threads - 1) /
                         num_threads;  // Ceiling division
 
                     std::vector<std::thread> threads{};
@@ -566,7 +566,7 @@ class advanced_circuit_design_impl
 
 #if (PROGRESS_BARS)
                     mockturtle::progress_bar bar{static_cast<uint32_t>(std::min(
-                                                     chunk_size, operational_gate_designs.at(n).designed_gates.size())),
+                                                     chunk_size, operational_gate_designs.at(n).size())),
                                                  "[i] Determining successful trial ratio for tile " +
                                                      fmt::format("({},{})", t.x, t.y) + ": |{0}|"};
 #endif
@@ -584,7 +584,7 @@ class advanced_circuit_design_impl
                             {
                                 const uint64_t start_index = i * chunk_size;
                                 const uint64_t end_index   = std::min(
-                                    start_index + chunk_size, operational_gate_designs.at(n).designed_gates.size());
+                                    start_index + chunk_size, operational_gate_designs.at(n).size());
 
                                 for (uint64_t j = start_index; j < end_index; ++j)
                                 {
@@ -595,7 +595,7 @@ class advanced_circuit_design_impl
                                     // select the first gate implementation for n
                                     assign_gate<CellLyt, GateLibrary, GateLyt>(
                                         cell_lyt,
-                                        *std::next(operational_gate_designs.at(n).designed_gates.cbegin(),
+                                        *std::next(operational_gate_designs.at(n).cbegin(),
                                                    static_cast<int64_t>(j)),
                                         gate_lyt, t);
 
@@ -627,14 +627,14 @@ class advanced_circuit_design_impl
                                             std::random_device rd;         // a seed source for the random number engine
                                             std::mt19937       gen(rd());  // mersenne_twister_engine seeded with rd()
                                             std::uniform_int_distribution<uint64_t> distrib{
-                                                0, operational_gate_designs.at(connecting_n).designed_gates.size() - 1};
+                                                0, operational_gate_designs.at(connecting_n).size() - 1};
 
                                             // select a random gate implementation for the tile that connects as
                                             // input to n
                                             assign_gate<CellLyt, GateLibrary, GateLyt>(
                                                 cell_lyt_clone,
                                                 operational_gate_designs.at(connecting_n)
-                                                    .designed_gates.at(distrib(gen)),
+                                                    .at(distrib(gen)),
                                                 gate_lyt, gate_lyt.get_tile(connecting_n));
 
                                             // mockturtle::stopwatch<>::duration time_counter{};
@@ -764,7 +764,7 @@ class advanced_circuit_design_impl
                         exit_by_failure = true;
                     }
                     else if (selected_gate_implementation_indices.at(n).size() <
-                             operational_gate_designs.at(n).designed_gates.size())
+                             operational_gate_designs.at(n).size())
                     {
                         big_fixpoint = false;
                     }
@@ -785,10 +785,10 @@ class advanced_circuit_design_impl
                     for (const uint64_t selected_gate_implementation_index : selected_gate_implementation_indices.at(n))
                     {
                         selected_gate_implementations.push_back(
-                            std::move(operational_gate_designs[n].designed_gates[selected_gate_implementation_index]));
+                            std::move(operational_gate_designs[n][selected_gate_implementation_index]));
                     }
 
-                    operational_gate_designs[n].designed_gates = std::move(selected_gate_implementations);
+                    operational_gate_designs[n] = std::move(selected_gate_implementations);
                 });
         }
 
@@ -797,7 +797,7 @@ class advanced_circuit_design_impl
 
     bool prune_gate_designs_by_two_gate_connections(
         const GateLyt& gate_lyt,
-        std::unordered_map<mockturtle::node<GateLyt>, sidb_on_the_fly_mini_gate_library::designed_fcn_gates>&
+        std::unordered_map<mockturtle::node<GateLyt>, std::vector<typename GateLibrary::fcn_gate>>&
             operational_gate_designs) const noexcept
     {
         std::cout << "\nSTARTING TO PRUNE GATE DESIGNS BY TWO GATE CONNECTIONS" << std::endl;
@@ -945,7 +945,7 @@ class advanced_circuit_design_impl
                                      "Performing {} trials for {} gate connection{} for {} gate implementations",
                                      params.num_trials_for_double_scope, number_of_layouts,
                                      number_of_layouts > 1 ? "s" : "",
-                                     operational_gate_designs.at(n).designed_gates.size())
+                                     operational_gate_designs.at(n).size())
                               << std::endl;
 
                     std::vector<std::pair<double, uint64_t>> successful_trial_ratio_per_gate_implementation{};
@@ -953,12 +953,12 @@ class advanced_circuit_design_impl
 
                     // const uint64_t num_threads = 1;
                     const uint64_t num_threads =
-                        std::min(params.available_threads, operational_gate_designs.at(n).designed_gates.size());
+                        std::min(params.available_threads, operational_gate_designs.at(n).size());
                     //  const uint64_t num_threads = std::min(uint64_t{20},
-                    //  operational_gate_designs.at(n).designed_gates.size());
+                    //  operational_gate_designs.at(n).size());
 
                     const uint64_t chunk_size =
-                        (operational_gate_designs.at(n).designed_gates.size() + num_threads - 1) /
+                        (operational_gate_designs.at(n).size() + num_threads - 1) /
                         num_threads;  // Ceiling division
 
                     std::vector<std::thread> threads{};
@@ -966,7 +966,7 @@ class advanced_circuit_design_impl
 
 #if (PROGRESS_BARS)
                     mockturtle::progress_bar bar{static_cast<uint32_t>(std::min(
-                                                     chunk_size, operational_gate_designs.at(n).designed_gates.size())),
+                                                     chunk_size, operational_gate_designs.at(n).size())),
                                                  "[i] Determining successful trial ratio for tile " +
                                                      fmt::format("({},{})", t.x, t.y) + ": |{0}|"};
 #endif
@@ -984,7 +984,7 @@ class advanced_circuit_design_impl
                             {
                                 const uint64_t start_index = i * chunk_size;
                                 const uint64_t end_index   = std::min(
-                                    start_index + chunk_size, operational_gate_designs.at(n).designed_gates.size());
+                                    start_index + chunk_size, operational_gate_designs.at(n).size());
 
                                 for (uint64_t j = start_index; j < end_index; ++j)
                                 {
@@ -995,7 +995,7 @@ class advanced_circuit_design_impl
                                     // select the first gate implementation for n
                                     assign_gate<CellLyt, GateLibrary, GateLyt>(
                                         cell_lyt,
-                                        *std::next(operational_gate_designs.at(n).designed_gates.cbegin(),
+                                        *std::next(operational_gate_designs.at(n).cbegin(),
                                                    static_cast<int64_t>(j)),
                                         gate_lyt, t);
 
@@ -1037,7 +1037,7 @@ class advanced_circuit_design_impl
                                                 std::random_device rd;   // a seed source for the random number engine
                                                 std::mt19937 gen(rd());  // mersenne_twister_engine seeded with rd()
                                                 std::uniform_int_distribution<uint64_t> distrib{
-                                                    0, operational_gate_designs.at(connecting_n).designed_gates.size() -
+                                                    0, operational_gate_designs.at(connecting_n).size() -
                                                            1};
 
                                                 // select a random gate implementation for the tile that connects as
@@ -1045,14 +1045,14 @@ class advanced_circuit_design_impl
                                                 assign_gate<CellLyt, GateLibrary, GateLyt>(
                                                     cell_lyt_clone,
                                                     operational_gate_designs.at(connecting_n)
-                                                        .designed_gates.at(distrib(gen)),
+                                                        .at(distrib(gen)),
                                                     gate_lyt, gate_lyt.get_tile(connecting_n));
 
                                                 std::random_device rd2;    // a seed source for the random number engine
                                                 std::mt19937 gen2(rd2());  // mersenne_twister_engine seeded with rd()
                                                 std::uniform_int_distribution<uint64_t> distrib2{
                                                     0, operational_gate_designs.at(connecting_to_connecting_n)
-                                                               .designed_gates.size() -
+                                                               .size() -
                                                            1};
 
                                                 // select a random gate implementation for the tile that connects as
@@ -1060,7 +1060,7 @@ class advanced_circuit_design_impl
                                                 assign_gate<CellLyt, GateLibrary, GateLyt>(
                                                     cell_lyt_clone,
                                                     operational_gate_designs.at(connecting_to_connecting_n)
-                                                        .designed_gates.at(distrib2(gen2)),
+                                                        .at(distrib2(gen2)),
                                                     gate_lyt, gate_lyt.get_tile(connecting_to_connecting_n));
 
                                                 // mockturtle::stopwatch<>::duration time_counter{};
@@ -1189,7 +1189,7 @@ class advanced_circuit_design_impl
                         exit_by_failure = true;
                     }
                     else if (selected_gate_implementation_indices.at(n).size() <
-                             operational_gate_designs.at(n).designed_gates.size())
+                             operational_gate_designs.at(n).size())
                     {
                         big_fixpoint = false;
                     }
@@ -1210,10 +1210,10 @@ class advanced_circuit_design_impl
                     for (const uint64_t selected_gate_implementation_index : selected_gate_implementation_indices.at(n))
                     {
                         selected_gate_implementations.push_back(
-                            std::move(operational_gate_designs[n].designed_gates[selected_gate_implementation_index]));
+                            std::move(operational_gate_designs[n][selected_gate_implementation_index]));
                     }
 
-                    operational_gate_designs[n].designed_gates = std::move(selected_gate_implementations);
+                    operational_gate_designs[n] = std::move(selected_gate_implementations);
                 });
         }
 
@@ -1222,7 +1222,7 @@ class advanced_circuit_design_impl
 
     bool prune_gate_designs_at_global_level(
         const GateLyt& gate_lyt,
-        std::unordered_map<mockturtle::node<GateLyt>, sidb_on_the_fly_mini_gate_library::designed_fcn_gates>&
+        std::unordered_map<mockturtle::node<GateLyt>, std::vector<typename GateLibrary::fcn_gate>>&
                  operational_gate_designs,
         CellLyt& lyt) noexcept
     {
@@ -1262,7 +1262,7 @@ class advanced_circuit_design_impl
                         return;
                     }
 
-                    if (operational_gate_designs.at(n).designed_gates.size() == 1)
+                    if (operational_gate_designs.at(n).size() == 1)
                     {
                         selected_gate_implementation_indices[n] = {0};
 
@@ -1274,27 +1274,27 @@ class advanced_circuit_design_impl
                     std::cout << fmt::format("\nStarting pruning for tile {}\n", t);
                     std::cout << fmt::format("Performing {} trials for {} gate implementations",
                                              params.num_trials_for_global_scope,
-                                             operational_gate_designs.at(n).designed_gates.size())
+                                             operational_gate_designs.at(n).size())
                               << std::endl;
 
                     std::vector<std::pair<double, uint64_t>> successful_trial_ratio_per_gate_implementation{};
 
 #if (PROGRESS_BARS)
                     mockturtle::progress_bar bar{
-                        static_cast<uint32_t>(operational_gate_designs.at(n).designed_gates.size()),
+                        static_cast<uint32_t>(operational_gate_designs.at(n).size()),
                         "[i] Determining successful trial ratio for tile " + fmt::format("({},{})", t.x, t.y) +
                             ": |{0}|\t"};
 #endif
 
                     for (uint64_t j = 0;
-                         !operational_circuit_found && j < operational_gate_designs.at(n).designed_gates.size(); ++j)
+                         !operational_circuit_found && j < operational_gate_designs.at(n).size(); ++j)
                     {
                         CellLyt cell_lyt{};
 
                         // select the first gate implementation for n
                         assign_gate<CellLyt, GateLibrary, GateLyt>(
                             cell_lyt,
-                            *std::next(operational_gate_designs.at(n).designed_gates.cbegin(), static_cast<int64_t>(j)),
+                            *std::next(operational_gate_designs.at(n).cbegin(), static_cast<int64_t>(j)),
                             gate_lyt, t);
 
                         double successful_trials = 0;
@@ -1318,13 +1318,13 @@ class advanced_circuit_design_impl
                                     std::random_device rd;         // a seed source for the random number engine
                                     std::mt19937       gen(rd());  // mersenne_twister_engine seeded with rd()
                                     std::uniform_int_distribution<uint64_t> distrib{
-                                        0, operational_gate_designs.at(other_n).designed_gates.size() - 1};
+                                        0, operational_gate_designs.at(other_n).size() - 1};
 
                                     // select a random gate implementation for the tile that connects as
                                     // input to n
                                     assign_gate<CellLyt, GateLibrary, GateLyt>(
                                         cell_lyt_clone,
-                                        operational_gate_designs.at(other_n).designed_gates.at(distrib(gen)), gate_lyt,
+                                        operational_gate_designs.at(other_n).at(distrib(gen)), gate_lyt,
                                         gate_lyt.get_tile(other_n));
                                 });
 
@@ -1399,7 +1399,7 @@ class advanced_circuit_design_impl
                         exit_by_failure = true;
                     }
                     else if (selected_gate_implementation_indices.at(n).size() <
-                             operational_gate_designs.at(n).designed_gates.size())
+                             operational_gate_designs.at(n).size())
                     {
                         big_fixpoint = false;
                     }
@@ -1430,10 +1430,10 @@ class advanced_circuit_design_impl
                     for (const uint64_t selected_gate_implementation_index : selected_gate_implementation_indices.at(n))
                     {
                         selected_gate_implementations.push_back(
-                            std::move(operational_gate_designs[n].designed_gates[selected_gate_implementation_index]));
+                            std::move(operational_gate_designs[n][selected_gate_implementation_index]));
                     }
 
-                    operational_gate_designs[n].designed_gates = std::move(selected_gate_implementations);
+                    operational_gate_designs[n] = std::move(selected_gate_implementations);
                 });
         }
 
@@ -1444,7 +1444,7 @@ class advanced_circuit_design_impl
      */
     bool look_for_operational_circuit_exhaustively(
         const GateLyt& gate_lyt,
-        std::unordered_map<mockturtle::node<GateLyt>, sidb_on_the_fly_mini_gate_library::designed_fcn_gates>&
+        std::unordered_map<mockturtle::node<GateLyt>, std::vector<typename GateLibrary::fcn_gate>>&
                  operational_gate_designs,
         CellLyt& lyt) const noexcept
     {
@@ -1461,7 +1461,7 @@ class advanced_circuit_design_impl
                     *std::next(operational_gate_designs.cbegin(), static_cast<int64_t>(i));
                 // select a random gate implementation for the tile that connects as input to n
                 assign_gate<CellLyt, GateLibrary, GateLyt>(operational_circuit_candidate,
-                                                           op_gate_designs_for_gate.designed_gates.at(indices.at(i)),
+                                                           op_gate_designs_for_gate.at(indices.at(i)),
                                                            gate_lyt, gate_lyt.get_tile(n));
             }
 
@@ -1495,7 +1495,7 @@ class advanced_circuit_design_impl
             for (uint64_t i = 0; i < indices.size(); ++i)
             {
                 if (++indices[i] <
-                    std::next(operational_gate_designs.cbegin(), static_cast<int64_t>(i))->second.designed_gates.size())
+                    std::next(operational_gate_designs.cbegin(), static_cast<int64_t>(i))->second.size())
                 {
                     break;  // No carry needed
                 }

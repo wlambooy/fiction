@@ -7,6 +7,8 @@
 
 #include "fiction/algorithms/physical_design/design_sidb_gates.hpp"
 #include "fiction/algorithms/simulation/sidb/is_operational.hpp"
+#include "fiction/algorithms/physical_design/compare_designed_sidb_gates.hpp"
+#include "fiction/algorithms/simulation/sidb/compare_by_ground_state_isolation.hpp"
 #include "fiction/layouts/bounding_box.hpp"
 #include "fiction/technology/cell_ports.hpp"
 #include "fiction/technology/cell_technologies.hpp"
@@ -44,12 +46,6 @@ class sidb_on_the_fly_mini_gate_library
 {
   public:
     explicit sidb_on_the_fly_mini_gate_library() = delete;
-
-    struct designed_fcn_gates
-    {
-        std::vector<fcn_gate> designed_gates;
-        std::vector<tt>       function;
-    };
     /**
      * Overrides the corresponding function in fcn_gate_library. Given a tile `t`, this function takes all necessary
      * information from the stored grid into account to design the correct fcn_gate representation for that tile. In
@@ -68,7 +64,7 @@ class sidb_on_the_fly_mini_gate_library
     template <typename GateLyt, typename CellLyt, typename Params,
               local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED,
               typename SkeletonGateLibrary             = sidb_skeleton_bestagon_mini_library>
-    static designed_fcn_gates set_up_gates(
+    static std::vector<fcn_gate> set_up_gates(
         const GateLyt& lyt, const tile<GateLyt>& t, Params& params,
         const std::optional<CellLyt>&                                                 defect_surface = std::nullopt,
         const std::optional<sidb_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>>& super_circuit  = std::nullopt,
@@ -95,7 +91,7 @@ class sidb_on_the_fly_mini_gate_library
         const auto cell_list = sidb_skeleton_bestagon_mini_library{}.set_up_gate(lyt, t);
         if (cell_list == EMPTY_GATE)
         {
-            return designed_fcn_gates{{EMPTY_GATE}, {}};
+            return {EMPTY_GATE};
         }
 
         const auto skeleton = cell_list_to_cell_level_layout<CellLyt>(cell_list);
@@ -195,7 +191,7 @@ class sidb_on_the_fly_mini_gate_library
                                 lyt, t, op_params->input_bdl_iterator_params.bdl_wire_params),
                             super_circuit, op_params);
                     }
-                    return designed_fcn_gates{{EMPTY_GATE}, {}};
+                    return {EMPTY_GATE};
                 }
             }
 
@@ -394,7 +390,7 @@ class sidb_on_the_fly_mini_gate_library
     template <typename LytSkeleton, typename TT, typename CellLyt, typename GateLyt,
               local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED,
               typename SkeletonGateLibrary             = sidb_on_the_fly_mini_gate_library>
-    [[nodiscard]] static designed_fcn_gates
+    [[nodiscard]] static std::vector<fcn_gate>
     design_gates(const LytSkeleton& skeleton, const std::vector<TT>& spec,
                  const sidb_on_the_fly_gate_library_params<CellLyt>& parameters, const port_list<port_direction>& p,
                  const tile<GateLyt>& tile, sidb_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary> circuit,
@@ -410,13 +406,22 @@ class sidb_on_the_fly_mini_gate_library
             std::vector<fcn_gate> gates{};
             gates.reserve(found_gate_layouts.size());
 
+            designed_sidb_gates<LytSkeleton, ExtPotType> sorted_gates{};
+            sorted_gates.gate_layouts.reserve(found_gate_layouts.size());
+
             for (const auto& gate : found_gate_layouts)
             {
                 gates.emplace_back(cell_list_to_gate<char>(
                     cell_level_layout_to_list(std::move(gate), circuit.gate_layout, tile, false)));
+                sorted_gates.gate_layouts.emplace_back(gate);
             }
 
-            return designed_fcn_gates{gates, spec};
+            order_designed_sidb_gates({std::make_shared<compare_by_minimum_ground_state_isolation<LytSkeleton>>(),
+             std::make_shared<compare_by_average_ground_state_isolation<LytSkeleton>>()} , sorted_gates);
+
+            print_layout(sorted_gates.gate_layouts.front());
+
+            return gates;
         };
 
         const auto params = is_sidb_gate_design_impossible_params{
@@ -446,8 +451,6 @@ class sidb_on_the_fly_mini_gate_library
                 throw gate_design_exception<tt, GateLyt>(tile, create_id_tt(), p);
             }
 
-            print_layout(found_gate_layouts.front());
-
             return create_fcn_gates(found_gate_layouts);
         }
 
@@ -471,8 +474,6 @@ class sidb_on_the_fly_mini_gate_library
         {
             throw gate_design_exception<tt, GateLyt>(tile, spec.front(), p);
         }
-
-        print_layout(found_gate_layouts.front());
 
         return create_fcn_gates(found_gate_layouts);
     }

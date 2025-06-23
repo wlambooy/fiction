@@ -29,8 +29,8 @@ namespace detail
  * @param sim_res Simulation results as a vector of physically valid charge distributions.
  * @return The energetic difference between the ground state and the first excited state.
  */
-template <typename Lyt>
-[[nodiscard]] double get_ground_state_isolation(const std::vector<charge_distribution_surface<Lyt>>& sim_res) noexcept
+template <typename Lyt, local_external_potential_type ExtPotType>
+[[nodiscard]] double get_ground_state_isolation(const std::vector<charge_distribution_surface<Lyt, ExtPotType>>& sim_res) noexcept
 {
     if (sim_res.size() == 1)
     {
@@ -40,20 +40,39 @@ template <typename Lyt>
     double ground_state_energy        = std::numeric_limits<double>::infinity();
     double first_excited_state_energy = std::numeric_limits<double>::infinity();
 
-    for (const charge_distribution_surface<Lyt>& cds : sim_res)
+    for (const charge_distribution_surface<Lyt, ExtPotType>& cds : sim_res)
     {
-        const double energy = cds.get_electrostatic_potential_energy();
-
-        if (energy - ground_state_energy < 0)
+        if constexpr (ExtPotType == local_external_potential_type::BOUNDED)
         {
-            first_excited_state_energy = ground_state_energy;
-            ground_state_energy        = energy;
-            continue;
+            const double energy = cds.get_electrostatic_potential_energy()[0];
+
+            if (energy - ground_state_energy < 0)
+            {
+                first_excited_state_energy = ground_state_energy;
+                ground_state_energy        = energy;
+                continue;
+            }
+
+            if (energy - first_excited_state_energy < 0)
+            {
+                first_excited_state_energy = energy;
+            }
         }
-
-        if (energy - first_excited_state_energy < 0)
+        else
         {
-            first_excited_state_energy = energy;
+            const double energy = cds.get_electrostatic_potential_energy();
+
+            if (energy - ground_state_energy < 0)
+            {
+                first_excited_state_energy = ground_state_energy;
+                ground_state_energy        = energy;
+                continue;
+            }
+
+            if (energy - first_excited_state_energy < 0)
+            {
+                first_excited_state_energy = energy;
+            }
         }
     }
 

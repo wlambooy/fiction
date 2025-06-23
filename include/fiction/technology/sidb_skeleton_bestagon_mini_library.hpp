@@ -36,7 +36,7 @@ class sidb_skeleton_bestagon_mini_library
     sidb_skeleton_bestagon_mini_library(
         const std::string_view& filename =
             // "/home/willem/fiction/include/fiction/technology/sidb_skeletons/mini_bestagon.sqd") noexcept :
-        "/home/lambooy/fiction/include/fiction/technology/sidb_skeletons/mini_test.sqd") noexcept :
+        "/home/willem/fiction/include/fiction/technology/sidb_skeletons/mini_test.sqd") noexcept :
             fcn_gate_library(),
             skeleton_producer{read_sqd_layout<sidb_skeleton_t>(filename, "skeleton")}
     {}
