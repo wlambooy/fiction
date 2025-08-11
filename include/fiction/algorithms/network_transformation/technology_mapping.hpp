@@ -80,6 +80,10 @@ struct technology_mapping_params
      * 2-input greater-or-equal gate.
      */
     bool ge2{false};
+    bool a2{false};
+    bool b2{false};
+    bool nota2{false};
+    bool notb2{false};
 
     // 3-input functions
 
@@ -189,10 +193,14 @@ struct technology_mapping_params
     params.nor2  = true;
     params.xor2  = true;
     params.xnor2 = true;
-    params.lt2   = true;
-    params.gt2   = true;
-    params.le2   = true;
-    params.ge2   = true;
+    // params.lt2   = true;
+    // params.gt2   = true;
+    // params.le2   = true;
+    // params.ge2   = true;
+    // params.a2    = true;
+    // params.b2    = true;
+    // params.nota2 = true;
+    // params.notb2 = true;
 
     return params;
 }
@@ -409,6 +417,22 @@ class technology_mapping_impl
         if (params.ge2)
         {
             library_stream << fiction::GATE_GE2;
+        }
+        if (params.a2)
+        {
+            library_stream << fiction::GATE_A2;
+        }
+        if (params.b2)
+        {
+            library_stream << fiction::GATE_B2;
+        }
+        if (params.nota2)
+        {
+            library_stream << fiction::GATE_NOT_A2;
+        }
+        if (params.notb2)
+        {
+            library_stream << fiction::GATE_NOT_B2;
         }
         // 3-input functions
         if (params.maj3)

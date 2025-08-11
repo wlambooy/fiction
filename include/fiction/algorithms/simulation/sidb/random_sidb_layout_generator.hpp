@@ -102,7 +102,11 @@ generate_random_sidb_layout(const generate_random_sidb_layout_params<coordinate<
 
     std::unordered_set<typename Lyt::coordinate> sidbs_affected_by_defects = {};
 
-    uint64_t number_of_sidbs_of_final_layout = params.number_of_sidbs;
+    static std::random_device              rd;
+    static std::mt19937                    gen(rd());
+    static std::uniform_int_distribution<> dist(1, params.number_of_sidbs);
+
+    uint64_t number_of_sidbs_of_final_layout = dist(gen);
 
     Lyt lyt{};
 

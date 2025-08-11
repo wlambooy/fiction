@@ -27,8 +27,9 @@ namespace fiction
  */
 class sidb_skeleton_bestagon_mini_library
         // : public fcn_gate_library<sidb_technology, 36, 32>  // width and height of a hexagon
-        // : public fcn_gate_library<sidb_technology, 38, 27>  // width and height of a hexagon
-        : public fcn_gate_library<sidb_technology, 42, 27>  // width and height of a hexagon
+        // : public fcn_gate_library<sidb_technology, 44, 25>  // width and height of a hexagon
+        : public fcn_gate_library<sidb_technology, 30, 30>  // width and height of a hexagon
+        // : public fcn_gate_library<sidb_technology, 42, 27>  // width and height of a hexagon
 {
   public:
     using sidb_skeleton_t = sidb_skeleton<sidb_100_cell_clk_lyt, gate_x_size(), gate_y_size()>;
@@ -36,7 +37,8 @@ class sidb_skeleton_bestagon_mini_library
     sidb_skeleton_bestagon_mini_library(
         const std::string_view& filename =
             // "/home/willem/fiction/include/fiction/technology/sidb_skeletons/mini_bestagon.sqd") noexcept :
-        "/home/willem/fiction/include/fiction/technology/sidb_skeletons/mini_test.sqd") noexcept :
+        // "/home/lambooy/fiction/include/fiction/technology/sidb_skeletons/mini_test.sqd") noexcept :
+        "/home/willem/fiction/include/fiction/technology/sidb_skeletons/new_mini_bestagon.sqd") noexcept :
             fcn_gate_library(),
             skeleton_producer{read_sqd_layout<sidb_skeleton_t>(filename, "skeleton")}
     {}

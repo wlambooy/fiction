@@ -42,6 +42,18 @@ inline constexpr const char* GATE_LE2 = "GATE  le2  1 O=!(a*!b);     PIN * NONIN
 inline constexpr const char* GATE_GE2 = "GATE  ge2  1 O=!(!a*b);     PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n";
 
 /**
+ * 2-ary passthroughs (non-symmetric).
+ */
+inline constexpr const char* GATE_A2 = "GATE  a2    1 O=a;          PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n";
+inline constexpr const char* GATE_B2 = "GATE  b2    1 O=b;          PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n";
+
+/**
+ * 2-ary inverting passthroughs (non-symmetric).
+ */
+inline constexpr const char* GATE_NOT_A2 = "GATE  nota2    1 O=!a;          PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n";
+inline constexpr const char* GATE_NOT_B2 = "GATE  notb2    1 O=!b;          PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n";
+
+/**
  * 3-ary functions.
  * Selection based on "Three-Input Gates for Logic Synthesis" by Dewmini S. Marakkalage et al. in TCAD 2020.
  */

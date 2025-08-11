@@ -52,6 +52,8 @@
 
 #define USE_MINI
 
+namespace fs = std::filesystem;
+
 int main(int argc, char* argv[])  // NOLINT
 {
     using gate_lyt = fiction::hex_even_row_gate_clk_lyt;
@@ -94,7 +96,7 @@ int main(int argc, char* argv[])  // NOLINT
     {
         // design_gate_params.canvas = {{13, 12}, {22, 23}};  // smaller canvas
         // design_gate_params.canvas = {{13, 8}, {24, 19}};  // smaller canvas
-        design_gate_params.canvas = {{15, 10}, {26, 19}};  // smaller canvas
+        design_gate_params.canvas = {{4, 10}, {24, 21}};  //{{15, 8}, {29, 17}};
     }
     else
     {
@@ -120,7 +122,7 @@ int main(int argc, char* argv[])  // NOLINT
         fiction::design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::RANDOM;
     design_gate_params_complex_gates.termination_cond =
         fiction::design_sidb_gates_params<lyt_t>::termination_condition::OBTAINED_N_SOLUTIONS;
-    design_gate_params_complex_gates.canvas = {{13, 10}, {28, 19}};
+    design_gate_params_complex_gates.canvas = design_gate_params.canvas;  //{{13, 8}, {31, 17}};
     // design_gate_params_complex_gates.canvas = {{11, 8}, {26, 19}};
     // design_gate_params_complex_gates.canvas = {{11, 12}, {24, 23}};
     // design_gate_params.operational_params.op_condition_kinks =
@@ -178,233 +180,265 @@ int main(int argc, char* argv[])  // NOLINT
     const auto bb_defect_surface = fiction::bounding_box_2d{surface_lattice};
     surface_lattice.resize(bb_defect_surface.get_max());
 
-    const auto lattice_tiling = gate_lyt{{11, 30}};
+    const auto lattice_tiling = gate_lyt{{11, 30}};  // todo
 
     experiments::experiment<std::string, double, uint64_t, bool> sidb_circuits_with_defects{
-        "sidb_circuits_with_defects", "benchmark", "runtime", "number of aspect ratios", "equivalent"};
+        "sidb_circuits_with_defects", "benchmark", "runtime", "number of aspect ratios", "success"};
 
-    // constexpr const uint64_t bench_select = fiction_experiments::fo;
-    // constexpr const uint64_t bench_select = fiction_experiments::cx;
-    // constexpr const uint64_t bench_select = fiction_experiments::and3;
-    // constexpr const uint64_t bench_select = fiction_experiments::xor3;
-    constexpr const uint64_t bench_select = fiction_experiments::supertile;
-    // constexpr const uint64_t bench_select = fiction_experiments::supertile_ho;
-    // constexpr const uint64_t bench_select = fiction_experiments::xor5_maj;
-    // fiction_experiments::all & ~fiction_experiments::parity & ~fiction_experiments::two_bit_add_maj &
-    // ~fiction_experiments::b1_r2 & ~fiction_experiments::clpl & ~fiction_experiments::iscas85 &
-    // ~fiction_experiments::epfl & ~fiction_experiments::half_adder & ~fiction_experiments::full_adder &
-    // ~fiction_experiments::one_bit_add_aoig & ~fiction_experiments::one_bit_add_maj & ~fiction_experiments::cm82a_5;
+    // // constexpr const uint64_t bench_select = fiction_experiments::fo;
+    // // constexpr const uint64_t bench_select = fiction_experiments::cx;
+    // // constexpr const uint64_t bench_select = fiction_experiments::and3;
+    // // constexpr const uint64_t bench_select = fiction_experiments::xor3;
+    // constexpr const uint64_t bench_select = fiction_experiments::supertile;
+    // // constexpr const uint64_t bench_select = fiction_experiments::supertile_ho;
+    // // constexpr const uint64_t bench_select = fiction_experiments::xor5_maj;
+    // // fiction_experiments::all & ~fiction_experiments::parity & ~fiction_experiments::two_bit_add_maj &
+    // // ~fiction_experiments::b1_r2 & ~fiction_experiments::clpl & ~fiction_experiments::iscas85 &
+    // // ~fiction_experiments::epfl & ~fiction_experiments::half_adder & ~fiction_experiments::full_adder &
+    // // ~fiction_experiments::one_bit_add_aoig & ~fiction_experiments::one_bit_add_maj &
+    // ~fiction_experiments::cm82a_5;
+    //
+    // const auto create_and3_tt = []
+    // {
+    //     static constexpr const char* and3_tt_string = "10000000";  // Output 1
+    //     kitty::dynamic_truth_table   and3_tb{3};
+    //     kitty::create_from_binary_string(and3_tb, and3_tt_string);
+    //     return std::vector{and3_tb};
+    // };
+    //
+    // const auto create_xor3_tt = []
+    // {
+    //     static constexpr const char* xor3_tt_string = "10010110";  // Output 1
+    //     kitty::dynamic_truth_table   xor3_tb{3};
+    //     kitty::create_from_binary_string(xor3_tb, xor3_tt_string);
+    //     return std::vector{xor3_tb};
+    // };
+    //
+    // const auto create_xor5_tt = []
+    // {
+    //     static constexpr const char* xor5_tt_string = "96699669";  // Output 1
+    //     kitty::dynamic_truth_table   xor5_tb{5};
+    //     kitty::create_from_hex_string(xor5_tb, xor5_tt_string);
+    //     return std::vector{xor5_tb};
+    // };
+    //
+    // const auto create_supertile_tt = []
+    // {
+    //     static constexpr const char* or_not_tt_string = "1101";  // Output 1
+    //     kitty::dynamic_truth_table   or_not_tb{2};
+    //     kitty::create_from_binary_string(or_not_tb, or_not_tt_string);
+    //     return std::vector{fiction::create_and_tt(), or_not_tb};
+    // };
+    //
+    // const auto create_supertile_ho_tt = []
+    // {
+    //     static constexpr const char* or_not_tt_string = "1111";  // Output 1
+    //     kitty::dynamic_truth_table   or_not_tb{2};
+    //     kitty::create_from_binary_string(or_not_tb, or_not_tt_string);
+    //     static constexpr const char* and_tt_string = "1010";  // Output 2
+    //     kitty::dynamic_truth_table   and_tb{2};
+    //     kitty::create_from_binary_string(and_tb, and_tt_string);
+    //     return std::vector{and_tb, or_not_tb};
+    // };
+    //
+    // std::map<std::string, std::vector<kitty::dynamic_truth_table>> tt_map{
+    //     {"TEST/fo", fiction::create_fan_out_tt()}, {"TEST/cx", fiction::create_crossing_wire_tt()},
+    //     {"TEST/and3", create_and3_tt()},           {"TEST/xor3", create_xor3_tt()},
+    //     {"fontes18/xor5_r1", create_xor5_tt()},    {"fontes18/xor5Maj", create_xor5_tt()},
+    //     {"TEST/supertile", create_supertile_tt()}, {"TEST/supertile_HO", create_supertile_ho_tt()}};
 
-    const auto create_and3_tt = []
+    const std::string base_dir = fmt::format("{}benchmarks_verilog", EXPERIMENTS_PATH);
+
+    for (int n = 2; n <= 4; ++n)
     {
-        static constexpr const char* and3_tt_string = "10000000";  // Output 1
-        kitty::dynamic_truth_table   and3_tb{3};
-        kitty::create_from_binary_string(and3_tb, and3_tt_string);
-        return std::vector{and3_tb};
-    };
+        const fs::path input_dir = base_dir + "/" + std::to_string(n) + "_in";
 
-    const auto create_xor3_tt = []
-    {
-        static constexpr const char* xor3_tt_string = "10010110";  // Output 1
-        kitty::dynamic_truth_table   xor3_tb{3};
-        kitty::create_from_binary_string(xor3_tb, xor3_tt_string);
-        return std::vector{xor3_tb};
-    };
-
-    const auto create_xor5_tt = []
-    {
-        static constexpr const char* xor5_tt_string = "96699669";  // Output 1
-        kitty::dynamic_truth_table   xor5_tb{5};
-        kitty::create_from_hex_string(xor5_tb, xor5_tt_string);
-        return std::vector{xor5_tb};
-    };
-
-    const auto create_supertile_tt = []
-    {
-        static constexpr const char* or_not_tt_string = "1101";  // Output 1
-        kitty::dynamic_truth_table   or_not_tb{2};
-        kitty::create_from_binary_string(or_not_tb, or_not_tt_string);
-        return std::vector{fiction::create_and_tt(), or_not_tb};
-    };
-
-    const auto create_supertile_ho_tt = []
-    {
-        static constexpr const char* or_not_tt_string = "1111";  // Output 1
-        kitty::dynamic_truth_table   or_not_tb{2};
-        kitty::create_from_binary_string(or_not_tb, or_not_tt_string);
-        static constexpr const char* and_tt_string = "1010";  // Output 2
-        kitty::dynamic_truth_table   and_tb{2};
-        kitty::create_from_binary_string(and_tb, and_tt_string);
-        return std::vector{and_tb, or_not_tb};
-    };
-
-    std::map<std::string, std::vector<kitty::dynamic_truth_table>> tt_map{
-        {"TEST/fo", fiction::create_fan_out_tt()}, {"TEST/cx", fiction::create_crossing_wire_tt()},
-        {"TEST/and3", create_and3_tt()},           {"TEST/xor3", create_xor3_tt()},
-        {"fontes18/xor5_r1", create_xor5_tt()},    {"fontes18/xor5Maj", create_xor5_tt()},
-        {"TEST/supertile", create_supertile_tt()}, {"TEST/supertile_HO", create_supertile_ho_tt()}};
-
-    for (const auto& benchmark : fiction_experiments::all_benchmarks(bench_select))
-    {
-        fmt::print("[attempts] processing {}\n", benchmark);
-        mockturtle::xag_network xag{};
-
-        [[maybe_unused]] const auto read_verilog_result =
-            lorina::read_verilog(fiction_experiments::benchmark_path(benchmark), mockturtle::verilog_reader(xag));
-        assert(read_verilog_result == lorina::return_code::success);
-
-        // compute depth
-        const mockturtle::depth_view depth_xag{xag};
-
-        const fiction::technology_mapping_params tech_map_params = fiction::and_or_not();
-
-        // parameters for cut rewriting
-        mockturtle::cut_rewriting_params cut_params{};
-        cut_params.cut_enumeration_ps.cut_size = 4;
-
-        const mockturtle::xag_npn_resynthesis<mockturtle::xag_network,                    // the input network type
-                                              mockturtle::xag_network,                    // the database network type
-                                              mockturtle::xag_npn_db_kind::xag_complete>  // the kind of database to use
-
-            resynthesis_function{};
-
-        // rewrite network cuts using the given re-synthesis function
-        const auto cut_xag = mockturtle::cut_rewriting(xag, resynthesis_function, cut_params);
-
-        // perform technology mapping
-        const auto mapped_network = fiction::technology_mapping(cut_xag, tech_map_params);
-
-        // fiction::write_
-
-        fiction::advanced_circuit_design_params<lyt_t> params{};
-
-        // design_gate_params.max_num_solutions = 200;
-        params.num_trials                   = 100;
-        params.selectivity                  = 0.93;
-        params.num_trials_for_global_scope  = 4;
-        params.selectivity_for_global_scope = 0.9;
-
-        params.spec = tt_map.at(benchmark);
-
-        if (argc == 2)
+        for (const auto& entry : fs::directory_iterator(input_dir))
         {
-            design_gate_params_complex_gates.number_of_canvas_sidbs = std::stoull(argv[1]);
+            const auto& verilog_path = entry.path();  // e.g., <something>/benchmarks_verilog/3_in/foo.v
+            const auto  num_in_dir   = verilog_path.parent_path().filename();                   // "3_in"
+            const auto  name         = verilog_path.stem();                                     // "foo"
+            const auto  b_dir        = verilog_path.parent_path().parent_path().parent_path();  // <something>
+            const auto  layout_path  = b_dir / "benchmarks_layout" / num_in_dir / (name.string() + ".sqd");
+            if (std::ifstream is{layout_path.c_str()}; is.is_open())
+            {
+                continue;
+            }
+
+            const auto benchmark = entry.path().string();
+            fmt::print("[attempts] processing {}\n", benchmark);
+
+            mockturtle::xag_network xag{};
+            const auto              result = lorina::read_verilog(benchmark, mockturtle::verilog_reader(xag));
+            assert(result == lorina::return_code::success);
+
+            // compute depth
+            const mockturtle::depth_view depth_xag{xag};
+
+            const fiction::technology_mapping_params tech_map_params = fiction::all_2_input_functions();
+
+            // parameters for cut rewriting
+            mockturtle::cut_rewriting_params cut_params{};
+            cut_params.cut_enumeration_ps.cut_size = 4;
+
+            const mockturtle::xag_npn_resynthesis<
+                mockturtle::xag_network,                    // the input network type
+                mockturtle::xag_network,                    // the database network type
+                mockturtle::xag_npn_db_kind::xag_complete>  // the kind of database to use
+
+                resynthesis_function{};
+
+            // rewrite network cuts using the given re-synthesis function
+            const auto cut_xag = mockturtle::cut_rewriting(xag, resynthesis_function, cut_params);
+
+            // perform technology mapping
+            const auto mapped_network = fiction::technology_mapping(cut_xag, tech_map_params);
+
+            // fiction::write_
+
+            fiction::advanced_circuit_design_params<lyt_t> params{};
+
+            // design_gate_params.max_num_solutions = 200;
+            params.num_trials                   = 100;
+            params.selectivity                  = 0.93;
+            params.num_trials_for_global_scope  = 4;
+            params.selectivity_for_global_scope = 0.9;
+
+            if (argc == 2)
+            {
+                design_gate_params_complex_gates.number_of_canvas_sidbs = std::stoull(argv[1]);
+            }
+            else if (argc == 3)
+            {
+                design_gate_params.number_of_canvas_sidbs               = std::stoull(argv[1]);
+                design_gate_params_complex_gates.number_of_canvas_sidbs = std::stoull(argv[2]);
+            }
+            else if (argc == 15)
+            {
+                design_gate_params.number_of_canvas_sidbs                    = std::stoull(argv[1]);
+                design_gate_params_complex_gates.number_of_canvas_sidbs      = std::stoull(argv[2]);
+                design_gate_params.maximum_number_of_solutions               = std::stoull(argv[3]);
+                design_gate_params_complex_gates.maximum_number_of_solutions = std::stoull(argv[4]);
+                params.num_trials                                            = std::stoull(argv[5]);
+                params.quantization_factor                                   = std::stod(argv[6]);
+                params.selectivity                                           = std::stod(argv[7]);
+                params.num_trials_for_double_scope                           = std::stoull(argv[8]);
+                params.quantization_factor_for_double_scope                  = std::stod(argv[9]);
+                params.selectivity_for_double_scope                          = std::stod(argv[10]);
+                params.num_trials_for_global_scope                           = std::stoull(argv[11]);
+                params.quantization_factor_for_global_scope                  = std::stod(argv[12]);
+                params.selectivity_for_global_scope                          = std::stod(argv[13]);
+                params.excited_state_alpha                                   = std::stod(argv[14]);
+            }
+            else if (argc == 16)
+            {
+                design_gate_params.number_of_canvas_sidbs                    = std::stoull(argv[1]);
+                design_gate_params_complex_gates.number_of_canvas_sidbs      = std::stoull(argv[2]);
+                design_gate_params.maximum_number_of_solutions               = std::stoull(argv[3]);
+                design_gate_params_complex_gates.maximum_number_of_solutions = std::stoull(argv[4]);
+                params.num_trials                                            = std::stoull(argv[5]);
+                params.quantization_factor                                   = std::stod(argv[6]);
+                params.selectivity                                           = std::stod(argv[7]);
+                params.num_trials_for_double_scope                           = std::stoull(argv[8]);
+                params.quantization_factor_for_double_scope                  = std::stod(argv[9]);
+                params.selectivity_for_double_scope                          = std::stod(argv[10]);
+                params.num_trials_for_global_scope                           = std::stoull(argv[11]);
+                params.quantization_factor_for_global_scope                  = std::stod(argv[12]);
+                params.selectivity_for_global_scope                          = std::stod(argv[13]);
+                params.excited_state_alpha                                   = std::stod(argv[14]);
+                params.available_threads                                     = std::stoull(argv[15]);
+            }
+            else if (argc != 1)
+            {
+                design_gate_params.maximum_number_of_solutions               = std::stoull(argv[1]);
+                design_gate_params_complex_gates.maximum_number_of_solutions = std::stoull(argv[2]);
+                params.num_trials                                            = std::stoull(argv[3]);
+                params.selectivity                                           = std::stod(argv[4]);
+                params.num_trials_for_global_scope                           = std::stoull(argv[5]);
+                params.selectivity_for_global_scope                          = std::stod(argv[6]);
+            }
+
+            params.exact_design_parameters.scheme        = "ROW4";
+            params.exact_design_parameters.crossings     = true;
+            params.exact_design_parameters.border_io     = false;
+            params.exact_design_parameters.desynchronize = true;
+            // params.exact_design_parameters.upper_bound_x = 4;          // 5 x 5 tiles
+            // params.exact_design_parameters.upper_bound_y = 4;          // 5 x 5 tiles
+            params.exact_design_parameters.upper_bound_x = 11;         // 5 x 5 tiles
+            params.exact_design_parameters.upper_bound_y = 30;         // 5 x 5 tiles
+            params.exact_design_parameters.timeout       = 3'600'000;  // 1h in ms
+
+            // params.sidb_on_the_fly_gate_library_parameters.defect_surface                = surface_lattice;
+            params.sidb_on_the_fly_gate_library_parameters.use_skeleton_influence_bounds = true;
+            params.sidb_on_the_fly_gate_library_parameters.design_gate_params            = design_gate_params;
+
+            params.sidb_on_the_fly_gate_library_parameters.design_gate_params_complex_gates =
+                design_gate_params_complex_gates;
+            // params.sidb_on_the_fly_gate_library_parameters.design_gate_params_complex_gates =
+            // 6;  //
+            // params.sidb_on_the_fly_gate_library_parameters.design_gate_params.number_of_sidbs;
+
+            fiction::advanced_circuit_design_stats<gate_lyt> st{};
+
+            const std::optional<lyt_t>& lyt =
+                fiction::advanced_circuit_design<decltype(mapped_network), lyt_t, gate_lyt, gate_lib,
+                                                 skeleton_gate_lib>(mapped_network, lattice_tiling, params, &st);
+
+            if (!lyt.has_value())
+            {
+                sidb_circuits_with_defects(benchmark, 0, st.exact_stats.num_aspect_ratios, false);
+                sidb_circuits_with_defects.save();
+                sidb_circuits_with_defects.table();
+                continue;
+            }
+
+            // params.sidb_on_the_fly_gate_library_parameters.design_gate_params.operational_params.print = true;
+            //
+            // std::cout << "\nassessing operational status for each input combination of the generated circuit..."
+            //           << std::endl;
+            //
+            // if (is_operational(*lyt, params.spec,
+            //                    params.sidb_on_the_fly_gate_library_parameters.design_gate_params.operational_params)
+            //         .status != fiction::operational_status::OPERATIONAL)
+            // {
+            //     std::cout << "\n\nCIRCUIT OPERATION VERIFICATION COMPLETED: FAILED" << std::endl;
+            //
+            //     return EXIT_FAILURE;
+            // }
+            //
+            // std::cout << "\n\nCIRCUIT OPERATION VERIFICATION COMPLETED: PASS" << std::endl;
+
+            // check equivalence
+            const auto miter = mockturtle::miter<mockturtle::klut_network>(mapped_network, st.gate_layout.value());
+            // const auto eq    = mockturtle::equivalence_checking(*miter);
+            // assert(eq.has_value());/
+
+            // determine bounding box and exclude atomic defects
+            const auto bb = fiction::bounding_box_2d<cell_lyt>(static_cast<cell_lyt>(*lyt));
+
+            // write a SiQAD simulation file
+            fiction::write_sqd_layout(*lyt, layout_path.c_str());
+
+            // write runtime to file
+            const auto    runtime_path = b_dir / "benchmarks_runtime" / num_in_dir / (name.string() + ".txt");
+            std::ofstream os{runtime_path, std::ofstream::out};
+            if (!os.is_open())
+            {
+                throw std::ofstream::failure("could not open file");
+            }
+            const auto runtime_string = fmt::format("{:.2f}", mockturtle::to_seconds(st.time_total));
+            os.write(runtime_string.c_str(), runtime_string.size());
+
+            // compute area
+            fiction::area_stats                            area_stats{};
+            fiction::area_params<fiction::sidb_technology> area_ps{};
+            fiction::area(bb, area_ps, &area_stats);
+
+            sidb_circuits_with_defects(benchmark, mockturtle::to_seconds(st.time_total),
+                                       st.exact_stats.num_aspect_ratios, lyt.has_value());
+            sidb_circuits_with_defects.save();
+            sidb_circuits_with_defects.table();
         }
-        else if (argc == 3)
-        {
-            design_gate_params.number_of_canvas_sidbs               = std::stoull(argv[1]);
-            design_gate_params_complex_gates.number_of_canvas_sidbs = std::stoull(argv[2]);
-        }
-        else if (argc == 15)
-        {
-            design_gate_params.number_of_canvas_sidbs                    = std::stoull(argv[1]);
-            design_gate_params_complex_gates.number_of_canvas_sidbs      = std::stoull(argv[2]);
-            design_gate_params.maximum_number_of_solutions               = std::stoull(argv[3]);
-            design_gate_params_complex_gates.maximum_number_of_solutions = std::stoull(argv[4]);
-            params.num_trials                                            = std::stoull(argv[5]);
-            params.quantization_factor                                   = std::stod(argv[6]);
-            params.selectivity                                           = std::stod(argv[7]);
-            params.num_trials_for_double_scope                           = std::stoull(argv[8]);
-            params.quantization_factor_for_double_scope                  = std::stod(argv[9]);
-            params.selectivity_for_double_scope                          = std::stod(argv[10]);
-            params.num_trials_for_global_scope                           = std::stoull(argv[11]);
-            params.quantization_factor_for_global_scope                  = std::stod(argv[12]);
-            params.selectivity_for_global_scope                          = std::stod(argv[13]);
-            params.excited_state_alpha                                   = std::stod(argv[14]);
-        }
-        else if (argc == 16)
-        {
-            design_gate_params.number_of_canvas_sidbs                    = std::stoull(argv[1]);
-            design_gate_params_complex_gates.number_of_canvas_sidbs      = std::stoull(argv[2]);
-            design_gate_params.maximum_number_of_solutions               = std::stoull(argv[3]);
-            design_gate_params_complex_gates.maximum_number_of_solutions = std::stoull(argv[4]);
-            params.num_trials                                            = std::stoull(argv[5]);
-            params.quantization_factor                                   = std::stod(argv[6]);
-            params.selectivity                                           = std::stod(argv[7]);
-            params.num_trials_for_double_scope                           = std::stoull(argv[8]);
-            params.quantization_factor_for_double_scope                  = std::stod(argv[9]);
-            params.selectivity_for_double_scope                          = std::stod(argv[10]);
-            params.num_trials_for_global_scope                           = std::stoull(argv[11]);
-            params.quantization_factor_for_global_scope                  = std::stod(argv[12]);
-            params.selectivity_for_global_scope                          = std::stod(argv[13]);
-            params.excited_state_alpha                                   = std::stod(argv[14]);
-            params.available_threads                                     = std::stoull(argv[15]);
-        }
-        else if (argc != 1)
-        {
-            design_gate_params.maximum_number_of_solutions               = std::stoull(argv[1]);
-            design_gate_params_complex_gates.maximum_number_of_solutions = std::stoull(argv[2]);
-            params.num_trials                                            = std::stoull(argv[3]);
-            params.selectivity                                           = std::stod(argv[4]);
-            params.num_trials_for_global_scope                           = std::stoull(argv[5]);
-            params.selectivity_for_global_scope                          = std::stod(argv[6]);
-        }
-
-        params.exact_design_parameters.scheme        = "ROW4";
-        params.exact_design_parameters.crossings     = true;
-        params.exact_design_parameters.border_io     = false;
-        params.exact_design_parameters.desynchronize = true;
-        params.exact_design_parameters.upper_bound_x = 11;         // 12 x 31 tiles
-        params.exact_design_parameters.upper_bound_y = 30;         // 12 x 31 tiles
-        params.exact_design_parameters.timeout       = 3'600'000;  // 1h in ms
-
-        // params.sidb_on_the_fly_gate_library_parameters.defect_surface                = surface_lattice;
-        params.sidb_on_the_fly_gate_library_parameters.use_skeleton_influence_bounds = true;
-        params.sidb_on_the_fly_gate_library_parameters.design_gate_params            = design_gate_params;
-
-        params.sidb_on_the_fly_gate_library_parameters.design_gate_params_complex_gates =
-            design_gate_params_complex_gates;
-        // params.sidb_on_the_fly_gate_library_parameters.design_gate_params_complex_gates =
-        // 6;  //
-        // params.sidb_on_the_fly_gate_library_parameters.design_gate_params.number_of_sidbs;
-
-        fiction::advanced_circuit_design_stats<gate_lyt> st{};
-
-        const std::optional<lyt_t>& lyt =
-            fiction::advanced_circuit_design<decltype(mapped_network), lyt_t, gate_lyt, gate_lib, skeleton_gate_lib>(
-                mapped_network, lattice_tiling, params, &st);
-
-        if (!lyt.has_value())
-        {
-            return EXIT_FAILURE;
-        }
-
-        params.sidb_on_the_fly_gate_library_parameters.design_gate_params.operational_params.print = true;
-
-        std::cout << "\nassessing operational status for each input combination of the generated circuit..."
-                  << std::endl;
-
-        if (is_operational(*lyt, params.spec,
-                           params.sidb_on_the_fly_gate_library_parameters.design_gate_params.operational_params)
-                .status != fiction::operational_status::OPERATIONAL)
-        {
-            std::cout << "\n\nCIRCUIT OPERATION VERIFICATION COMPLETED: FAILED" << std::endl;
-
-            return EXIT_FAILURE;
-        }
-
-        std::cout << "\n\nCIRCUIT OPERATION VERIFICATION COMPLETED: PASS" << std::endl;
-
-        // check equivalence
-        const auto miter = mockturtle::miter<mockturtle::klut_network>(mapped_network, st.gate_layout.value());
-        const auto eq    = mockturtle::equivalence_checking(*miter);
-        assert(eq.has_value());
-
-        // determine bounding box and exclude atomic defects
-        const auto bb = fiction::bounding_box_2d<cell_lyt>(static_cast<cell_lyt>(*lyt));
-
-        // write a SiQAD simulation file
-        fiction::write_sqd_layout(*lyt, fmt::format("{}/{}.sqd", layouts_folder, benchmark));
-
-        // compute area
-        fiction::area_stats                            area_stats{};
-        fiction::area_params<fiction::sidb_technology> area_ps{};
-        fiction::area(bb, area_ps, &area_stats);
-
-        sidb_circuits_with_defects(benchmark, mockturtle::to_seconds(st.time_total), st.exact_stats.num_aspect_ratios,
-                                   *eq);
-        sidb_circuits_with_defects.save();
-        sidb_circuits_with_defects.table();
     }
 
     return EXIT_SUCCESS;

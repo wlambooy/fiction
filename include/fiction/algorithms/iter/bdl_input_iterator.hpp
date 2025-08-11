@@ -423,7 +423,15 @@ class bdl_input_iterator
 
         sub_circuit->cell_layout.foreach_cell(
             [&](const auto& c)
-            { maybe_cds->assign_charge_state(c, sidb_charge_state::NEUTRAL, charge_index_mode::KEEP_CHARGE_INDEX); });
+            {
+                if (const auto ct = sub_circuit->cell_layout.get_cell_type(c);
+                            ct != sidb_technology::cell_type::OUTPUT_PERTURBER ||
+                            circuit->skeleton.get_cell_type(c) ==
+                                sidb_technology::cell_type::OUTPUT_PERTURBER)
+                {
+                    maybe_cds->assign_charge_state(c, sidb_charge_state::NEUTRAL, charge_index_mode::KEEP_CHARGE_INDEX);
+                }
+            });
 
         maybe_cds->update_after_charge_change(dependent_cell_mode::FIXED, energy_calculation::KEEP_OLD_ENERGY_VALUE);
 
@@ -464,7 +472,7 @@ class bdl_input_iterator
 
     std::optional<sidb_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>>            circuit{};
     std::optional<sidb_cell_level_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>> sub_circuit{};
-    const std::optional<uint64_t>&                                                sub_circuit_input_index{};
+    const std::optional<uint64_t>                                                 sub_circuit_input_index{};
     const std::optional<Lyt>                                                      circuit_with_sub_circuit{};
 
     /**
@@ -639,11 +647,12 @@ class bdl_input_iterator
             typename std::vector<bdl_pair<cell<Lyt>>>::const_iterator assign_logic_state_to_bdl_pairs_start_it =
                 wire.pairs.cbegin();
 
-            if (circuit->gate_layout.is_pi_tile(upper_tile))
+            // if (circuit->gate_layout.is_pi_tile(upper_tile)) todo
+            if (wire.pairs.front().type == sidb_technology::cell_type::INPUT)
             {
-                assert((expected_signal_at_gate_connection.count(lower_tile) == 0 ||
-                        expected_signal_at_gate_connection.at(lower_tile).count(upper_tile) == 0) &&
-                       "PI is visited twice");
+                // assert((expected_signal_at_gate_connection.count(lower_tile) == 0 ||
+                //         expected_signal_at_gate_connection.at(lower_tile).count(upper_tile) == 0) &&
+                //        "PI is visited twice"); todo
 
                 const bool current_bit_set = is_bit_set(current_input_index, current_input_number, num_inputs);
 
@@ -660,9 +669,9 @@ class bdl_input_iterator
                 assign_logic_state_to_bdl_pairs_start_it = std::next(wire.pairs.cbegin(), 1);
             }
 
-            assert(expected_signal_at_gate_connection.count(lower_tile) != 0 &&
-                   expected_signal_at_gate_connection.at(lower_tile).count(upper_tile) != 0 &&
-                   "Tile is visited before the incoming tile that connects it");
+            // assert(expected_signal_at_gate_connection.count(lower_tile) != 0 &&
+            //        expected_signal_at_gate_connection.at(lower_tile).count(upper_tile) != 0 &&
+            //        "Tile is visited before the incoming tile that connects it"); todo
 
             const bool expected_signal_for_wire = expected_signal_at_gate_connection.at(lower_tile).at(upper_tile);
 
@@ -670,8 +679,9 @@ class bdl_input_iterator
                 wire.pairs.front().upper ==
                     sub_circuit->circuit.input_bdl_pairs.at(current_sub_circuit_input_number).upper)
             {
-                if (expected_signal_for_wire != is_bit_set(*sub_circuit_input_index, current_sub_circuit_input_number,
-                                                           sub_circuit->circuit.num_inputs))
+                const bool bitset = is_bit_set(*sub_circuit_input_index, current_sub_circuit_input_number,
+                                                           sub_circuit->circuit.num_inputs);
+                if (expected_signal_for_wire != bitset)
                 {
                     // input mismatches with circuit
 

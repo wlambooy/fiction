@@ -634,15 +634,25 @@ class is_circuit_operational_impl
                                   std::make_optional(std::cref(circuit)),
                                   std::make_optional(bdl_iterator.get_current_input_index())};
 
+            Lyt cell_lyt{};
+
             std::unordered_map<cell<Lyt>, std::array<double, 2>> skeleton_influence_bounds_map{};
 
             (*bdl_iterator)
                 .foreach_cell(
                     [&](const auto& c)
                     {
-                        skeleton_influence_bounds_map.insert(
+                        if (const auto ct = (*bdl_iterator).get_cell_type(c);
+                            ct != sidb_technology::cell_type::OUTPUT_PERTURBER ||
+                            super_circuit->get().skeleton.get_cell_type(c) ==
+                                sidb_technology::cell_type::OUTPUT_PERTURBER)
+                        {
+                            cell_lyt.assign_cell_type(c, ct);
+
+                            skeleton_influence_bounds_map.insert(
                             {c, std::array<double, 2>{std::numeric_limits<double>::infinity(),
                                                       -std::numeric_limits<double>::infinity()}});
+                        }
                     });
 
             for (auto i = 0u; i < 1 << super_circuit->get().gate_layout.num_pis(); ++i, ++bii_super_circuit)
@@ -683,7 +693,7 @@ class is_circuit_operational_impl
                 cc_params.local_external_potential[c] = bounds;
             }
 
-            return clustercomplete<Lyt, ExtPotType>(*bdl_iterator, cc_params);
+            return clustercomplete<Lyt, ExtPotType>(cell_lyt, cc_params);
         }
         else
         {

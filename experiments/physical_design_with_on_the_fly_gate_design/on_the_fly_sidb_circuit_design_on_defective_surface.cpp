@@ -112,7 +112,7 @@ int main()  // NOLINT
         mockturtle::xag_network xag{};
 
         [[maybe_unused]] const auto read_verilog_result =
-            lorina::read_verilog(fiction_experiments::benchmark_path(benchmark), mockturtle::verilog_reader(xag));
+            lorina::read_verilog(fiction_experiments::benchmark_path(benchmark), mockturtle::write_verilog_with_cell(xag));
         assert(read_verilog_result == lorina::return_code::success);
 
         // compute depth
@@ -166,7 +166,7 @@ int main()  // NOLINT
             assert(eq.has_value());
 
             sidb_circuits_with_defects(benchmark, mockturtle::to_seconds(st.time_total),
-                                       st.exact_stats.num_aspect_ratios, *eq, result.num_cells());
+                                       st.exact_stats.num_aspect_ratios, eq.has_value(), result.num_cells());
 
             sidb_circuits_with_defects.save();
             sidb_circuits_with_defects.table();

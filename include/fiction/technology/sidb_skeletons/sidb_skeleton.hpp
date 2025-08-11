@@ -126,8 +126,9 @@ class sidb_skeleton : public Lyt
         static_assert(std::is_same_v<coordinate<Lyt>, offset::ucoord_t>, "Needs to have fiction coordinates");
 
         const coordinate<Lyt> offset = {(GateSizeX - bbox.get_x_size()) / 2,
-            (GateSizeY - bbox.get_y_size()) / 2};
-        // (GateSizeY - bbox.get_y_size() + (1 - bbox.get_y_size() % 2)) / 2};
+            // (GateSizeY - bbox.get_y_size()) / 2};
+            2 * ((GateSizeY - bbox.get_y_size() + 1) / 2) / 2};
+        // (GateSizeY - bbox.get_y_size() + (bbox.get_y_size() % 2)) / 2};
 
         for (const auto& [pd, t] : port_direction_indices)
         {
@@ -144,7 +145,7 @@ class sidb_skeleton : public Lyt
                             sidb_technology::cell_type::INPUT :
                             sidb_technology::cell_type::NORMAL;
 
-                    g[c.y - bbox.get_min().y + offset.y][c.x - bbox.get_min().x + offset.x] = cell_type;
+                    g[c.y - bbox.get_min().y - 1 + offset.y][c.x - bbox.get_min().x + offset.x] = cell_type;
                 }
             }
 
@@ -161,7 +162,7 @@ class sidb_skeleton : public Lyt
                                                           sidb_technology::cell_type::OUTPUT :
                                                           sidb_technology::cell_type::NORMAL;
 
-                    g[c.y - bbox.get_min().y + offset.y][c.x - bbox.get_min().x + offset.x] = cell_type;
+                    g[c.y - bbox.get_min().y - 1 + offset.y][c.x - bbox.get_min().x + offset.x] = cell_type;
                 }
             }
         }

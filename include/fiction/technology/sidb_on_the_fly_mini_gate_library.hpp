@@ -250,7 +250,20 @@ class sidb_on_the_fly_mini_gate_library
 
         // std::cout << "created node at " << t.x << " " << t.y << " " << t.z << std::endl;
         assert(gate_lyt_window.is_empty_tile(t) && "tile on which node is to be created is already populated");
-        gate_lyt_window.create_node(inputs_to_t, gate_lyt.node_function(n), t);
+        if (gate_lyt.is_pi(gate_lyt.get_node(t)))
+        {
+            assert(inputs_to_t.size() == 0 && "PI tile has inputs");
+            gate_lyt_window.create_pi("", t);
+        }
+        else if (gate_lyt.is_po(gate_lyt.get_node(t)))
+        {
+            assert(inputs_to_t.size() != 1 && "PO tile has not precisely one input");
+            gate_lyt_window.create_po(static_cast<mockturtle::signal<GateLyt>>(inputs_to_t.front()), "", t);
+        }
+        else
+        {
+            gate_lyt_window.create_node(inputs_to_t, gate_lyt.node_function(n), t);
+        }
 
         for (const auto& out_t : gate_lyt.outgoing_data_flow(t))
         {
@@ -393,7 +406,7 @@ class sidb_on_the_fly_mini_gate_library
     [[nodiscard]] static std::vector<fcn_gate>
     design_gates(const LytSkeleton& skeleton, const std::vector<TT>& spec,
                  const sidb_on_the_fly_gate_library_params<CellLyt>& parameters, const port_list<port_direction>& p,
-                 const tile<GateLyt>& tile, sidb_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary> circuit,
+                 const tile<GateLyt>& tile, sidb_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>&& circuit,
                  const std::optional<sidb_bdl_circuit<LytSkeleton, GateLyt, SkeletonGateLibrary>>& super_circuit,
                  const std::optional<is_circuit_operational_params>&                               op_params)
     {
@@ -403,6 +416,13 @@ class sidb_on_the_fly_mini_gate_library
 
         const auto create_fcn_gates = [&](const auto& found_gate_layouts)
         {
+            std::cout << "number of gate layouts found: " << found_gate_layouts.size() << std::endl;
+
+            if (found_gate_layouts.empty())
+            {
+                throw gate_design_exception<tt, GateLyt>(tile, create_id_tt(), p);
+            }
+
             std::vector<fcn_gate> gates{};
             gates.reserve(found_gate_layouts.size());
 
@@ -416,11 +436,11 @@ class sidb_on_the_fly_mini_gate_library
                 sorted_gates.gate_layouts.emplace_back(gate);
             }
 
-            order_designed_sidb_gates({std::make_shared<compare_by_minimum_ground_state_isolation<LytSkeleton>>(),
-                                       std::make_shared<compare_by_average_ground_state_isolation<LytSkeleton>>()},
-                                      sorted_gates);
-
-            print_layout(sorted_gates.gate_layouts.front());
+            // order_designed_sidb_gates({std::make_shared<compare_by_minimum_ground_state_isolation<LytSkeleton>>(),
+            //                            std::make_shared<compare_by_average_ground_state_isolation<LytSkeleton>>()},
+            //                           sorted_gates);
+            //
+            // print_layout(sorted_gates.gate_layouts.front());
 
             return gates;
         };
@@ -430,7 +450,16 @@ class sidb_on_the_fly_mini_gate_library
 
         if (spec == create_crossing_wire_tt() || spec == create_double_wire_tt())
         {
-            std::cout << "starting gate design for 2I2O tile " << tile << std::endl;
+            std::cout << "starting gate design for tile " << tile << "\t|\tnode function: ";
+            if (spec == create_crossing_wire_tt())
+            {
+                std::cout << "crossing wire";
+            }
+            else
+            {
+                std::cout << "double wire";
+            }
+            std::cout << std::endl;
 
             if constexpr (is_sidb_defect_surface_v<LytSkeleton>)
             {
@@ -445,13 +474,6 @@ class sidb_on_the_fly_mini_gate_library
                     skeleton, spec, parameters.design_gate_params, nullptr, std::make_optional(std::move(circuit)),
                     super_circuit, op_params);
 
-            std::cout << "number of gate layouts found: " << found_gate_layouts.size() << std::endl;
-
-            if (found_gate_layouts.empty())
-            {
-                throw gate_design_exception<tt, GateLyt>(tile, create_id_tt(), p);
-            }
-
             return create_fcn_gates(found_gate_layouts);
         }
 
@@ -463,18 +485,20 @@ class sidb_on_the_fly_mini_gate_library
             }
         }
 
-        std::cout << "starting gate design for tile " << tile << std::endl;
+        std::cout << "starting gate design for tile " << tile << "\t|\tnode function: ";
+        if (const auto n = super_circuit->gate_layout.get_node(tile); super_circuit->gate_layout.is_fanout(n))
+        {
+            std::cout << "fanout";
+        }
+        else
+        {
+            kitty::print_binary(super_circuit->gate_layout.node_function(n));
+        }
+        std::cout << std::endl;
 
         const auto found_gate_layouts = design_sidb_gates<LytSkeleton, TT, ExtPotType, GateLyt, SkeletonGateLibrary>(
             skeleton, spec, parameters.design_gate_params, nullptr, std::make_optional(std::move(circuit)),
             super_circuit, op_params);
-
-        std::cout << "number of gate layouts found: " << found_gate_layouts.size() << std::endl;
-
-        if (found_gate_layouts.empty())
-        {
-            throw gate_design_exception<tt, GateLyt>(tile, spec.front(), p);
-        }
 
         return create_fcn_gates(found_gate_layouts);
     }

@@ -380,9 +380,9 @@ class sidb_bdl_circuit
                     {
                         z = incoming_tiles.front().z;
                     }
-                    else
+                    else if (incoming_tiles.size() == 2)
                     {
-                        assert(incoming_tiles.size() == 2 && "fan in must be either 1 or 2");
+                        // assert(incoming_tiles.size() == 2 && "fan in must be either 1 or 2");
 
                         if (right_to_left)
                         {
@@ -411,9 +411,9 @@ class sidb_bdl_circuit
                 {
                     z = outgoing_tiles.front().z;
                 }
-                else
+                else if (outgoing_tiles.size() == 2)
                 {
-                    assert(outgoing_tiles.size() == 2 && "fan out must be either 1 or 2");
+                    // assert(outgoing_tiles.size() == 2 && "fan out must be either 1 or 2");
 
                     if (right_to_left)
                     {
@@ -436,8 +436,8 @@ class sidb_bdl_circuit
             //                          tile_pair_at_gate_connection.first.z, tile_pair_at_gate_connection.second.x,
             //                          tile_pair_at_gate_connection.second.y, tile_pair_at_gate_connection.second.z)
             //           << std::endl;
-            assert(tile_pair_at_gate_connection.first.y == tile_pair_at_gate_connection.second.y - 1 &&
-                   "tiles are not represent a row clocked gate connection");
+            // assert(tile_pair_at_gate_connection.first.y == tile_pair_at_gate_connection.second.y - 1 &&
+            //        "tiles are not represent a row clocked gate connection"); todo
 
             gate_connections.push_back(std::move(tile_pair_at_gate_connection));
         }

@@ -9,6 +9,8 @@
 #include "fiction/utils/layout_utils.hpp"
 #include "mockturtle/traits.hpp"
 
+#include <fiction/layouts/bounding_box.hpp>
+
 #include <cstdint>
 
 namespace fiction
@@ -108,7 +110,8 @@ static void assign_gate(CellLyt& cell_lyt, const typename GateLibrary::fcn_gate&
     const mockturtle::node<GateLyt>& n = gate_lyt.get_node(t);
 
     // physical design is skipped for input and output ports
-    if (gate_lyt.is_pi(n) || gate_lyt.is_po(n))
+    if ((gate_lyt.is_pi(n)/* && bounding_box_2d<GateLyt>{gate_lyt}.get_y_size() >= 4*/) ||
+        (gate_lyt.is_po(n)/* && bounding_box_2d<GateLyt>{gate_lyt}.get_y_size() >= 5*/))
     {
         return;
     }
@@ -165,8 +168,17 @@ static void assign_gate(CellLyt& cell_lyt, const typename GateLibrary::fcn_gate&
 template <typename GateLyt>
 static bool skip_physical_design_for_node(const GateLyt& gate_lyt, const mockturtle::node<GateLyt>& n) noexcept
 {
-    return gate_lyt.is_constant(n) || gate_lyt.is_pi(n) || gate_lyt.is_po(n) || gate_lyt.is_constant(n) ||
-           (gate_lyt.is_buf(n) && !gate_lyt.is_ground_layer(gate_lyt.get_tile(n)));
+    if (gate_lyt.is_pi(n))
+    {
+        return true;//bounding_box_2d<GateLyt>{gate_lyt}.get_y_size() >= 4;
+    }
+
+    if (gate_lyt.is_po(n))
+    {
+        return true;//bounding_box_2d<GateLyt>{gate_lyt}.get_y_size() >= 5;
+    }
+
+    return gate_lyt.is_constant(n) || (gate_lyt.is_buf(n) && !gate_lyt.is_ground_layer(gate_lyt.get_tile(n)));
 }
 
 template <typename GateLyt>

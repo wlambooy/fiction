@@ -1048,6 +1048,65 @@ class exact_impl
                     }
                 });
         }
+        void restrict_to_supertile_spec()
+        {
+            // Predefined tile locations
+            const std::vector<tile<Lyt>> pi_positions = {{0, 0, 0}, {1, 0, 0}, {1, 0, 1},
+                                                         {2, 0, 0}, {0, 1, 0}, {3, 1, 0}};
+
+            const std::vector<tile<Lyt>> node_positions = {{1, 1, 0}, {2, 1, 0}, {0, 2, 0}, {1, 2, 0},
+                                                           {2, 2, 0}, {1, 3, 0}, {2, 3, 0}};
+
+            const std::vector<tile<Lyt>> po_positions = {{0, 3, 0}, {3, 3, 0}, {0, 4, 0},
+                                                         {1, 4, 0}, {1, 4, 1}, {2, 4, 0}};
+
+            // All allowed positions (union for quick rejection later)
+            std::set<tile<Lyt>> all_allowed_tiles;
+
+            for (const auto& t : pi_positions) all_allowed_tiles.insert(t);
+            for (const auto& t : po_positions) all_allowed_tiles.insert(t);
+            for (const auto& t : node_positions)
+            {
+                all_allowed_tiles.insert(t);
+                all_allowed_tiles.insert({t.x, t.y, 1});
+            }
+
+            network.foreach_node(
+                [this, &pi_positions, &po_positions, &node_positions](const auto& n)
+                {
+                    if (skip_const_or_io_node(n))
+                        return;
+
+                    std::vector<tile<Lyt>> allowed_tiles;
+
+                    if (network.is_pi(n))
+                    {
+                        allowed_tiles = pi_positions;
+                    }
+                    else if (network.is_po(n))
+                    {
+                        allowed_tiles = po_positions;
+                    }
+                    else
+                    {
+                        for (const auto& t : node_positions)
+                        {
+                            allowed_tiles.push_back(t);
+                            allowed_tiles.push_back({t.x, t.y, 1});
+                        }
+                    }
+
+                    // Forbid placement on any tile not in `allowed_tiles`
+                    layout.foreach_ground_tile(
+                        [this, &allowed_tiles, &n](const auto& t)
+                        {
+                            if (std::find(allowed_tiles.begin(), allowed_tiles.end(), t) == allowed_tiles.end())
+                            {
+                                solver->add(!get_tn(t, n));  // Not allowed → forbid
+                            }
+                        });
+                });
+        }
         /**
          * Adds constraints to the solver to enforce that each node is placed exactly once on exactly one tile.
          */
@@ -2510,6 +2569,7 @@ class exact_impl
         {
             // placement constraints
             restrict_tile_elements();
+            restrict_to_supertile_spec();
             restrict_vertices();
 
             // local synchronization constraints

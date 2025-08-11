@@ -19,6 +19,8 @@
 #include "fiction/utils/layout_utils.hpp"
 #include "fiction/utils/math_utils.hpp"
 
+#include <fiction/algorithms/simulation/sidb/is_circuit_operational.hpp>
+
 #include <fmt/format.h>
 #include <kitty/traits.hpp>
 #include <mockturtle/utils/progress_bar.hpp>
