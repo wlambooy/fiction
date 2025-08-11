@@ -21144,152 +21144,6 @@ Returns:
     A pair representing the `(x,y)` position of `c` in nanometers from
     the layout origin.)doc";
 
-static const char *__doc_fiction_sidb_on_the_fly_gate_library =
-R"doc(A parameterized gate library for SiDB technology. It allows the design
-of SiDB gates tailored to given atomic defects, thus enabling the
-design of SiDB circuits in the presence of atomic defects. The
-skeleton (i.e., the pre-defined input and output wires) are hexagonal
-in shape.)doc";
-
-static const char *__doc_fiction_sidb_on_the_fly_gate_library_add_defect_to_skeleton =
-R"doc(This function takes a defect surface and a skeleton skeleton and adds
-defects from the surrounding area to the skeleton. The defects within
-a specified distance from the center cell are taken into account. The
-resulting skeleton with added defects is returned.
-
-Template parameter ``CellLyt``:
-    SiDB defect surface type.
-
-Template parameter ``Params``:
-    Type of Parameters.
-
-Parameter ``skeleton``:
-    The skeleton to which defects will be added.
-
-Parameter ``center_cell``:
-    The coordinates of the center cell.
-
-Parameter ``absolute_cell``:
-    The coordinates of the skeleton's absolute cell.
-
-Parameter ``parameters``:
-    Parameters for defect handling.
-
-Returns:
-    The updated skeleton with added defects from the surrounding area.)doc";
-
-static const char *__doc_fiction_sidb_on_the_fly_gate_library_cell_level_layout_to_list =
-R"doc(Generates a cell-level layout as a 2D array of characters based on the
-provided cell layout information.
-
-Template parameter ``Lyt``:
-    Cell-level layout type.
-
-Parameter ``lyt``:
-    Cell-level layout
-
-Returns:
-    A 2D array of characters representing the cell-level layout.)doc";
-
-static const char *__doc_fiction_sidb_on_the_fly_gate_library_cell_list_to_cell_level_layout =
-R"doc(The function generates a layout where each cell is assigned a specific
-cell type according to the characters in the cell list/input grid.
-
-Template parameter ``Lyt``:
-    The type of the cell-level layout to be generated.
-
-Parameter ``cell_list``:
-    A 2D grid representing the cells and their types.
-
-Returns:
-    The cell-level layout with assigned cell types.)doc";
-
-static const char *__doc_fiction_sidb_on_the_fly_gate_library_design_gates =
-R"doc(This function designs an SiDB gate for a given Boolean function at a
-given tile and a given rotation. If atomic defects exist, they are
-incorporated into the design process.
-
-An exception is thrown in case there is no possible gate design.
-
-Template parameter ``LytSkeleton``:
-    The cell-level layout of the skeleton.
-
-Template parameter ``TT``:
-    Truth table type.
-
-Template parameter ``CellLyt``:
-    The cell-level layout.
-
-Template parameter ``GateLyt``:
-    The gate-level layout.
-
-Parameter ``skeleton``:
-    Skeleton with atomic defects if available.
-
-Parameter ``spec``:
-    Expected Boolean function of the layout given as a multi-output
-    truth table.
-
-Parameter ``parameters``:
-    Parameters for the SiDB gate design process.
-
-Parameter ``p``:
-    The list of ports and their directions.
-
-Parameter ``tile``:
-    The specific tile on which the gate should be designed.
-
-Returns:
-    An `fcn_gate` object.)doc";
-
-static const char *__doc_fiction_sidb_on_the_fly_gate_library_designed_fcn_gates = R"doc()doc";
-
-static const char *__doc_fiction_sidb_on_the_fly_gate_library_designed_fcn_gates_designed_gates = R"doc()doc";
-
-static const char *__doc_fiction_sidb_on_the_fly_gate_library_designed_fcn_gates_function = R"doc()doc";
-
-static const char *__doc_fiction_sidb_on_the_fly_gate_library_determine_port_routing =
-R"doc(Determines the port directions of a given tile.
-
-Template parameter ``Lyt``:
-    Pointy-top hexagonal gate-level layout type.
-
-Parameter ``lyt``:
-    Given tile `t` for which the port directions are determined.
-
-Returns:
-    port directions of the given tile are returned as `port_list`.)doc";
-
-static const char *__doc_fiction_sidb_on_the_fly_gate_library_is_predefined_bestagon_gate_applicable =
-R"doc(This function evaluates whether a predefined Bestagon gate can be
-applied to the given node by considering various conditions, including
-the presence of defects and spacing requirements.
-
-Template parameter ``CellLyt``:
-    SiDB defect surface type.
-
-Template parameter ``TT``:
-    Truth table type.
-
-Template parameter ``Params``:
-    Type of the parameters used for the parametrized gate library.
-
-Parameter ``bestagon_lyt``:
-    The Bestagon gate which is to be applied.
-
-Parameter ``skeleton_with_defects``:
-    The skeleton layout with atomic defects.
-
-Parameter ``truth_table``:
-    The truth table representing the gate's logic function.
-
-Parameter ``parameters``:
-    Parameters for the gate design and simulation.
-
-Returns:
-    `true` if the Bestagon gate is applicable to the layout,
-    considering the provided conditions; otherwise, returns `false`.)doc";
-
 static const char *__doc_fiction_sidb_on_the_fly_gate_library_params =
 R"doc(This struct encapsulates parameters for the parameterized SiDB gate
 library.
@@ -21317,39 +21171,6 @@ design.)doc";
 static const char *__doc_fiction_sidb_on_the_fly_gate_library_params_use_skeleton_influence_bounds = R"doc()doc";
 
 static const char *__doc_fiction_sidb_on_the_fly_gate_library_params_using_predefined_crossing_and_double_wire_if_possible = R"doc(This variable specifies the policy for complex gate design.)doc";
-
-static const char *__doc_fiction_sidb_on_the_fly_gate_library_set_up_gates =
-R"doc(Overrides the corresponding function in fcn_gate_library. Given a tile
-`t`, this function takes all necessary information from the stored
-grid into account to design the correct fcn_gate representation for
-that tile. In case there is no possible SiDB design, the blacklist is
-updated and an error fcn gate is returned.
-
-Template parameter ``GateLyt``:
-    Pointy-top hexagonal gate-level layout type.
-
-Template parameter ``CellLyt``:
-    SiDB cell-level layout type.
-
-Template parameter ``Params``:
-    Type of the parameter used for the gate library.
-
-Parameter ``lyt``:
-    Layout that hosts tile `t`.
-
-Parameter ``t``:
-    Tile to be realized as a Bestagon gate.
-
-Parameter ``params``:
-    Parameter to design SiDB gates.
-
-Parameter ``defect_surface``:
-    Optional atomic defect surface in case atomic defects are present.
-
-Returns:
-    Bestagon gate representation of `t` including mirroring.)doc";
-
-static const char *__doc_fiction_sidb_on_the_fly_gate_library_sidb_on_the_fly_gate_library = R"doc()doc";
 
 static const char *__doc_fiction_sidb_on_the_fly_mini_gate_library =
 R"doc(A parameterized gate library for SiDB technology. It allows the design
@@ -21448,12 +21269,6 @@ Parameter ``tile``:
 
 Returns:
     An `fcn_gate` object.)doc";
-
-static const char *__doc_fiction_sidb_on_the_fly_mini_gate_library_designed_fcn_gates = R"doc()doc";
-
-static const char *__doc_fiction_sidb_on_the_fly_mini_gate_library_designed_fcn_gates_designed_gates = R"doc()doc";
-
-static const char *__doc_fiction_sidb_on_the_fly_mini_gate_library_designed_fcn_gates_function = R"doc()doc";
 
 static const char *__doc_fiction_sidb_on_the_fly_mini_gate_library_determine_port_routing =
 R"doc(Determines the port directions of a given tile.
