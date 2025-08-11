@@ -214,8 +214,6 @@ static const char *__doc_fiction_advanced_circuit_design_params_selectivity_for_
 
 static const char *__doc_fiction_advanced_circuit_design_params_sidb_on_the_fly_gate_library_parameters = R"doc(Parameters for the SiDB on-the-fly gate library.)doc";
 
-static const char *__doc_fiction_advanced_circuit_design_params_spec = R"doc()doc";
-
 static const char *__doc_fiction_advanced_circuit_design_stats = R"doc(Statistics for the on-the-fly defect-aware circuit design.)doc";
 
 static const char *__doc_fiction_advanced_circuit_design_stats_duration = R"doc(The total runtime of the operational domain computation.)doc";
@@ -5425,6 +5423,8 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl_network = R
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_params = R"doc(Parameters for the on-the-fly circuit design.)doc";
 
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_print_skeleton_gate_layout = R"doc()doc";
+
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_print_success_rate_distribution = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_prune_gate_designs_at_global_level = R"doc()doc";
@@ -7593,6 +7593,8 @@ R"doc(Adds constraints to the solver to limit the number of elements that
 are going to be assigned to a tile to one (node or edge) if no
 crossings are allowed. Otherwise, one node per tile or two edges per
 tile can be placed.)doc";
+
+static const char *__doc_fiction_detail_exact_impl_smt_handler_restrict_to_supertile_spec = R"doc()doc";
 
 static const char *__doc_fiction_detail_exact_impl_smt_handler_restrict_vertices =
 R"doc(Adds constraints to the solver to enforce that each node is placed
@@ -22534,11 +22536,15 @@ Returns:
 
 static const char *__doc_fiction_technology_mapping_params = R"doc()doc";
 
+static const char *__doc_fiction_technology_mapping_params_a2 = R"doc()doc";
+
 static const char *__doc_fiction_technology_mapping_params_and2 = R"doc(2-input AND gate.)doc";
 
 static const char *__doc_fiction_technology_mapping_params_and3 = R"doc(3-input AND gate.)doc";
 
 static const char *__doc_fiction_technology_mapping_params_and_xor = R"doc(3-input AND-XOR gate.)doc";
+
+static const char *__doc_fiction_technology_mapping_params_b2 = R"doc()doc";
 
 static const char *__doc_fiction_technology_mapping_params_decay =
 R"doc(Enforce the application of at least one constant input to three-input
@@ -22567,6 +22573,10 @@ static const char *__doc_fiction_technology_mapping_params_mux = R"doc(3-input M
 static const char *__doc_fiction_technology_mapping_params_nand2 = R"doc(2-input NAND gate.)doc";
 
 static const char *__doc_fiction_technology_mapping_params_nor2 = R"doc(2-input NOR gate.)doc";
+
+static const char *__doc_fiction_technology_mapping_params_nota2 = R"doc()doc";
+
+static const char *__doc_fiction_technology_mapping_params_notb2 = R"doc()doc";
 
 static const char *__doc_fiction_technology_mapping_params_onehot = R"doc(3-input ONEHOT gate.)doc";
 
