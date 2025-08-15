@@ -8,18 +8,18 @@
 #include "fiction/algorithms/iter/bdl_input_iterator.hpp"
 #include "fiction/algorithms/physical_design/compare_designed_sidb_gates.hpp"
 #include "fiction/algorithms/simulation/sidb/detect_bdl_wires.hpp"
+#include "fiction/algorithms/simulation/sidb/is_circuit_operational.hpp"
 #include "fiction/algorithms/simulation/sidb/is_operational.hpp"
 #include "fiction/algorithms/simulation/sidb/random_sidb_layout_generator.hpp"
 #include "fiction/algorithms/simulation/sidb/sidb_simulation_engine.hpp"
 #include "fiction/technology/cell_technologies.hpp"
 #include "fiction/technology/charge_distribution_surface.hpp"
+#include "fiction/technology/sidb_bdl_circuit.hpp"
 #include "fiction/technology/sidb_charge_state.hpp"
 #include "fiction/technology/sidb_defects.hpp"
 #include "fiction/traits.hpp"
 #include "fiction/utils/layout_utils.hpp"
 #include "fiction/utils/math_utils.hpp"
-
-#include <fiction/algorithms/simulation/sidb/is_circuit_operational.hpp>
 
 #include <fmt/format.h>
 #include <kitty/traits.hpp>

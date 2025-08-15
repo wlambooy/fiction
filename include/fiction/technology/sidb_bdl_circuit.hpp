@@ -7,8 +7,9 @@
 
 #include "fiction/algorithms/physical_design/apply_gate_library.hpp"
 #include "fiction/algorithms/simulation/sidb/detect_bdl_wires.hpp"
+#include "fiction/technology/sidb_bdl_skeletons.hpp"
+#include "fiction/technology/sidb_defect_surface.hpp"
 #include "fiction/traits.hpp"
-#include "kitty/print.hpp"
 
 #include <array>
 #include <set>
@@ -20,53 +21,128 @@
 namespace fiction
 {
 
+/**
+ * This struct stores the parameters to design an SiDB circuit on a defective surface.
+ *
+ * @tparam CellLyt SiDB cell-level layout type.
+ */
+template <typename CellLyt>
+struct sidb_bdl_circuit_params
+{
+    /**
+     * This struct holds parameters to design SiDB gates.
+     */
+    design_sidb_gates_params<CellLyt> design_gate_params{};
+    /** This variable specifies the radius in nanometers around the center of the hexagon where atomic defects are
+     * incorporated into the gate design. (unit: nm)
+     */
+
+    std::optional<sidb_defect_surface<CellLyt>> defect_surface{};
+    double                                      influence_radius_charged_defects = 15;
+
+    uint64_t num_trials          = 500;
+    double   quantization_factor = 0.075;
+    double   selectivity         = 0.5;
+
+    uint64_t num_trials_for_double_scope          = 100;
+    double   quantization_factor_for_double_scope = 0.005;
+    double   selectivity_for_double_scope         = 0.6;
+
+    uint64_t num_trials_for_global_scope          = 20;
+    double   quantization_factor_for_global_scope = 0.025;
+    double   selectivity_for_global_scope         = 0.8;
+
+    double excited_state_alpha = 1.0;
+
+    uint64_t available_threads = std::thread::hardware_concurrency();
+};
+
 template <typename CellLyt, typename GateLyt, typename SkeletonGateLibrary>
 class sidb_bdl_circuit
 {
   public:
-    explicit sidb_bdl_circuit(const GateLyt& gate_lyt, const detect_bdl_wires_params& bdl_wire_params,
+    explicit sidb_bdl_circuit(const GateLyt& gate_lyt, const sidb_bdl_circuit_params<CellLyt>& bdl_circuit_parameters,
                               const std::optional<tile<GateLyt>>& this_tile = std::nullopt) noexcept :
             gate_layout{gate_lyt.clone()},
+            bdl_circuit_params{bdl_circuit_parameters},
             skeleton{apply_gate_library<CellLyt, SkeletonGateLibrary, GateLyt>(gate_lyt)},
-            bdl_wires{detect_bdl_wires(skeleton, bdl_wire_params)},
+            bdl_wires{detect_bdl_wires(
+                skeleton,
+                bdl_circuit_params.design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params)},
             num_bdl_pairs{get_number_of_bdl_pairs(bdl_wires)},
             input_bdl_pairs{detect_bdl_pairs<CellLyt>(skeleton, sidb_technology::cell_type::INPUT,
-                                                      bdl_wire_params.bdl_pairs_params)},
+                                                      bdl_circuit_params.design_gate_params.operational_params
+                                                          .input_bdl_iterator_params.bdl_wire_params.bdl_pairs_params)},
             num_inputs{input_bdl_pairs.size()},
             gate_connections{get_gate_connections(bdl_wires, skeleton, gate_lyt)},
-            gate_tile{this_tile}
-    {}
+            gate_tile{this_tile},
+            num_gates_to_design{get_number_of_gates_to_design(gate_lyt)}
+    {
+        operational_params.simulation_parameters =
+            bdl_circuit_params.design_gate_params.operational_params.simulation_parameters;
+        operational_params.input_bdl_iterator_params =
+            bdl_circuit_params.design_gate_params.operational_params.input_bdl_iterator_params;
+        operational_params.termination_cond =
+            is_circuit_operational_params::termination_condition::ON_FIRST_NON_OPERATIONAL;
+        // is_circuit_operational_params::termination_condition::ALL_INPUT_COMBINATIONS_ASSESSED;
+        operational_params.excited_state_alpha = bdl_circuit_params.excited_state_alpha;
+    }
 
-    explicit sidb_bdl_circuit(const GateLyt& gate_lyt, const tile<GateLyt>& t, const tile<GateLyt>& connecting_t,
-                              const detect_bdl_wires_params& bdl_wire_params) noexcept :
-            gate_layout{create_gate_lyt_window_for_gate_connection(gate_lyt, t, connecting_t)},
-            skeleton{apply_gate_library<CellLyt, SkeletonGateLibrary, GateLyt>(gate_layout)},
-            bdl_wires{detect_bdl_wires(skeleton, bdl_wire_params)},
-            num_bdl_pairs{get_number_of_bdl_pairs(bdl_wires)},
-            input_bdl_pairs{detect_bdl_pairs<CellLyt>(skeleton, sidb_technology::cell_type::INPUT,
-                                                      bdl_wire_params.bdl_pairs_params)},
-            num_inputs{input_bdl_pairs.size()},
-            gate_connections{get_gate_connections(bdl_wires, skeleton, gate_layout)}
-    {}
+    // explicit sidb_bdl_circuit(const GateLyt& gate_lyt, const tile<GateLyt>& t, const tile<GateLyt>& connecting_t,
+    //                           const sidb_bdl_circuit_params<CellLyt>& bdl_wire_params) noexcept :
+    //         gate_layout{create_gate_lyt_window_for_gate_connection(gate_lyt, t, connecting_t)},
+    //         skeleton{apply_gate_library<CellLyt, SkeletonGateLibrary, GateLyt>(gate_layout)},
+    //         bdl_wires{detect_bdl_wires(skeleton, bdl_wire_params)},
+    //         num_bdl_pairs{get_number_of_bdl_pairs(bdl_wires)},
+    //         input_bdl_pairs{detect_bdl_pairs<CellLyt>(skeleton, sidb_technology::cell_type::INPUT,
+    //                                                   bdl_wire_params.bdl_pairs_params)},
+    //         num_inputs{input_bdl_pairs.size()},
+    //         gate_connections{get_gate_connections(bdl_wires, skeleton, gate_layout)}
+    // {}
+    //
+    // explicit sidb_bdl_circuit(const GateLyt& gate_lyt, const tile<GateLyt>& t, const tile<GateLyt>& connecting_t,
+    //                           const tile<GateLyt>&           connecting_to_connecting_t,
+    //                           const detect_bdl_wires_params& bdl_wire_params) noexcept :
+    //         gate_layout{
+    //             create_gate_lyt_window_for_two_gate_connections(gate_lyt, t, connecting_t,
+    //             connecting_to_connecting_t)},
+    //         skeleton{apply_gate_library<CellLyt, SkeletonGateLibrary, GateLyt>(gate_layout)},
+    //         bdl_wires{detect_bdl_wires(skeleton, bdl_wire_params)},
+    //         num_bdl_pairs{get_number_of_bdl_pairs(bdl_wires)},
+    //         input_bdl_pairs{detect_bdl_pairs<CellLyt>(skeleton, sidb_technology::cell_type::INPUT,
+    //                                                   bdl_wire_params.bdl_pairs_params)},
+    //         num_inputs{input_bdl_pairs.size()},
+    //         gate_connections{get_gate_connections(bdl_wires, skeleton, gate_layout)}
+    // {}
 
-    explicit sidb_bdl_circuit(const GateLyt& gate_lyt, const tile<GateLyt>& t, const tile<GateLyt>& connecting_t,
-                              const tile<GateLyt>&           connecting_to_connecting_t,
-                              const detect_bdl_wires_params& bdl_wire_params) noexcept :
-            gate_layout{
-                create_gate_lyt_window_for_two_gate_connections(gate_lyt, t, connecting_t, connecting_to_connecting_t)},
-            skeleton{apply_gate_library<CellLyt, SkeletonGateLibrary, GateLyt>(gate_layout)},
-            bdl_wires{detect_bdl_wires(skeleton, bdl_wire_params)},
-            num_bdl_pairs{get_number_of_bdl_pairs(bdl_wires)},
-            input_bdl_pairs{detect_bdl_pairs<CellLyt>(skeleton, sidb_technology::cell_type::INPUT,
-                                                      bdl_wire_params.bdl_pairs_params)},
-            num_inputs{input_bdl_pairs.size()},
-            gate_connections{get_gate_connections(bdl_wires, skeleton, gate_layout)}
-    {}
+    [[nodiscard]] std::optional<CellLyt> design_circuit()
+    {
+        // initialize
+        collect_initial_gate_designs();
+
+        while (++circuit_design_level < num_gates_to_design)
+        {
+            // prune by assessing gate design combinations for increasingly large sets of connected gates
+            prune_gate_designs();
+        }
+
+        // prune at the global level (all gates are considered together)
+        if (const std::optional<CellLyt>& maybe_lyt = prune_gate_designs(); maybe_lyt.has_value())
+        {
+            return maybe_lyt.value();
+        }
+
+        return exhaustively_enumerate_gate_design_combinations();
+    }
 
     /**
      * SiDB gate-level layout.
      */
     const GateLyt gate_layout;
+
+    const sidb_bdl_circuit_params<CellLyt> bdl_circuit_params;
+
+    is_circuit_operational_params<CellLyt> operational_params{};
 
     const CellLyt skeleton;
 
@@ -78,7 +154,278 @@ class sidb_bdl_circuit
 
     const std::optional<tile<GateLyt>> gate_tile{};
 
+    const uint64_t num_gates_to_design{};
+
+    using gate_designs_per_node =
+        std::unordered_map<mockturtle::node<GateLyt>, std::vector<typename SkeletonGateLibrary::fcn_gate>>;
+
+    gate_designs_per_node gate_designs{};
+
+    uint64_t circuit_design_level = 0;
+
   private:
+    void collect_initial_gate_designs()
+    {
+        gate_layout->foreach_node(
+            [&, this](const auto& n, [[maybe_unused]] auto i)
+            {
+                if (!skip_physical_design_for_node(*gate_layout, n))
+                {
+                    gate_designs[n] =  // design_gates_for_node(n);
+                        SkeletonGateLibrary::template set_up_gates<GateLyt, CellLyt,
+                                                                   sidb_on_the_fly_gate_library_params<CellLyt>,
+
+                                                                   local_external_potential_type::BOUNDED>(
+                            gate_layout, gate_layout.get_tile(n),
+                            {bdl_circuit_params.design_gate_params,
+                             bdl_circuit_params.influence_radius_charged_defects},
+                            bdl_circuit_params.defect_surface, std::make_optional(this), operational_params);
+                }
+            });
+    }
+
+    // std::vector<typename SkeletonGateLibrary::fcn_gate> design_gates_for_node(const mockturtle::node<GateLyt>& n)
+    // {
+    //     const auto t = gate_layout.get_tile(n);
+    //     const auto f = gate_layout.node_function(n);
+    //     const auto p = SkeletonGateLibrary::determine_port_routing(gate_layout, t);
+    //
+    //     auto center_cell = relative_to_absolute_cell_position<SkeletonGateLibrary::gate_x_size(),
+    //                                                           SkeletonGateLibrary::gate_y_size(), GateLyt, CellLyt>(
+    //         gate_layout, t,
+    //         cell<CellLyt>{SkeletonGateLibrary::gate_x_size() / 2, SkeletonGateLibrary::gate_y_size() / 2});
+    //     auto absolute_cell =
+    //         relative_to_absolute_cell_position<SkeletonGateLibrary::gate_x_size(),
+    //         SkeletonGateLibrary::gate_y_size(),
+    //                                            GateLyt, CellLyt>(gate_layout, t, cell<CellLyt>{0, 0});
+    //
+    //     const auto cell_list = sidb_bdl_skeleton_1{}.set_up_gate(gate_layout, t);
+    //     if (cell_list == SkeletonGateLibrary::EMPTY_GATE)
+    //     {
+    //         return {SkeletonGateLibrary::EMPTY_GATE};
+    //     }
+    //
+    //     const auto skeleton = cell_list_to_cell_level_layout<CellLyt>(cell_list);
+    //
+    //     const auto design_gates = [&]()
+    //     {
+    //         std::cout << "starting gate design for tile " << tile << "\t|\tnode function:";
+    //         for (const tt& tt : spec)
+    //         {
+    //             std::cout << '\t';
+    //             kitty::print_binary(tt);
+    //         }
+    //         std::cout << std::endl;
+    //
+    //         const auto found_gate_layouts =
+    //             design_sidb_gates<LytSkeleton, TT, ExtPotType, GateLyt, SkeletonGateLibrary>(
+    //                 skeleton, spec, parameters.design_gate_params, nullptr, std::make_optional(std::move(circuit)),
+    //                 super_circuit, op_params);
+    //     }
+    //
+    //     try
+    //     {
+    //         if constexpr (fiction::has_is_fanout_v<GateLyt>)
+    //         {
+    //             if (gate_layout.is_fanout(n))
+    //             {
+    //                 if (gate_layout.fanout_size(n) == 2)
+    //                 {
+    //                     if constexpr (is_sidb_defect_surface_v<CellLyt>)
+    //                     {
+    //                         if (bdl_circuit_params.defect_surface.has_value())
+    //                         {
+    //                             const auto skeleton_with_defects = add_defect_to_skeleton(
+    //                                 bdl_circuit_params.defect_surface.value(), skeleton,
+    //                                 bdl_circuit_params.influence_radius_charged_defects, center_cell, absolute_cell);
+    //
+    //                             return design_gates<CellLyt, tt, CellLyt, GateLyt,
+    //                                                 local_external_potential_type::BOUNDED, SkeletonGateLibrary>(
+    //                                 skeleton_with_defects, create_fan_out_tt(), params, p, t,
+    //                                 make_bdl_circuit_for_tile<CellLyt, GateLyt, SkeletonGateLibrary>(
+    //                                     lyt, t, op_params->input_bdl_iterator_params.bdl_wire_params));
+    //                         }
+    //                     }
+    //                     return design_gates<CellLyt, tt, CellLyt, GateLyt, local_external_potential_type::BOUNDED,
+    //                                         SkeletonGateLibrary>(
+    //                         skeleton, create_fan_out_tt(), params, p, t,
+    //                         make_bdl_circuit_for_tile<CellLyt, GateLyt, SkeletonGateLibrary>(
+    //                             lyt, t, op_params->input_bdl_iterator_params.bdl_wire_params));
+    //                 }
+    //             }
+    //         }
+    //         if constexpr (fiction::has_is_buf_v<GateLyt>)
+    //         {
+    //             if (gate_layout.is_buf(n))
+    //             {
+    //                 if (gate_layout.is_ground_layer(t))
+    //                 {
+    //                     // crossing case
+    //                     if (const auto at = gate_layout.above(t); (t != at) && gate_layout.is_wire_tile(at))
+    //                     {
+    //                         // two possible options: actual crossover and (parallel) hourglass wire
+    //                         const auto pa = SkeletonGateLibrary::determine_port_routing(gate_layout, at);
+    //
+    //                         const auto spec = TWO_IN_TWO_OUT_MAP.at({p, pa});
+    //
+    //                         auto complex_gate_param               = params;
+    //                         complex_gate_param.design_gate_params = params.design_gate_params_complex_gates;
+    //
+    //                         complex_gate_param.design_gate_params.operational_params.cc_map =
+    //                             params.design_gate_params.operational_params.cc_map;
+    //
+    //                         if constexpr (is_sidb_defect_surface_v<CellLyt>)
+    //                         {
+    //                             if (defect_surface.has_value())
+    //                             {
+    //                                 const auto skeleton_with_defects = add_defect_to_skeleton(
+    //                                     defect_surface.value(), skeleton, params.influence_radius_charged_defects,
+    //                                     center_cell, absolute_cell);
+    //
+    //                                 return design_gates<CellLyt, tt, CellLyt, GateLyt, ExtPotType,
+    //                                 SkeletonGateLibrary>(
+    //                                     skeleton_with_defects, spec, complex_gate_param, p, t,
+    //                                     make_bdl_circuit_for_tile<CellLyt, GateLyt, SkeletonGateLibrary>(
+    //                                         lyt, t, op_params->input_bdl_iterator_params.bdl_wire_params),
+    //                                     super_circuit, op_params);
+    //                             }
+    //                         }
+    //
+    //                         return design_gates<CellLyt, tt, CellLyt, GateLyt, ExtPotType, SkeletonGateLibrary>(
+    //                             skeleton, spec, complex_gate_param, p, t,
+    //                             make_bdl_circuit_for_tile<CellLyt, GateLyt, SkeletonGateLibrary>(
+    //                                 lyt, t, op_params->input_bdl_iterator_params.bdl_wire_params),
+    //                             super_circuit, op_params);
+    //                     }
+    //
+    //                     if constexpr (is_sidb_defect_surface_v<CellLyt>)
+    //                     {
+    //                         if (defect_surface.has_value())
+    //                         {
+    //                             const auto skeleton_with_defects = add_defect_to_skeleton(
+    //                                 defect_surface.value(), skeleton, params.influence_radius_charged_defects,
+    //                                 center_cell, absolute_cell);
+    //                             return design_gates<CellLyt, tt, CellLyt, GateLyt, ExtPotType, SkeletonGateLibrary>(
+    //                                 skeleton_with_defects, std::vector<tt>{f}, params, p, t,
+    //                                 make_bdl_circuit_for_tile<CellLyt, GateLyt, SkeletonGateLibrary>(
+    //                                     lyt, t, op_params->input_bdl_iterator_params.bdl_wire_params),
+    //                                 super_circuit, op_params);
+    //                         }
+    //                     }
+    //
+    //                     return design_gates<CellLyt, tt, CellLyt, GateLyt, ExtPotType, SkeletonGateLibrary>(
+    //                         skeleton, std::vector<tt>{f}, params, p, t,
+    //                         make_bdl_circuit_for_tile<CellLyt, GateLyt, SkeletonGateLibrary>(
+    //                             lyt, t, op_params->input_bdl_iterator_params.bdl_wire_params),
+    //                         super_circuit, op_params);
+    //                 }
+    //                 return {SkeletonGateLibrary::EMPTY_GATE};
+    //             }
+    //         }
+    //
+    //         if constexpr (is_sidb_defect_surface_v<CellLyt>)
+    //         {
+    //             if (bdl_circuit_params.defect_surface.has_value())
+    //             {
+    //                 const auto skeleton_with_defects = add_defect_to_skeleton(
+    //                     bdl_circuit_params.defect_surface.value(), skeleton,
+    //                     bdl_circuit_params.influence_radius_charged_defects, center_cell, absolute_cell);
+    //
+    //                 return design_gates<CellLyt, tt, CellLyt, GateLyt, ExtPotType, SkeletonGateLibrary>(
+    //                     skeleton_with_defects, std::vector<tt>{f}, params, p, t,
+    //                     make_bdl_circuit_for_tile<CellLyt, GateLyt, SkeletonGateLibrary>(
+    //                         lyt, t, op_params->input_bdl_iterator_params.bdl_wire_params),
+    //                     super_circuit, op_params);
+    //             }
+    //         }
+    //
+    //         return design_gates<CellLyt, tt, CellLyt, GateLyt, ExtPotType, SkeletonGateLibrary>(
+    //             skeleton, std::vector<tt>{f}, params, p, t,
+    //             make_bdl_circuit_for_tile<CellLyt, GateLyt, SkeletonGateLibrary>(
+    //                 lyt, t, op_params->input_bdl_iterator_params.bdl_wire_params),
+    //             super_circuit, op_params);
+    //     }
+    //
+    //     catch (const std::out_of_range&)
+    //     {
+    //         throw unsupported_gate_orientation_exception(t, p);
+    //     }
+    //
+    //     throw unsupported_gate_type_exception(t);
+    // }
+
+    void prune_gate_designs() noexcept {}
+
+    std::optional<CellLyt> exhaustively_enumerate_gate_design_combinations() const noexcept
+    {
+        std::cout << "\n\nLOOKING FOR OPERATIONAL CIRCUIT EXHAUSTIVELY" << std::endl;
+
+        is_circuit_operational_params operational_params{};
+        operational_params.simulation_parameters =
+            params.sidb_on_the_fly_gate_library_parameters.design_gate_params.operational_params.simulation_parameters;
+        operational_params.input_bdl_iterator_params = params.sidb_on_the_fly_gate_library_parameters.design_gate_params
+                                                           .operational_params.input_bdl_iterator_params;
+        operational_params.termination_cond =
+            is_circuit_operational_params::termination_condition::ALL_INPUT_COMBINATIONS_ASSESSED;
+
+        // operational_params.print = true;
+
+        std::vector<uint64_t> indices(operational_gate_designs.size(), 0);
+
+        while (true)
+        {
+            CellLyt operational_circuit_candidate{};
+            for (uint64_t i = 0; i < operational_gate_designs.size(); i++)
+            {
+                const auto& [n, op_gate_designs_for_gate] =
+                    *std::next(operational_gate_designs.cbegin(), static_cast<int64_t>(i));
+                // select a random gate implementation for the tile that connects as input to n
+                assign_gate<CellLyt, SkeletonGateLibrary, GateLyt>(operational_circuit_candidate,
+                                                                   op_gate_designs_for_gate.at(indices.at(i)), gate_lyt,
+                                                                   gate_lyt.get_tile(n));
+            }
+
+            std::cout << "trying combination: ";
+            for (uint64_t i = 0; i < operational_gate_designs.size(); i++)
+            {
+                std::cout << indices.at(i) << " ";
+            }
+            std::cout << std::endl;
+
+            if (is_circuit_operational(
+                    sidb_cell_level_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>{operational_circuit_candidate,
+                                                                                       *circuit},
+                    operational_params)
+                    .status == operational_status::OPERATIONAL)
+            {
+                lyt.emplace(std::move(operational_circuit_candidate));
+
+                std::cout << "\n\nFINAL GENERATED CIRCUIT:" << std::endl;
+                print_layout(lyt.value());
+
+                return true;
+            }
+
+            // Increment indices like an odometer
+            for (uint64_t i = 0; i < indices.size(); ++i)
+            {
+                if (++indices[i] < std::next(operational_gate_designs.cbegin(), static_cast<int64_t>(i))->second.size())
+                {
+                    break;  // No carry needed
+                }
+
+                indices[i] = 0;  // Reset this index and carry over to the next
+
+                if (i == indices.size() - 1)
+                {
+                    return false;  // Stop when the last index overflows
+                }
+            }
+        }
+
+        return false;
+    }
+
     static void augment_gate_lyt_window(const GateLyt& gate_lyt, GateLyt& gate_lyt_window,
                                         const tile<GateLyt>&           current_t,
                                         const std::set<tile<GateLyt>>& connecting_inputs  = {},
@@ -96,22 +443,12 @@ class sidb_bdl_circuit
                 }
 
                 gate_lyt_window.create_pi("", in_t);
-
-                // std::cout << "created pi at " << in_t.x << " " << in_t.y << " " << in_t.z << std::endl;
             }
 
             inputs_to_current_t.push_back(static_cast<mockturtle::signal<GateLyt>>(in_t));
         }
 
-        // std::cout << "created node at " << current_t.x << " " << current_t.y << " " << current_t.z << " with inputs: ";
-        // for (const auto& s : inputs_to_current_t)
-        // {
-        //     const auto& t = static_cast<tile<GateLyt>>(s);
-        //     std::cout << t.x << " " << t.y << " " << t.z << " \t ";
-        // }
-        // std::cout << std::endl;
         assert(gate_lyt_window.is_empty_tile(current_t) && "tile on which node is to be created is already populated");
-
         gate_lyt_window.create_node(inputs_to_current_t, gate_lyt.node_function(gate_lyt.get_node(current_t)),
                                     current_t);
 
@@ -123,9 +460,6 @@ class sidb_bdl_circuit
                 {
                     out_t.z = 1 - out_t.z;
                 }
-
-                // std::cout << "created po at " << out_t.x << " " << out_t.y << " " << out_t.z << " with input "
-                //           << current_t.x << " " << current_t.y << " " << current_t.z << std::endl;
 
                 gate_lyt_window.create_po(static_cast<mockturtle::signal<GateLyt>>(current_t), "", out_t);
             }
@@ -142,15 +476,74 @@ class sidb_bdl_circuit
                                         connecting_outputs);
             }
         }
-    };
+    }
+
+    [[nodiscard]] static GateLyt
+    create_gate_lyt_window_for_connection_sequence(const GateLyt& gate_lyt, std::vector<tile<GateLyt>> tiles) noexcept
+    {
+        GateLyt gate_lyt_window{{gate_lyt.x(), gate_lyt.y(), gate_lyt.z()}, row_clocking<GateLyt>()};
+
+        // Sort tiles in ascending y, then x, then z for deterministic ordering
+        std::sort(tiles.begin(), tiles.end());
+
+        const auto same_clock_zone = [](const tile<GateLyt>& a, const tile<GateLyt>& b)
+        {
+            return a.y == b.y;  // Adjust if clock zone definition differs from y==y
+        };
+
+        // Process each tile in sorted order
+        for (size_t i = 0; i < tiles.size(); ++i)
+        {
+            std::set<tile<GateLyt>> inputs, outputs;
+
+            // --- Determine inputs ---
+            for (size_t j = 0; j < i; ++j)
+            {
+                // Rule: in "shared clock zone" cases, skip direct non-adjacent wiring
+                if (same_clock_zone(tiles[j], tiles[i]))
+                    continue;
+
+                // If immediate predecessor is in same zone, also take inputs from its inputs
+                // (this is the "both feed lower" branch in your original)
+                if (i > 0 && same_clock_zone(tiles[i - 1], tiles[i]))
+                {
+                    if (j == i - 1)  // direct predecessor in same zone → don't connect
+                        continue;
+                }
+
+                inputs.insert(tiles[j]);
+            }
+
+            // --- Determine outputs ---
+            for (size_t j = i + 1; j < tiles.size(); ++j)
+            {
+                if (same_clock_zone(tiles[i], tiles[j]))
+                    continue;
+
+                // If immediate successor is in same zone, also give outputs to both
+                // (this is the "upper gives output to both" branch)
+                if (j == i + 1 && j + 1 < tiles.size() && same_clock_zone(tiles[j], tiles[j + 1]))
+                {
+                    outputs.insert(tiles[j]);
+                    outputs.insert(tiles[j + 1]);
+                    break;  // handled both at once
+                }
+
+                outputs.insert(tiles[j]);
+                break;  // only connect to first in next zone
+            }
+
+            augment_gate_lyt_window(gate_lyt, gate_lyt_window, tiles[i], inputs, outputs);
+        }
+
+        return gate_lyt_window;
+    }
 
     [[nodiscard]] static GateLyt create_gate_lyt_window_for_gate_connection(const GateLyt&       gate_lyt,
                                                                             const tile<GateLyt>& t,
                                                                             const tile<GateLyt>& connecting_t) noexcept
     {
-        GateLyt gate_lyt_window{{gate_lyt.x(), gate_lyt.y(), gate_lyt.z()}, row_clocking<GateLyt>()};
-        // std::cout << "start num pis" << gate_lyt_window.num_pis() << std::endl;
-
+        GateLyt              gate_lyt_window{{gate_lyt.x(), gate_lyt.y(), gate_lyt.z()}, row_clocking<GateLyt>()};
         const tile<GateLyt>& upper_t = t.y < connecting_t.y ? t : connecting_t;
         const tile<GateLyt>& lower_t = t.y < connecting_t.y ? connecting_t : t;
 
@@ -166,7 +559,6 @@ class sidb_bdl_circuit
                                                     const tile<GateLyt>& connecting_to_connecting_t) noexcept
     {
         GateLyt gate_lyt_window{{gate_lyt.x(), gate_lyt.y(), gate_lyt.z()}, row_clocking<GateLyt>()};
-        // std::cout << "start num pis" << gate_lyt_window.num_pis() << std::endl;
 
         std::array<tile<GateLyt>, 3> tiles_sorted{{t, connecting_t, connecting_to_connecting_t}};
         std::sort(tiles_sorted.begin(), tiles_sorted.end());
@@ -210,7 +602,7 @@ class sidb_bdl_circuit
     /**
      *
      */
-    static std::vector<std::pair<tile<GateLyt>, tile<GateLyt>>>
+    [[nodiscard]] static std::vector<std::pair<tile<GateLyt>, tile<GateLyt>>>
     get_gate_connections(const std::vector<bdl_wire<CellLyt>>& bdl_wires, const CellLyt& lyt,
                          const GateLyt& gate_lyt) noexcept
     {
@@ -445,7 +837,7 @@ class sidb_bdl_circuit
         return gate_connections;
     }
 
-    static uint64_t get_number_of_bdl_pairs(const std::vector<bdl_wire<CellLyt>>& bdl_wires) noexcept
+    [[nodiscard]] static uint64_t get_number_of_bdl_pairs(const std::vector<bdl_wire<CellLyt>>& bdl_wires) noexcept
     {
         uint64_t total = 0;
 
@@ -453,6 +845,22 @@ class sidb_bdl_circuit
         {
             total += wire.pairs.size();
         }
+
+        return total;
+    }
+
+    [[nodiscard]] static uint64_t get_number_of_gates_to_design(const GateLyt& gate_lyt) noexcept
+    {
+        uint64_t total = 0;
+
+        gate_lyt.foreach_node(
+            [&](const mockturtle::node<GateLyt>& n)
+            {
+                if (!skip_physical_design_for_node(gate_lyt, n))
+                {
+                    total++;
+                }
+            });
 
         return total;
     }

@@ -8,22 +8,29 @@
 #include "fiction/algorithms/physical_design/compare_designed_sidb_gates.hpp"
 #include "fiction/algorithms/physical_design/design_sidb_gates.hpp"
 #include "fiction/algorithms/simulation/sidb/compare_by_ground_state_isolation.hpp"
-#include "fiction/algorithms/simulation/sidb/skeleton_influence_bounds.hpp"
+#include "fiction/algorithms/simulation/sidb/is_circuit_operational.hpp"
+#include "fiction/algorithms/simulation/sidb/is_operational.hpp"
 #include "fiction/layouts/bounding_box.hpp"
 #include "fiction/technology/cell_ports.hpp"
 #include "fiction/technology/cell_technologies.hpp"
 #include "fiction/technology/fcn_gate_library.hpp"
 #include "fiction/technology/is_sidb_gate_design_impossible.hpp"
+#include "fiction/technology/sidb_bdl_circuit.hpp"
+#include "fiction/technology/sidb_bdl_skeletons.hpp"
 #include "fiction/technology/sidb_nm_distance.hpp"
+#include "fiction/technology/sidb_on_the_fly_gate_library.hpp"
 #include "fiction/technology/sidb_skeleton_gate_library.hpp"
 #include "fiction/traits.hpp"
 #include "fiction/types.hpp"
 #include "fiction/utils/layout_utils.hpp"
 #include "fiction/utils/truth_table_utils.hpp"
 
-#include <cassert>
+#include <phmap.h>
+
+#include <array>
 #include <cstdint>
 #include <cstdlib>
+#include <exception>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -36,7 +43,7 @@ namespace fiction
  * @tparam Lyt Cell-level layout type.
  */
 template <typename Lyt>
-struct sidb_gate_library_params
+struct sidb_on_the_fly_gate_library_params
 {
     /**
      * This struct holds parameters to design SiDB gates.
@@ -57,10 +64,10 @@ struct sidb_gate_library_params
  * @tparam GateSizeY Height of a hexagon.
  */
 template <uint16_t GateSizeX, uint16_t GateSizeY>
-class sidb_on_the_fly_mini_gate_library : public fcn_gate_library<sidb_technology, GateSizeX, GateSizeY>
+class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, GateSizeX, GateSizeY>
 {
   public:
-    explicit sidb_gate_library() = delete;
+    explicit sidb_on_the_fly_gate_library() = delete;
     /**
      * Overrides the corresponding function in fcn_gate_library. Given a tile `t`, this function takes all necessary
      * information from the stored grid into account to design the correct fcn_gate representation for that tile. In
@@ -79,7 +86,7 @@ class sidb_on_the_fly_mini_gate_library : public fcn_gate_library<sidb_technolog
     template <typename GateLyt, typename CellLyt, typename Params,
               local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED,
               typename SkeletonGateLibrary             = sidb_skeleton_bestagon_mini_library>
-    static std::vector<fcn_gate> set_up_gates(
+    static std::vector<typename sidb_on_the_fly_gate_library::fcn_gate> set_up_gates(
         const GateLyt& lyt, const tile<GateLyt>& t, Params& params,
         const std::optional<CellLyt>&                                                 defect_surface = std::nullopt,
         const std::optional<sidb_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>>& super_circuit  = std::nullopt,
@@ -97,16 +104,22 @@ class sidb_on_the_fly_mini_gate_library : public fcn_gate_library<sidb_technolog
         // center cell of the Bestagon tile. IMPORTANT: There is no center for the specified Bestagon library. The
         // middle is at 22.66666 (34*2/3). However, this is not an integer and does not specify a cell. Cell close to it
         // is chosen.
-        auto center_cell = relative_to_absolute_cell_position<gate_x_size(), gate_y_size(), GateLyt, CellLyt>(
-            lyt, t, cell<CellLyt>{gate_x_size() / 2, gate_y_size() / 2});
+        auto center_cell =
+            relative_to_absolute_cell_position<typename sidb_on_the_fly_gate_library::gate_x_size(),
+                                               typename sidb_on_the_fly_gate_library::gate_y_size(), GateLyt, CellLyt>(
+                lyt, t,
+                cell<CellLyt>{typename sidb_on_the_fly_gate_library::gate_x_size() / 2,
+                              typename sidb_on_the_fly_gate_library::gate_y_size() / 2});
         // center cell of the current tile
-        auto absolute_cell = relative_to_absolute_cell_position<gate_x_size(), gate_y_size(), GateLyt, CellLyt>(
-            lyt, t, cell<CellLyt>{0, 0});
+        auto absolute_cell =
+            relative_to_absolute_cell_position<typename sidb_on_the_fly_gate_library::gate_x_size(),
+                                               typename sidb_on_the_fly_gate_library::gate_y_size(), GateLyt, CellLyt>(
+                lyt, t, cell<CellLyt>{0, 0});
 
-        const auto cell_list = sidb_skeleton_bestagon_mini_library{}.set_up_gate(lyt, t);
-        if (cell_list == EMPTY_GATE)
+        const auto cell_list = sidb_bdl_skeleton_1{}.set_up_gate(lyt, t);
+        if (cell_list == typename sidb_on_the_fly_gate_library::EMPTY_GATE)
         {
-            return {EMPTY_GATE};
+            return {typename sidb_on_the_fly_gate_library::EMPTY_GATE};
         }
 
         const auto skeleton = cell_list_to_cell_level_layout<CellLyt>(cell_list);
@@ -348,8 +361,8 @@ class sidb_on_the_fly_mini_gate_library : public fcn_gate_library<sidb_technolog
      */
     template <typename LytSkeleton, typename TT, typename CellLyt, typename GateLyt,
               local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED,
-              typename SkeletonGateLibrary             = sidb_on_the_fly_mini_gate_library>
-    [[nodiscard]] static std::vector<fcn_gate>
+              typename SkeletonGateLibrary             = sidb_on_the_fly_gate_library>
+    [[nodiscard]] static std::vector<typename sidb_on_the_fly_gate_library::fcn_gate>
     design_gates(const LytSkeleton& skeleton, const std::vector<TT>& spec,
                  const sidb_on_the_fly_gate_library_params<CellLyt>& parameters, const port_list<port_direction>& p,
                  const tile<GateLyt>& tile, sidb_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>&& circuit,
@@ -369,7 +382,7 @@ class sidb_on_the_fly_mini_gate_library : public fcn_gate_library<sidb_technolog
                 throw gate_design_exception<tt, GateLyt>(tile, create_id_tt(), p);
             }
 
-            std::vector<fcn_gate> gates{};
+            std::vector<typename sidb_on_the_fly_gate_library::fcn_gate> gates{};
             gates.reserve(found_gate_layouts.size());
 
             designed_sidb_gates<LytSkeleton, ExtPotType> sorted_gates{};
@@ -417,7 +430,7 @@ class sidb_on_the_fly_mini_gate_library : public fcn_gate_library<sidb_technolog
         return create_fcn_gates(found_gate_layouts);
     }
     /**
-     * This function takes a defect surface and a skeleton skeleton and adds defects from the surrounding area
+     * This function takes a defect surface and a skeleton and adds defects from the surrounding area
      * to the skeleton. The defects within a specified distance from the center cell are taken into account.
      * The resulting skeleton with added defects is returned.
      *
@@ -519,6 +532,32 @@ class sidb_on_the_fly_mini_gate_library : public fcn_gate_library<sidb_technolog
 
         return p;
     }
+
+    using double_port_gate_function_map =
+        phmap::flat_hash_map<std::pair<port_list<port_direction>, port_list<port_direction>>, std::vector<tt>>;
+
+    static inline const double_port_gate_function_map TWO_IN_TWO_OUT_MAP = {
+        {{{{port_direction(port_direction::cardinal::NORTH_WEST)},
+           {port_direction(port_direction::cardinal::SOUTH_WEST)}},
+          {{port_direction(port_direction::cardinal::NORTH_EAST)},
+           {port_direction(port_direction::cardinal::SOUTH_EAST)}}},
+         create_double_wire_tt()},
+        {{{{port_direction(port_direction::cardinal::NORTH_EAST)},
+           {port_direction(port_direction::cardinal::SOUTH_EAST)}},
+          {{port_direction(port_direction::cardinal::NORTH_WEST)},
+           {port_direction(port_direction::cardinal::SOUTH_WEST)}}},
+         create_double_wire_tt()},
+        {{{{port_direction(port_direction::cardinal::NORTH_WEST)},
+           {port_direction(port_direction::cardinal::SOUTH_EAST)}},
+          {{port_direction(port_direction::cardinal::NORTH_EAST)},
+           {port_direction(port_direction::cardinal::SOUTH_WEST)}}},
+         create_crossing_wire_tt()},
+        {{{{port_direction(port_direction::cardinal::NORTH_EAST)},
+           {port_direction(port_direction::cardinal::SOUTH_WEST)}},
+          {{port_direction(port_direction::cardinal::NORTH_WEST)},
+           {port_direction(port_direction::cardinal::SOUTH_EAST)}}},
+         create_crossing_wire_tt()},
+    };
 };
 
 }  // namespace fiction
