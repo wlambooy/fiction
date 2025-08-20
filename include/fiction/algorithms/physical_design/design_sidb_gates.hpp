@@ -15,6 +15,7 @@
 #include "fiction/technology/cell_technologies.hpp"
 #include "fiction/technology/charge_distribution_surface.hpp"
 #include "fiction/technology/sidb_bdl_circuit.hpp"
+#include "fiction/technology/sidb_bdl_skeletons.hpp"
 #include "fiction/technology/sidb_charge_state.hpp"
 #include "fiction/technology/sidb_defects.hpp"
 #include "fiction/traits.hpp"
@@ -174,9 +175,9 @@ struct design_sidb_gates_stats
 namespace detail
 {
 
-template <
-    typename Lyt, typename TT, local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED,
-    typename GateLyt = hex_even_row_gate_clk_lyt, typename SkeletonGateLibrary = sidb_skeleton_bestagon_mini_library>
+template <typename Lyt, typename TT,
+          local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED,
+          typename GateLyt = hex_even_row_gate_clk_lyt, typename SkeletonGateLibrary = sidb_bdl_skeleton_1>
 class design_sidb_gates_impl
 {
   public:
@@ -191,14 +192,12 @@ class design_sidb_gates_impl
      */
     design_sidb_gates_impl(const Lyt& skeleton, const std::vector<TT>& spec, const design_sidb_gates_params<Lyt>& ps,
                            design_sidb_gates_stats&                                                  st,
-                           const std::optional<sidb_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>>& bdl_circuit,
-                           const std::optional<sidb_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>>& bdl_super_circuit,
+                           const std::optional<sidb_bdl_sub_circuit<Lyt, GateLyt, SkeletonGateLibrary>>& bdl_circuit,
                            const std::optional<is_circuit_operational_params>&                       op_params) :
             skeleton_layout{skeleton},
             truth_table{spec},
             params{set_operational_params_accordingly(ps)},
             circuit{bdl_circuit},
-            super_circuit{bdl_super_circuit},
             circuit_operational_params{op_params},
             all_sidbs_in_canvas{all_coordinates_in_spanned_area(convert_canvas_coordinate(params.canvas.first),
                                                                 convert_canvas_coordinate(params.canvas.second))},
@@ -382,7 +381,7 @@ class design_sidb_gates_impl
                             if (is_circuit_operational<Lyt, GateLyt, ExtPotType, SkeletonGateLibrary>(
                                     sidb_cell_level_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>{result_lyt.value(),
                                                                                                    *circuit},
-                                    *circuit_operational_params, std::make_optional(std::cref(*super_circuit)))
+                                    *circuit_operational_params)
                                     .status != operational_status::OPERATIONAL)
                             {
                                 continue;
@@ -448,8 +447,7 @@ class design_sidb_gates_impl
      */
     const design_sidb_gates_params<Lyt> params;
 
-    const std::optional<sidb_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>>& circuit{};
-    const std::optional<sidb_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>>& super_circuit{};
+    const std::optional<sidb_bdl_sub_circuit<Lyt, GateLyt, SkeletonGateLibrary>>& circuit{};
     const std::optional<is_circuit_operational_params>&                       circuit_operational_params{};
     /**
      * All cells within the canvas.
@@ -563,8 +561,8 @@ class design_sidb_gates_impl
             {
                 if (is_circuit_operational<Lyt, GateLyt, ExtPotType, SkeletonGateLibrary>(
                         sidb_cell_level_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>{layout_with_added_cells,
-                                                                                       *circuit},
-                        *circuit_operational_params, std::make_optional(std::cref(*super_circuit)))
+                                                                                       std::cref(*circuit)},
+                        *circuit_operational_params)
                         .status != operational_status::OPERATIONAL)
                 {
                     return;
@@ -797,7 +795,7 @@ class design_sidb_gates_impl
      */
     [[nodiscard]] Lyt skeleton_layout_with_canvas_sidbs(const canvas_combination& cell_indices) const noexcept
     {
-        Lyt lyt = apply_gate_library<Lyt, sidb_skeleton_bestagon_mini_library, GateLyt>(
+        Lyt lyt = apply_gate_library<Lyt, SkeletonGateLibrary, GateLyt>(
             circuit->gate_layout, std::make_optional(std::set<tile<GateLyt>>{*circuit->gate_tile}));
 
         for (const auto i : cell_indices)
@@ -922,15 +920,14 @@ class design_sidb_gates_impl
  * @param stats Statistics.
  * @return A vector of designed SiDB gate layouts.
  */
-template <
-    typename Lyt, typename TT, local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED,
-    typename GateLyt = hex_even_row_gate_clk_lyt, typename SkeletonGateLibrary = sidb_skeleton_bestagon_mini_library>
-[[nodiscard]] std::vector<Lyt> design_sidb_gates(
-    const Lyt& skeleton, const std::vector<TT>& spec, const design_sidb_gates_params<Lyt>& params = {},
-    design_sidb_gates_stats*                                                  stats         = nullptr,
-    const std::optional<sidb_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>>& circuit       = std::nullopt,
-    const std::optional<sidb_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>>& super_circuit = std::nullopt,
-    const std::optional<is_circuit_operational_params>&                       op_params     = std::nullopt) noexcept
+template <typename Lyt, typename TT,
+          local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED,
+          typename GateLyt = hex_even_row_gate_clk_lyt, typename SkeletonGateLibrary = sidb_bdl_skeleton_1>
+[[nodiscard]] std::vector<Lyt>
+design_sidb_gates(const Lyt& skeleton, const std::vector<TT>& spec, const design_sidb_gates_params<Lyt>& params = {},
+                  design_sidb_gates_stats*                                                      stats   = nullptr,
+                  const std::optional<sidb_bdl_sub_circuit<Lyt, GateLyt, SkeletonGateLibrary>>& circuit = std::nullopt,
+                  const std::optional<is_circuit_operational_params>& op_params = std::nullopt) noexcept
 {
     static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout");
     static_assert(has_sidb_technology_v<Lyt>, "Lyt is not an SiDB layout");
@@ -946,8 +943,8 @@ template <
                               [](const auto& a, const auto& b) { return a.num_vars() != b.num_vars(); }) == spec.end());
 
     design_sidb_gates_stats                                                           st{};
-    detail::design_sidb_gates_impl<Lyt, TT, ExtPotType, GateLyt, SkeletonGateLibrary> p{
-        skeleton, spec, params, st, circuit, super_circuit, op_params};
+    detail::design_sidb_gates_impl<Lyt, TT, ExtPotType, GateLyt, SkeletonGateLibrary> p{skeleton, spec,    params,
+                                                                                        st,       circuit, op_params};
 
     std::vector<Lyt> result{};
 

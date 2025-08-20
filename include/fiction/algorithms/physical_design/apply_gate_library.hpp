@@ -17,6 +17,8 @@
 
 #include <cstdint>
 #endif
+#include <fiction/technology/sidb_skeleton_gate_library.hpp>
+
 #include <mockturtle/traits.hpp>
 
 #include <algorithm>
@@ -34,7 +36,6 @@
 
 namespace fiction
 {
-class sidb_skeleton_bestagon_mini_library;
 
 namespace detail
 {
@@ -100,15 +101,17 @@ class apply_gate_library_impl
                         (!blacklist.has_value() || blacklist.value().count(t) == 0) &&
                         (!whitelist.has_value() || whitelist.value().count(t) != 0))
                     {
-                        if constexpr (std::is_same_v<GateLibrary, sidb_skeleton_bestagon_mini_library>)
+                        if constexpr (std::is_base_of_v<sidb_skeleton_gate_library<GateLibrary::gate_x_size(),
+                                                                                   GateLibrary::gate_y_size()>,
+                                                        GateLibrary>)
                         {
-                            assign_gate<CellLyt, GateLibrary, GateLyt>(
-                                cell_lyt, GateLibrary{}.set_up_gate(gate_lyt, t), gate_lyt, t);
+                            assign_gate<CellLyt, GateLibrary, GateLyt>(cell_lyt, GateLibrary{}.set_up_gate(gate_lyt, t),
+                                                                       gate_lyt, t);
                         }
                         else
                         {
-                            assign_gate<CellLyt, GateLibrary, GateLyt>(
-                                cell_lyt, GateLibrary::set_up_gate(gate_lyt, t), gate_lyt, t);
+                            assign_gate<CellLyt, GateLibrary, GateLyt>(cell_lyt, GateLibrary::set_up_gate(gate_lyt, t),
+                                                                       gate_lyt, t);
                         }
                     }
                 }

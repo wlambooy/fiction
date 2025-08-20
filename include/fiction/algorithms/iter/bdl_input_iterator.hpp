@@ -9,10 +9,10 @@
 #include "fiction/algorithms/simulation/sidb/detect_bdl_wires.hpp"
 #include "fiction/technology/cell_technologies.hpp"
 #include "fiction/technology/charge_distribution_surface.hpp"
+#include "fiction/technology/sidb_bdl_circuit.hpp"
+#include "fiction/technology/sidb_bdl_skeletons.hpp"
 #include "fiction/traits.hpp"
-
-#include <fiction/technology/sidb_bdl_circuit.hpp>
-#include <fiction/types.hpp>
+#include "fiction/types.hpp"
 
 #include <cassert>
 #include <cstdint>
@@ -79,10 +79,10 @@ enum class simulate_bdl_wire_logic
  *
  * @tparam Lyt SiDB cell-level layout type.
  */
-template <
-    typename Lyt,
-    simulate_bdl_wire_logic sim_bdl_wire_logic = simulate_bdl_wire_logic::DO_NOT_COLLECT_EXPECTED_CHARGE_DISTRIBUTIONS,
-    typename GateLyt = hex_even_row_gate_clk_lyt, typename SkeletonGateLibrary = sidb_skeleton_bestagon_mini_library>
+template <typename Lyt,
+          simulate_bdl_wire_logic sim_bdl_wire_logic =
+              simulate_bdl_wire_logic::DO_NOT_COLLECT_EXPECTED_CHARGE_DISTRIBUTIONS,
+          typename GateLyt = hex_even_row_gate_clk_lyt, typename SkeletonGateLibrary = sidb_bdl_skeleton_1>
 class bdl_input_iterator
 {
   public:
@@ -95,8 +95,6 @@ class bdl_input_iterator
      */
     explicit bdl_input_iterator(
         const Lyt& lyt, const bdl_input_iterator_params& ps = bdl_input_iterator_params{},
-        const std::optional<std::reference_wrapper<const sidb_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>>>
-            bdl_circuit = std::nullopt,
         const std::optional<
             const std::reference_wrapper<const sidb_cell_level_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>>>
                                        bdl_sub_circuit            = std::nullopt,
@@ -108,12 +106,11 @@ class bdl_input_iterator
             input_bdl_wires{detect_bdl_wires<Lyt>(lyt, ps.bdl_wire_params, bdl_wire_selection::INPUT)},
             last_bdl_for_each_wire{determine_last_bdl_for_each_wire()},
             params{ps},
-            circuit{bdl_circuit},
             sub_circuit{bdl_sub_circuit},
             sub_circuit_input_index{input_index_of_sub_circuit},
-            circuit_with_sub_circuit{circuit.has_value() ?
-                                         std::make_optional(make_circuit_with_sub_circuit(*circuit, *sub_circuit)) :
-                                         std::nullopt}
+            super_circuit_with_sub_circuit{sub_circuit.has_value() ?
+                                               std::make_optional(make_super_circuit_with_sub_circuit(*sub_circuit)) :
+                                               std::nullopt}
     {
         static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout");
         static_assert(has_sidb_technology_v<Lyt>, "Lyt is not an SiDB layout");
@@ -137,8 +134,6 @@ class bdl_input_iterator
      */
     explicit bdl_input_iterator(
         const Lyt& lyt, const bdl_input_iterator_params& ps, const std::vector<bdl_wire<Lyt>>& input_wires,
-        const std::optional<std::reference_wrapper<const sidb_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>>>
-            bdl_circuit = std::nullopt,
         const std::optional<
             std::reference_wrapper<const sidb_cell_level_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>>>
                                        bdl_sub_circuit            = std::nullopt,
@@ -150,12 +145,11 @@ class bdl_input_iterator
             input_bdl_wires{input_wires},
             last_bdl_for_each_wire{determine_last_bdl_for_each_wire()},
             params{ps},
-            circuit{bdl_circuit},
             sub_circuit{bdl_sub_circuit},
             sub_circuit_input_index{input_index_of_sub_circuit},
-            circuit_with_sub_circuit{circuit.has_value() ?
-                                         std::make_optional(make_circuit_with_sub_circuit(*circuit, *sub_circuit)) :
-                                         std::nullopt}
+            super_circuit_with_sub_circuit{sub_circuit.has_value() ?
+                                               std::make_optional(make_super_circuit_with_sub_circuit(*sub_circuit)) :
+                                               std::nullopt}
     {
         static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout");
         static_assert(has_sidb_technology_v<Lyt>, "Lyt is not an SiDB layout");
@@ -425,9 +419,9 @@ class bdl_input_iterator
             [&](const auto& c)
             {
                 if (const auto ct = sub_circuit->cell_layout.get_cell_type(c);
-                            ct != sidb_technology::cell_type::OUTPUT_PERTURBER ||
-                            circuit->skeleton.get_cell_type(c) ==
-                                sidb_technology::cell_type::OUTPUT_PERTURBER)
+                    ct != sidb_technology::cell_type::OUTPUT_PERTURBER ||
+                    sub_circuit->circuit.super_circuit.skeleton.get_cell_type(c) ==
+                        sidb_technology::cell_type::OUTPUT_PERTURBER)
                 {
                     maybe_cds->assign_charge_state(c, sidb_charge_state::NEUTRAL, charge_index_mode::KEEP_CHARGE_INDEX);
                 }
@@ -470,10 +464,9 @@ class bdl_input_iterator
 
     std::optional<std::vector<std::optional<charge_distribution_surface<Lyt>>>> simulated_bdl_wires{};
 
-    std::optional<sidb_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>>            circuit{};
     std::optional<sidb_cell_level_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>> sub_circuit{};
     const std::optional<uint64_t>                                                 sub_circuit_input_index{};
-    const std::optional<Lyt>                                                      circuit_with_sub_circuit{};
+    const std::optional<Lyt>                                                      super_circuit_with_sub_circuit{};
 
     /**
      * This function iterates through each wire in `input_bdl_wires`, identifies the first BDL pair
@@ -599,17 +592,17 @@ class bdl_input_iterator
         assert(simulated_bdl_wires.has_value() && "The simulated_bdl_wires container is not present.");
         assert(simulated_bdl_wires->size() >= current_input_index &&
                "The simulated_bdl_wires container is not synchronized with the current input index.");
-        assert(circuit.has_value() && "The circuit container is not present.");
         assert(sub_circuit.has_value() && "The sub_circuit container is not present.");
         assert(sub_circuit_input_index.has_value() && "The input index of the sub-circuit must be present.");
-        assert(circuit_with_sub_circuit.has_value() && "The circuit with sub circuit must be present.");
+        assert(super_circuit_with_sub_circuit.has_value() && "The circuit with sub circuit must be present.");
 
         if (simulated_bdl_wires->size() == current_input_index)
         {
             simulated_bdl_wires->emplace_back();
         }
 
-        charge_distribution_surface<Lyt> current_cds = charge_distribution_surface<Lyt>{*circuit_with_sub_circuit};
+        charge_distribution_surface<Lyt> current_cds =
+            charge_distribution_surface<Lyt>{*super_circuit_with_sub_circuit};
         current_cds.assign_all_charge_states(sidb_charge_state::NEGATIVE, charge_index_mode::KEEP_CHARGE_INDEX);
 
         const auto assign_logic_state_to_bdl_pairs =
@@ -634,15 +627,15 @@ class bdl_input_iterator
         const auto is_bit_set = [&](const uint64_t input_index, uint64_t& input_number, const uint64_t number_of_inputs)
         { return (input_index & (uint64_t{1ull} << (number_of_inputs - 1 - input_number++))) != 0ull; };
 
-        for (uint64_t wire_ix = 0; wire_ix < circuit->bdl_wires.size(); ++wire_ix)
+        for (uint64_t wire_ix = 0; wire_ix < sub_circuit->circuit.super_circuit.bdl_wires.size(); ++wire_ix)
         {
-            const bdl_wire<Lyt>& wire = circuit->bdl_wires.at(wire_ix);
+            const bdl_wire<Lyt>& wire = sub_circuit->circuit.super_circuit.bdl_wires.at(wire_ix);
 
             assert((wire.port.dir == port_direction::SOUTH || wire.port.dir == port_direction::EAST ||
                     wire.port.dir == port_direction::NONE) &&
                    "Wrong port direction; only row clocking is supported");
 
-            const auto& [upper_tile, lower_tile] = circuit->gate_connections.at(wire_ix);
+            const auto& [upper_tile, lower_tile] = sub_circuit->circuit.super_circuit.gate_connections.at(wire_ix);
 
             typename std::vector<bdl_pair<cell<Lyt>>>::const_iterator assign_logic_state_to_bdl_pairs_start_it =
                 wire.pairs.cbegin();
@@ -680,7 +673,7 @@ class bdl_input_iterator
                     sub_circuit->circuit.input_bdl_pairs.at(current_sub_circuit_input_number).upper)
             {
                 const bool bitset = is_bit_set(*sub_circuit_input_index, current_sub_circuit_input_number,
-                                                           sub_circuit->circuit.num_inputs);
+                                               sub_circuit->circuit.num_inputs);
                 if (expected_signal_for_wire != bitset)
                 {
                     // input mismatches with circuit
@@ -693,25 +686,29 @@ class bdl_input_iterator
                                             expected_signal_for_wire);
 
             const uint32_t num_inputs_to_lower_tile =
-                circuit->gate_layout.node_function(circuit->gate_layout.get_node(lower_tile)).num_vars();
+                sub_circuit->circuit.super_circuit.gate_layout
+                    .node_function(sub_circuit->circuit.super_circuit.gate_layout.get_node(lower_tile))
+                    .num_vars();
 
             assert(expected_signal_at_gate_connection.at(lower_tile).size() <= num_inputs_to_lower_tile &&
                    "Number of tiles visited connecting to the current tile exceeds the number of inputs to the node "
                    "function");
 
-            if (circuit->gate_layout.is_po_tile(lower_tile) ||
+            if (sub_circuit->circuit.super_circuit.gate_layout.is_po_tile(lower_tile) ||
                 expected_signal_at_gate_connection.at(lower_tile).size() < num_inputs_to_lower_tile)
             {
                 continue;
             }
 
-            const std::vector<tile<GateLyt>>& outgoing_tiles = circuit->gate_layout.outgoing_data_flow(lower_tile);
+            const std::vector<tile<GateLyt>>& outgoing_tiles =
+                sub_circuit->circuit.super_circuit.gate_layout.outgoing_data_flow(lower_tile);
 
             assert(!outgoing_tiles.empty() && "Non-PO tile does not have outgoing data flow");
 
             if constexpr (has_is_fanout_v<GateLyt>)
             {
-                if (circuit->gate_layout.is_fanout(circuit->gate_layout.get_node(lower_tile)))
+                if (sub_circuit->circuit.super_circuit.gate_layout.is_fanout(
+                        sub_circuit->circuit.super_circuit.gate_layout.get_node(lower_tile)))
                 {
                     for (const tile<GateLyt>& lower_lower_t : outgoing_tiles)
                     {
@@ -756,9 +753,9 @@ class bdl_input_iterator
             }
 
             expected_signal_at_gate_connection[outgoing_tiles.front()].insert(
-                {lower_tile,
-                 kitty::get_bit(circuit->gate_layout.node_function(circuit->gate_layout.get_node(lower_tile)),
-                                tt_inp)});
+                {lower_tile, kitty::get_bit(sub_circuit->circuit.super_circuit.gate_layout.node_function(
+                                                sub_circuit->circuit.super_circuit.gate_layout.get_node(lower_tile)),
+                                            tt_inp)});
         }
 
         // the charge index is not updated
@@ -766,17 +763,16 @@ class bdl_input_iterator
         (*simulated_bdl_wires)[current_input_index].emplace(std::move(current_cds));
     }
 
-    [[nodiscard]] static Lyt make_circuit_with_sub_circuit(
-        const sidb_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>&            circuit,
+    [[nodiscard]] static Lyt make_super_circuit_with_sub_circuit(
         const sidb_cell_level_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>& sub_circuit) noexcept
     {
-        Lyt circuit_with_sub_circuit = circuit.skeleton.clone();
+        Lyt super_circuit_with_sub_circuit = sub_circuit.circuit.super_circuit.skeleton.clone();
 
         sub_circuit.cell_layout.foreach_cell(
             [&](const cell<Lyt>& cell)
-            { circuit_with_sub_circuit.assign_cell_type(cell, sidb_technology::cell_type::NORMAL); });
+            { super_circuit_with_sub_circuit.assign_cell_type(cell, sidb_technology::cell_type::NORMAL); });
 
-        return circuit_with_sub_circuit;
+        return super_circuit_with_sub_circuit;
     }
 };
 

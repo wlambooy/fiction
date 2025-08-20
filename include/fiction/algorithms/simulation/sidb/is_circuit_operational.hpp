@@ -14,11 +14,12 @@
 #include "fiction/technology/cell_technologies.hpp"
 #include "fiction/technology/charge_distribution_surface.hpp"
 #include "fiction/technology/sidb_bdl_circuit.hpp"
+#include "fiction/technology/sidb_bdl_skeletons.hpp"
 #include "fiction/technology/sidb_charge_state.hpp"
 #include "fiction/traits.hpp"
 
 #include <kitty/bit_operations.hpp>
-#include <kitty/print.hpp>
+// #include <kitty/print.hpp>
 
 #include <algorithm>
 #include <cassert>
@@ -187,7 +188,7 @@ namespace detail
  */
 template <typename Lyt, typename GateLyt,
           local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED,
-          typename SkeletonGateLibrary             = sidb_skeleton_bestagon_mini_library>
+          typename SkeletonGateLibrary             = sidb_bdl_skeleton_1>
 class is_circuit_operational_impl
 {
   public:
@@ -201,12 +202,9 @@ class is_circuit_operational_impl
      * @param params Parameters for the `is_operational` algorithm.
      */
     is_circuit_operational_impl(
-        const sidb_cell_level_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>& bdl_circuit,
-        const is_circuit_operational_params&                                  params,
-        const std::optional<std::reference_wrapper<const sidb_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>>>&
-            bdl_super_circuit = std::nullopt) :
-            circuit{bdl_circuit},
-            super_circuit{bdl_super_circuit},
+        const sidb_cell_level_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>& implemented_bdl_circuit,
+        const is_circuit_operational_params&                                  params) :
+            implemented_circuit{implemented_bdl_circuit},
             parameters{params}
     {}
     /**
@@ -229,7 +227,7 @@ class is_circuit_operational_impl
         if (parameters.termination_cond ==
             is_circuit_operational_params::termination_condition::ALL_INPUT_COMBINATIONS_ASSESSED)
         {
-            assessment_results_per_input.reserve(1 << circuit.circuit.gate_layout.num_pis());
+            assessment_results_per_input.reserve(1 << implemented_circuit.circuit.gate_layout.num_pis());
         }
 
         // when `simulation_results_mode::KEEP_SIMULATION_RESULTS` is set, the simulation results must be collected for
@@ -238,14 +236,14 @@ class is_circuit_operational_impl
         if (parameters.simulation_results_retention ==
             is_circuit_operational_params::simulation_results_mode::KEEP_SIMULATION_RESULTS)
         {
-            sim_res_per_input.reserve(1 << circuit.circuit.gate_layout.num_pis());
+            sim_res_per_input.reserve(1 << implemented_circuit.circuit.gate_layout.num_pis());
         }
 
-        bdl_input_iterator<Lyt> bii{circuit.cell_layout, parameters.input_bdl_iterator_params};
+        bdl_input_iterator<Lyt> bii{implemented_circuit.cell_layout, parameters.input_bdl_iterator_params};
         bii = 0;
 
         // number of different input combinations
-        for (auto i = 0u; i < 1 << circuit.circuit.gate_layout.num_pis(); ++i, ++bii)
+        for (auto i = 0u; i < 1 << implemented_circuit.circuit.gate_layout.num_pis(); ++i, ++bii)
         {
             operational_assessment_for_input assessment_results_for_this_input_combination{
                 operational_status::OPERATIONAL};
@@ -450,28 +448,28 @@ class is_circuit_operational_impl
 
         uint64_t current_input_number = 0;
 
-        for (uint64_t wire_ix = 0; wire_ix < circuit.circuit.bdl_wires.size(); ++wire_ix)
+        for (uint64_t wire_ix = 0; wire_ix < implemented_circuit.circuit.bdl_wires.size(); ++wire_ix)
         {
-            const bdl_wire<Lyt>& wire = circuit.circuit.bdl_wires.at(wire_ix);
+            const bdl_wire<Lyt>& wire = implemented_circuit.circuit.bdl_wires.at(wire_ix);
 
             assert((wire.port.dir == port_direction::SOUTH || wire.port.dir == port_direction::EAST ||
                     wire.port.dir == port_direction::NONE) &&
                    "Wrong port direction; only row clocking is supported");
 
-            const auto& [upper_tile, lower_tile] = circuit.circuit.gate_connections.at(wire_ix);
+            const auto& [upper_tile, lower_tile] = implemented_circuit.circuit.gate_connections.at(wire_ix);
 
             typename std::vector<bdl_pair<cell<Lyt>>>::const_iterator successful_bdl_pairs_counting_start_it =
                 wire.pairs.cbegin();
 
-            if (circuit.circuit.gate_layout.is_pi_tile(upper_tile))
+            if (implemented_circuit.circuit.gate_layout.is_pi_tile(upper_tile))
             {
                 assert((expected_signal_at_gate_connection.count(lower_tile) == 0 ||
                         expected_signal_at_gate_connection.at(lower_tile).count(upper_tile) == 0) &&
                        "PI is visited twice");
 
                 const bool current_bit_set =
-                    (input_pattern &
-                     (uint64_t{1ull} << (circuit.circuit.gate_layout.num_pis() - 1 - current_input_number++))) != 0ull;
+                    (input_pattern & (uint64_t{1ull} << (implemented_circuit.circuit.gate_layout.num_pis() - 1 -
+                                                         current_input_number++))) != 0ull;
 
                 expected_signal_at_gate_connection[lower_tile].insert({upper_tile, current_bit_set});
 
@@ -507,8 +505,9 @@ class is_circuit_operational_impl
             count_logic_matching_bdl_pairs_in_wire_range(successful_bdl_pairs_counting_start_it, wire.pairs.cend(),
                                                          expected_signal_for_wire);
 
-            const uint32_t num_inputs =
-                circuit.circuit.gate_layout.node_function(circuit.circuit.gate_layout.get_node(lower_tile)).num_vars();
+            const uint32_t num_inputs = implemented_circuit.circuit.gate_layout
+                                            .node_function(implemented_circuit.circuit.gate_layout.get_node(lower_tile))
+                                            .num_vars();
             // std::cout << "tt: ";
             // kitty::print_binary(gate_layout.node_function(gate_layout.get_node(lower_tile)));
             // std::cout << std::endl;
@@ -519,20 +518,21 @@ class is_circuit_operational_impl
                    "Number of tiles visited connecting to the current tile exceeds the number of inputs to the node "
                    "function");
 
-            if (circuit.circuit.gate_layout.is_po_tile(lower_tile) ||
+            if (implemented_circuit.circuit.gate_layout.is_po_tile(lower_tile) ||
                 expected_signal_at_gate_connection.at(lower_tile).size() < num_inputs)
             {
                 continue;
             }
 
             const std::vector<tile<GateLyt>>& outgoing_tiles =
-                circuit.circuit.gate_layout.outgoing_data_flow(lower_tile);
+                implemented_circuit.circuit.gate_layout.outgoing_data_flow(lower_tile);
 
             assert(!outgoing_tiles.empty() && "Non-PO tile does not have outgoing data flow");
 
             if constexpr (has_is_fanout_v<GateLyt>)
             {
-                if (circuit.circuit.gate_layout.is_fanout(circuit.circuit.gate_layout.get_node(lower_tile)))
+                if (implemented_circuit.circuit.gate_layout.is_fanout(
+                        implemented_circuit.circuit.gate_layout.get_node(lower_tile)))
                 {
                     for (const tile<GateLyt>& lower_lower_t : outgoing_tiles)
                     {
@@ -577,15 +577,15 @@ class is_circuit_operational_impl
             }
 
             expected_signal_at_gate_connection[outgoing_tiles.front()].insert(
-                {lower_tile, kitty::get_bit(circuit.circuit.gate_layout.node_function(
-                                                circuit.circuit.gate_layout.get_node(lower_tile)),
+                {lower_tile, kitty::get_bit(implemented_circuit.circuit.gate_layout.node_function(
+                                                implemented_circuit.circuit.gate_layout.get_node(lower_tile)),
                                             tt_inp)});
         }
 
-        op_assessment.logic_match =
-            static_cast<double>(successful_bdl_pairs_count) / static_cast<double>(circuit.circuit.num_bdl_pairs);
+        op_assessment.logic_match = static_cast<double>(successful_bdl_pairs_count) /
+                                    static_cast<double>(implemented_circuit.circuit.num_bdl_pairs);
 
-        if (successful_bdl_pairs_count == circuit.circuit.num_bdl_pairs)
+        if (successful_bdl_pairs_count == implemented_circuit.circuit.num_bdl_pairs)
         {
             op_assessment.status = operational_status::OPERATIONAL;
         }
@@ -593,16 +593,14 @@ class is_circuit_operational_impl
         if (print_it)
         {
             std::cout << "successful bdl pairs:" << successful_bdl_pairs_count << std::endl;
-            std::cout << "total number of bdl pairs: " << circuit.circuit.num_bdl_pairs << std::endl;
+            std::cout << "total number of bdl pairs: " << implemented_circuit.circuit.num_bdl_pairs << std::endl;
             std::cout << fmt::format("logic match: {:.3f}\n", op_assessment.logic_match) << std::endl;
         }
         return op_assessment;
     }
 
   private:
-    const sidb_cell_level_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>& circuit{};
-    const std::optional<std::reference_wrapper<const sidb_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>>>
-        super_circuit{};
+    const sidb_cell_level_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>& implemented_circuit{};
     /**
      * Parameters for the `is_operational` algorithm.
      */
@@ -627,11 +625,11 @@ class is_circuit_operational_impl
 
             cc_params.available_threads = 1;
 
-            assert(super_circuit.has_value() && "The super circuit is not present");
-
-            bdl_input_iterator<Lyt, simulate_bdl_wire_logic::COLLECT_EXPECTED_CHARGE_DISTRIBUTIONS, GateLyt>
-                bii_super_circuit{super_circuit->get().skeleton, parameters.input_bdl_iterator_params, super_circuit,
-                                  std::make_optional(std::cref(circuit)),
+            bdl_input_iterator<Lyt, simulate_bdl_wire_logic::COLLECT_EXPECTED_CHARGE_DISTRIBUTIONS, GateLyt,
+                               SkeletonGateLibrary>
+                bii_super_circuit{implemented_circuit.circuit.super_circuit.skeleton,
+                                  parameters.input_bdl_iterator_params,
+                                  std::make_optional(std::cref(implemented_circuit)),
                                   std::make_optional(bdl_iterator.get_current_input_index())};
 
             Lyt cell_lyt{};
@@ -644,18 +642,19 @@ class is_circuit_operational_impl
                     {
                         if (const auto ct = (*bdl_iterator).get_cell_type(c);
                             ct != sidb_technology::cell_type::OUTPUT_PERTURBER ||
-                            super_circuit->get().skeleton.get_cell_type(c) ==
+                            implemented_circuit.circuit.super_circuit.skeleton.get_cell_type(c) ==
                                 sidb_technology::cell_type::OUTPUT_PERTURBER)
                         {
                             cell_lyt.assign_cell_type(c, ct);
 
                             skeleton_influence_bounds_map.insert(
-                            {c, std::array<double, 2>{std::numeric_limits<double>::infinity(),
-                                                      -std::numeric_limits<double>::infinity()}});
+                                {c, std::array<double, 2>{std::numeric_limits<double>::infinity(),
+                                                          -std::numeric_limits<double>::infinity()}});
                         }
                     });
 
-            for (auto i = 0u; i < 1 << super_circuit->get().gate_layout.num_pis(); ++i, ++bii_super_circuit)
+            for (auto i = 0u; i < 1 << implemented_circuit.circuit.super_circuit.gate_layout.num_pis();
+                 ++i, ++bii_super_circuit)
             {
                 const auto& maybe_expected_charge_distribution_for_input =
                     bii_super_circuit.get_expected_charge_distribution_with_sub_circuit_neutralized();
@@ -777,26 +776,23 @@ class is_circuit_operational_impl
 template <typename Lyt, typename GateLyt,
           local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED,
           typename SkeletonGateLibrary>
-[[nodiscard]] circuit_operational_assessment<Lyt, ExtPotType> is_circuit_operational(
-    const sidb_cell_level_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>& circuit,
-    const is_circuit_operational_params&                                  params = {},
-    const std::optional<std::reference_wrapper<const sidb_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>>>&
-        super_circuit = std::nullopt) noexcept
+[[nodiscard]] circuit_operational_assessment<Lyt, ExtPotType>
+is_circuit_operational(const sidb_cell_level_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>& implemented_circuit,
+                       const is_circuit_operational_params&                                  params = {}) noexcept
 {
     static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout");
     static_assert(has_sidb_technology_v<Lyt>, "Lyt is not an SiDB layout");
     static_assert(is_gate_level_layout_v<GateLyt>, "GateLyt is not a gate-level layout");
 
-    assert(circuit.cell_layout.num_pis() > 0 && "lyt needs input cells");
-    assert(circuit.cell_layout.num_pos() > 0 && "lyt needs output cells");
+    assert(implemented_circuit.cell_layout.num_pis() > 0 && "lyt needs input cells");
+    assert(implemented_circuit.cell_layout.num_pos() > 0 && "lyt needs output cells");
 
-    assert(circuit.circuit.gate_layout.num_pis() * 2 == circuit.cell_layout.num_pis() &&
+    assert(implemented_circuit.circuit.gate_layout.num_pis() * 2 == implemented_circuit.cell_layout.num_pis() &&
            "Each PI in the gate lyt needs to be implemented by a BDL pair");
-    assert(circuit.circuit.gate_layout.num_pos() * 2 == circuit.cell_layout.num_pos() &&
+    assert(implemented_circuit.circuit.gate_layout.num_pos() * 2 == implemented_circuit.cell_layout.num_pos() &&
            "Each PO in the gate lyt needs to be implemented by a BDL pair");
 
-    detail::is_circuit_operational_impl<Lyt, GateLyt, ExtPotType, SkeletonGateLibrary> p{circuit, params,
-                                                                                         super_circuit};
+    detail::is_circuit_operational_impl<Lyt, GateLyt, ExtPotType, SkeletonGateLibrary> p{implemented_circuit, params};
 
     const auto& assessment_result = p.run();
 

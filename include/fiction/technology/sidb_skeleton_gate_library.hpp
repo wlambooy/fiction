@@ -8,15 +8,8 @@
 #include "fiction/technology/cell_ports.hpp"
 #include "fiction/technology/cell_technologies.hpp"
 #include "fiction/technology/fcn_gate_library.hpp"
-#include "fiction/technology/sidb_on_the_fly_mini_gate_library.hpp"
+#include "fiction/technology/sidb_skeletons/sidb_skeleton.hpp"
 #include "fiction/traits.hpp"
-#include "fiction/utils/array_utils.hpp"
-#include "fiction/utils/hash.hpp"
-#include "fiction/utils/truth_table_utils.hpp"
-#include "sidb_on_the_fly_mini_gate_library.hpp"
-#include "sidb_skeletons/sidb_skeleton.hpp"
-
-#include <fiction/io/read_sqd_layout.hpp>
 
 namespace fiction
 {
@@ -34,7 +27,7 @@ class sidb_skeleton_gate_library
         sidb_skeleton<sidb_100_cell_clk_lyt, fcn_gate_library<sidb_technology, GateSizeX, GateSizeY>::gate_x_size(),
                       fcn_gate_library<sidb_technology, GateSizeX, GateSizeY>::gate_y_size()>;
 
-    sidb_skeleton_gate_library(sidb_skeleton_t&& skeleton_prod) : skeleton_producer{skeleton_prod} {}
+    sidb_skeleton_gate_library(sidb_skeleton_t&& skeleton_prod) : skeleton_producer{std::move(skeleton_prod)} {}
 
     /**
      * Overrides the corresponding function in fcn_gate_library. Given a tile `t`, this function takes all necessary

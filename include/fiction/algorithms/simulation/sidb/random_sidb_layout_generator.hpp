@@ -104,9 +104,9 @@ generate_random_sidb_layout(const generate_random_sidb_layout_params<coordinate<
 
     static std::random_device              rd;
     static std::mt19937                    gen(rd());
-    static std::uniform_int_distribution<> dist(1, params.number_of_sidbs);
+    static std::uniform_int_distribution<> dist(1, static_cast<int32_t>(params.number_of_sidbs));
 
-    uint64_t number_of_sidbs_of_final_layout = dist(gen);
+    auto number_of_sidbs_of_final_layout = static_cast<uint64_t>(dist(gen));
 
     Lyt lyt{};
 
