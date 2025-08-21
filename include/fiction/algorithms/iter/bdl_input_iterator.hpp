@@ -16,6 +16,7 @@
 
 #include <cassert>
 #include <cstdint>
+#include <functional>
 #include <iterator>
 #include <vector>
 
@@ -396,6 +397,15 @@ class bdl_input_iterator
     {
         return current_input_index;
     }
+    /**
+     * Returns the current input index.todo
+     *
+     * @return The current input index.
+     */
+    [[nodiscard]] uint64_t has_simulated_bdl_wires_for_current_input_index() const noexcept
+    {
+        return simulated_bdl_wires->at(current_input_index).has_value();
+    }
 
     std::optional<charge_distribution_surface<Lyt>>
     get_expected_charge_distribution_with_sub_circuit_neutralized() noexcept
@@ -430,6 +440,40 @@ class bdl_input_iterator
         maybe_cds->update_after_charge_change(dependent_cell_mode::FIXED, energy_calculation::KEEP_OLD_ENERGY_VALUE);
 
         return maybe_cds;
+    }
+
+    charge_distribution_surface<Lyt> get_expected_charge_distribution_with_sub_circuit_charge_distribution(
+        const charge_distribution_surface<Lyt, local_external_potential_type::BOUNDED>&
+            sub_circuit_charge_distribution) noexcept
+    {
+        static_assert(sim_bdl_wire_logic == simulate_bdl_wire_logic::COLLECT_EXPECTED_CHARGE_DISTRIBUTIONS,
+                      "COLLECT_EXPECTED_CHARGE_DISTRIBUTIONS must be enabled.");
+
+        assert(simulated_bdl_wires.has_value() && "The simulated_bdl_wires container is not present.");
+        assert(simulated_bdl_wires->size() >= current_input_index &&
+               "The simulated_bdl_wires container is not synchronized with the current input index.");
+        assert(sub_circuit.has_value() && "The sub_circuit container is not present.");
+
+        assert(simulated_bdl_wires->at(current_input_index).has_value() && "expected charge distribution has no value");
+
+        charge_distribution_surface<Lyt>& cds = *simulated_bdl_wires->at(current_input_index);
+
+        sub_circuit->cell_layout.foreach_cell(
+            [&](const auto& c)
+            {
+                if (const auto ct = sub_circuit->cell_layout.get_cell_type(c);
+                    ct != sidb_technology::cell_type::OUTPUT_PERTURBER ||
+                    sub_circuit->circuit.super_circuit.skeleton.get_cell_type(c) ==
+                        sidb_technology::cell_type::OUTPUT_PERTURBER)
+                {
+                    cds.assign_charge_state(c, sub_circuit_charge_distribution.get_charge_state(c),
+                                            charge_index_mode::KEEP_CHARGE_INDEX);
+                }
+            });
+
+        cds.update_after_charge_change();
+
+        return cds;
     }
 
   private:

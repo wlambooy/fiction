@@ -125,9 +125,8 @@ class sidb_skeleton : public Lyt
 
         static_assert(std::is_same_v<coordinate<Lyt>, offset::ucoord_t>, "Needs to have fiction coordinates");
 
-        const coordinate<Lyt> offset = {(GateSizeX - bbox.get_x_size()) / 2,
-            (GateSizeY - bbox.get_y_size()) / 2};
-            // 2 * (static_cast<double>(GateSizeY - bbox.get_y_size() + 1) / 2) / 2};
+        const coordinate<Lyt> offset = {(GateSizeX - bbox.get_x_size()) / 2, (GateSizeY - bbox.get_y_size()) / 2};
+        // 2 * (static_cast<double>(GateSizeY - bbox.get_y_size() + 1) / 2) / 2};
         // (GateSizeY - bbox.get_y_size() + (bbox.get_y_size() % 2)) / 2};
 
         for (const auto& [pd, t] : port_direction_indices)

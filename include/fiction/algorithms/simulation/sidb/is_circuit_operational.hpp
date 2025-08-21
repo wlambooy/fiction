@@ -285,20 +285,61 @@ class is_circuit_operational_impl
 
             if constexpr (ExtPotType == local_external_potential_type::BOUNDED)
             {
-                simulation_results->reduce_to_groundstates_under_bounded_energy();
+                std::vector<uint64_t> ground_state_in_environment_count(simulation_results->charge_distributions.size(),
+                                                                        0);
 
-                std::vector<double> weights =
-                    simulation_results->get_ordered_weights_under_bounded_energy(parameters.excited_state_alpha);
+                uint64_t total_environment_count = 0;
 
-                // disregard degenerate states
+                bdl_input_iterator<Lyt, simulate_bdl_wire_logic::COLLECT_EXPECTED_CHARGE_DISTRIBUTIONS, GateLyt,
+                                   SkeletonGateLibrary>
+                    bii_super_circuit{implemented_circuit.circuit.super_circuit.skeleton,
+                                      parameters.input_bdl_iterator_params,
+                                      std::make_optional(std::cref(implemented_circuit)),
+                                      std::make_optional(bii.get_current_input_index())};
+
+                for (auto j = 0u; j < 1 << implemented_circuit.circuit.super_circuit.gate_layout.num_pis();
+                     ++j, ++bii_super_circuit)
+                {
+                    if (!bii_super_circuit.has_simulated_bdl_wires_for_current_input_index())
+                    {
+                        continue;
+                    }
+
+                    total_environment_count++;
+
+                    std::vector<std::pair<double, uint64_t>> sort_energies{};
+                    sort_energies.reserve(simulation_results->charge_distributions.size());
+
+                    for (uint64_t cds_ix = 0; cds_ix < simulation_results->charge_distributions.size(); ++cds_ix)
+                    {
+                        const auto& expected_charge_distribution_for_input =
+                            bii_super_circuit.get_expected_charge_distribution_with_sub_circuit_charge_distribution(
+                                simulation_results->charge_distributions.at(cds_ix));
+
+                        sort_energies.emplace_back(
+                            expected_charge_distribution_for_input.get_electrostatic_potential_energy(), cds_ix);
+                    }
+
+                    std::sort(sort_energies.begin(), sort_energies.end(),
+                              [&](const std::pair<double, uint64_t>& a, const std::pair<double, uint64_t>& b)
+                              { return a.first < b.first; });
+
+                    ground_state_in_environment_count[sort_energies.front().second]++;
+                }
 
                 for (uint64_t cds_ix = 0; cds_ix < simulation_results->charge_distributions.size(); ++cds_ix)
                 {
+                    if (ground_state_in_environment_count.at(cds_ix) == 0)
+                    {
+                        continue;
+                    }
+
                     const operational_assessment_for_input& op_assessment = assess_logic_match_of_charge_distribution(
                         simulation_results->charge_distributions.at(cds_ix), i);
                     // std::cout << "bdl_logic_match = " << op_assessment.logic_match << std::endl;
 
-                    logic_match += weights.at(cds_ix) * op_assessment.logic_match;
+                    logic_match += static_cast<double>(ground_state_in_environment_count.at(cds_ix)) /
+                                   static_cast<double>(total_environment_count) * op_assessment.logic_match;
                     // std::cout << "logic_match: " << logic_match << std::endl;
                     if (op_assessment.status == operational_status::OPERATIONAL)
                     {
