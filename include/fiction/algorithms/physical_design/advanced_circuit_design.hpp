@@ -274,7 +274,7 @@ class advanced_circuit_design_impl
                         gate_designs[n] = sidb_on_the_fly_gate_library<SkeletonGateLibrary::gate_x_size(),
                                                                        SkeletonGateLibrary::gate_y_size()>::
                             template set_up_gates<GateLyt, CellLyt, sidb_on_the_fly_gate_library_params<CellLyt>,
-                                                  local_external_potential_type::BOUNDED>(
+                                                  local_external_potential_type::BOUNDED, SkeletonGateLibrary>(
                                 *stats.gate_layout, stats.gate_layout->get_tile(n), on_the_fly_params,
                                 params.defect_surface, std::make_optional(*circuit), operational_params);
                     }
