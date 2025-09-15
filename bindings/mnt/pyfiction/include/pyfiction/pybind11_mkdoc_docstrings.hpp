@@ -199,27 +199,15 @@ static const char *__doc_fiction_advanced_circuit_design_params_design_gate_para
 
 static const char *__doc_fiction_advanced_circuit_design_params_exact_design_parameters = R"doc(Parameters for the *exact* placement and routing algorithm.)doc";
 
-static const char *__doc_fiction_advanced_circuit_design_params_excited_state_alpha = R"doc()doc";
-
 static const char *__doc_fiction_advanced_circuit_design_params_influence_radius_charged_defects = R"doc()doc";
 
 static const char *__doc_fiction_advanced_circuit_design_params_num_trials = R"doc()doc";
 
-static const char *__doc_fiction_advanced_circuit_design_params_num_trials_for_double_scope = R"doc()doc";
-
-static const char *__doc_fiction_advanced_circuit_design_params_num_trials_for_global_scope = R"doc()doc";
-
 static const char *__doc_fiction_advanced_circuit_design_params_quantization_factor = R"doc()doc";
-
-static const char *__doc_fiction_advanced_circuit_design_params_quantization_factor_for_double_scope = R"doc()doc";
-
-static const char *__doc_fiction_advanced_circuit_design_params_quantization_factor_for_global_scope = R"doc()doc";
 
 static const char *__doc_fiction_advanced_circuit_design_params_selectivity = R"doc()doc";
 
-static const char *__doc_fiction_advanced_circuit_design_params_selectivity_for_double_scope = R"doc()doc";
-
-static const char *__doc_fiction_advanced_circuit_design_params_selectivity_for_global_scope = R"doc()doc";
+static const char *__doc_fiction_advanced_circuit_design_params_success_rate_ceiling = R"doc()doc";
 
 static const char *__doc_fiction_advanced_circuit_design_stats = R"doc(Statistics for the on-the-fly defect-aware circuit design.)doc";
 
@@ -5416,9 +5404,17 @@ Parameter ``signals``:
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl = R"doc()doc";
 
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_VectorHash = R"doc()doc";
+
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_VectorHash_operator_call = R"doc()doc";
+
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_advanced_circuit_design_impl = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_apply_quantization = R"doc()doc";
+
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_build_subcircuits = R"doc()doc";
+
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_build_subcircuits_from_root = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_circuit = R"doc()doc";
 
@@ -5442,6 +5438,8 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl_lattice_til
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_network = R"doc(Network.)doc";
 
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_operational_params = R"doc()doc";
+
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_params = R"doc(Parameters for the on-the-fly circuit design.)doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_print_skeleton_gate_layout = R"doc()doc";
@@ -5449,12 +5447,6 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl_print_skele
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_print_success_rate_distribution = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_prune_gate_designs = R"doc(todo)doc";
-
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_prune_gate_designs_at_global_level = R"doc()doc";
-
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_prune_gate_designs_by_gate_connections = R"doc()doc";
-
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_prune_gate_designs_by_two_gate_connections = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_select_gate_implementations_by_successful_trial_ratio = R"doc()doc";
 
@@ -16778,8 +16770,6 @@ Returns:
 
 static const char *__doc_fiction_is_circuit_operational_params = R"doc(Parameters for the `is_operational` algorithm. TODO)doc";
 
-static const char *__doc_fiction_is_circuit_operational_params_excited_state_alpha = R"doc()doc";
-
 static const char *__doc_fiction_is_circuit_operational_params_input_bdl_iterator_params = R"doc(Parameters for the BDL input iterator.)doc";
 
 static const char *__doc_fiction_is_circuit_operational_params_print = R"doc()doc";
@@ -20632,8 +20622,6 @@ static const char *__doc_fiction_sidb_cell_level_bdl_circuit_cell_layout = R"doc
 static const char *__doc_fiction_sidb_cell_level_bdl_circuit_circuit = R"doc()doc";
 
 static const char *__doc_fiction_sidb_cell_level_bdl_circuit_sidb_cell_level_bdl_circuit = R"doc()doc";
-
-static const char *__doc_fiction_sidb_cell_level_bdl_circuit_sidb_cell_level_bdl_circuit_2 = R"doc()doc";
 
 static const char *__doc_fiction_sidb_charge_space_composition =
 R"doc(A charge space composition holds a number of projector states of
