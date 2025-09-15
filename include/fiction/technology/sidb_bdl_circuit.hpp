@@ -459,22 +459,9 @@ class sidb_bdl_sub_circuit
                 outputs.insert(tiles[j]);
             }
 
-            std::cout << "augment: " << tiles[i].x << ", " << tiles[i].y << '\t';
-            std::cout << "with inputs:\t";
-            for (const auto& tt : inputs)
-            {
-                std::cout << tt.x << ", " << tt.y << '\t';
-            }
-            std::cout << "and outputs:\t";
-            for (const auto& tt : outputs)
-            {
-                std::cout << tt.x << ", " << tt.y << '\t';
-            }
-            std::cout << '\n';
             augment_gate_lyt_window(gate_lyt, gate_lyt_window, tiles[i], inputs, outputs);
         }
 
-        std::cout << "done\n" << std::endl;
         return gate_lyt_window;
     }
 
@@ -524,17 +511,11 @@ struct sidb_cell_level_bdl_circuit
      * SiDB cell-level layout.
      */
     const CellLyt&                                              cell_layout;
-    sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary> circuit{};
+    const sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>& circuit{};
 
-    // todo construct using std::unordered_map<tile<GateLyt>, canvas_positions>
+    // todo construct using std::unordered_map<tile<GateLyt>, canvas_positions> ?
     explicit sidb_cell_level_bdl_circuit(
         const CellLyt& lyt, const sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>& bdl_circuit) noexcept :
-            cell_layout{lyt},
-            circuit{bdl_circuit}
-    {}
-
-    explicit sidb_cell_level_bdl_circuit(
-        const CellLyt& lyt, const sidb_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>& bdl_circuit) noexcept :
             cell_layout{lyt},
             circuit{bdl_circuit}
     {}

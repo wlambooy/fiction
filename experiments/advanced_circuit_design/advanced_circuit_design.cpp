@@ -185,53 +185,36 @@ int main(int argc, char* argv[])  // NOLINT
             advanced_circuit_design_params<lyt_t> params{};
 
             // design_gate_params.max_num_solutions = 200;
-            params.num_trials                   = 100;
-            params.selectivity                  = 0.93;
-            params.num_trials_for_global_scope  = 4;
-            params.selectivity_for_global_scope = 0.9;
+            // params.num_trials                   = 100;
+            // params.selectivity                  = 0.93;
 
             if (argc == 3)
             {
                 design_gate_params.number_of_canvas_sidbs = std::stoull(argv[1]);
             }
-            else if (argc == 13)
+            else if (argc == 6)
             {
                 design_gate_params.number_of_canvas_sidbs      = std::stoull(argv[1]);
                 design_gate_params.maximum_number_of_solutions = std::stoull(argv[2]);
                 params.num_trials                              = std::stoull(argv[3]);
                 params.quantization_factor                     = std::stod(argv[4]);
                 params.selectivity                             = std::stod(argv[5]);
-                params.num_trials_for_double_scope             = std::stoull(argv[6]);
-                params.quantization_factor_for_double_scope    = std::stod(argv[7]);
-                params.selectivity_for_double_scope            = std::stod(argv[8]);
-                params.num_trials_for_global_scope             = std::stoull(argv[9]);
-                params.quantization_factor_for_global_scope    = std::stod(argv[10]);
-                params.selectivity_for_global_scope            = std::stod(argv[11]);
-                params.excited_state_alpha                     = std::stod(argv[12]);
             }
-            else if (argc == 14)
+            else if (argc == 7)
             {
                 design_gate_params.number_of_canvas_sidbs      = std::stoull(argv[1]);
                 design_gate_params.maximum_number_of_solutions = std::stoull(argv[2]);
                 params.num_trials                              = std::stoull(argv[3]);
                 params.quantization_factor                     = std::stod(argv[4]);
                 params.selectivity                             = std::stod(argv[5]);
-                params.num_trials_for_double_scope             = std::stoull(argv[6]);
-                params.quantization_factor_for_double_scope    = std::stod(argv[7]);
-                params.selectivity_for_double_scope            = std::stod(argv[8]);
-                params.num_trials_for_global_scope             = std::stoull(argv[9]);
-                params.quantization_factor_for_global_scope    = std::stod(argv[10]);
-                params.selectivity_for_global_scope            = std::stod(argv[11]);
-                params.excited_state_alpha                     = std::stod(argv[12]);
-                params.available_threads                       = std::stoull(argv[13]);
+                params.available_threads                       = std::stoull(argv[6]);
+                // design_gate_params.available_threads           = std::stoull(argv[6]);
             }
-            else if (argc != 1)
+            else if (argc != 1) // todo
             {
                 design_gate_params.maximum_number_of_solutions = std::stoull(argv[1]);
                 params.num_trials                              = std::stoull(argv[2]);
                 params.selectivity                             = std::stod(argv[3]);
-                params.num_trials_for_global_scope             = std::stoull(argv[4]);
-                params.selectivity_for_global_scope            = std::stod(argv[5]);
             }
 
             params.exact_design_parameters.scheme        = "ROW4";
@@ -300,7 +283,7 @@ int main(int argc, char* argv[])  // NOLINT
                 throw std::ofstream::failure("could not open file");
             }
             const auto runtime_string = fmt::format("{:.2f}", mockturtle::to_seconds(st.time_total));
-            os.write(runtime_string.c_str(), runtime_string.size());
+            os.write(runtime_string.c_str(), static_cast<uint32_t>(runtime_string.size()));
 
             // compute area
             area_stats                   area_stats{};

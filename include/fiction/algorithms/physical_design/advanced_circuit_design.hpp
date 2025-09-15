@@ -32,10 +32,13 @@
 #include <iterator>
 #include <limits>
 #include <map>
+#include <mutex>
 #include <optional>
 #include <random>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
+#include <variant>
 #include <vector>
 
 namespace fiction
@@ -64,19 +67,10 @@ struct advanced_circuit_design_params
     std::optional<CellLyt> defect_surface{};
     double                 influence_radius_charged_defects = 15;
 
-    uint64_t num_trials          = 500;
-    double   quantization_factor = 0.075;
-    double   selectivity         = 0.5;
-
-    uint64_t num_trials_for_double_scope          = 100;
-    double   quantization_factor_for_double_scope = 0.005;
-    double   selectivity_for_double_scope         = 0.6;
-
-    uint64_t num_trials_for_global_scope          = 20;
-    double   quantization_factor_for_global_scope = 0.025;
-    double   selectivity_for_global_scope         = 0.8;
-
-    double excited_state_alpha = 1.0;
+    uint64_t num_trials           = 500;
+    double   quantization_factor  = 0.075;
+    double   selectivity          = 0.5;
+    double   success_rate_ceiling = 0.95;
 
     uint64_t available_threads = std::thread::hardware_concurrency();
 };
@@ -114,34 +108,52 @@ class advanced_circuit_design_impl
             network{ntk},
             params{design_params},
             stats{st}
-    {}
+    {
+        operational_params.simulation_parameters = params.design_gate_params.operational_params.simulation_parameters;
+        operational_params.input_bdl_iterator_params =
+            params.design_gate_params.operational_params.input_bdl_iterator_params;
+    }
 
     [[nodiscard]] std::optional<CellLyt> design_sidb_layout(const uint64_t num_gates_to_design)
     {
         circuit.emplace(*stats.gate_layout,
                         params.design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params);
 
+        operational_params.termination_cond =
+            is_circuit_operational_params::termination_condition::ON_FIRST_NON_OPERATIONAL;
+
         // initialize
         collect_initial_gate_designs();
 
-        while (++circuit_design_level < num_gates_to_design)
-        {
-            if (gate_designs.size() <= circuit_design_level)
-            {
-                break;
-            }
+        operational_params.termination_cond =
+            is_circuit_operational_params::termination_condition::ALL_INPUT_COMBINATIONS_ASSESSED;
 
-            if (circuit_design_level < 3)  // temp
+        const auto quit_with_error = []
+        {
+            std::cout << "\nGate design was unsuccessful." << std::endl;
+            return std::nullopt;
+        };
+
+        while (++circuit_design_level < num_gates_to_design - 1)
+        {
+            // prune by assessing gate design combinations for increasingly large sets of connected gates
+            if (std::get<bool>(prune_gate_designs(
+                    circuit_design_level, std::string_view{std::to_string(circuit_design_level) + " GATE CONNECTION" +
+                                                           (circuit_design_level > 1 ? "S" : "")})))
             {
-                // prune by assessing gate design combinations for increasingly large sets of connected gates
-                prune_gate_designs();
+                return quit_with_error();
             }
         }
 
         // prune at the global level (all gates are considered together)
-        if (const std::optional<CellLyt>& maybe_lyt = prune_gate_designs(); maybe_lyt.has_value())
+        if (const std::variant<bool, CellLyt>& maybe_lyt = prune_gate_designs(circuit_design_level, "GLOBAL");
+            std::holds_alternative<CellLyt>(maybe_lyt))
         {
-            return maybe_lyt.value();
+            return std::get<CellLyt>(maybe_lyt);
+        }
+        else if (std::get<bool>(maybe_lyt))
+        {
+            return quit_with_error();
         }
 
         return exhaustively_enumerate_gate_design_combinations();
@@ -215,6 +227,8 @@ class advanced_circuit_design_impl
     advanced_circuit_design_stats<GateLyt>&                                stats;
     std::optional<sidb_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>> circuit{};
 
+    is_circuit_operational_params operational_params{};
+
     using gate_designs_per_node =
         std::unordered_map<mockturtle::node<GateLyt>, std::vector<typename SkeletonGateLibrary::fcn_gate>>;
 
@@ -257,13 +271,6 @@ class advanced_circuit_design_impl
         const sidb_on_the_fly_gate_library_params<CellLyt> on_the_fly_params{params.design_gate_params,
                                                                              params.influence_radius_charged_defects};
 
-        is_circuit_operational_params operational_params{};
-        operational_params.simulation_parameters = params.design_gate_params.operational_params.simulation_parameters;
-        operational_params.input_bdl_iterator_params =
-            params.design_gate_params.operational_params.input_bdl_iterator_params;
-        operational_params.termination_cond =
-            is_circuit_operational_params::termination_condition::ON_FIRST_NON_OPERATIONAL;
-        operational_params.excited_state_alpha = params.excited_state_alpha;
         try
         {
             stats.gate_layout->foreach_node(
@@ -298,7 +305,6 @@ class advanced_circuit_design_impl
                 (!maybe_do_not_collect.has_value() || gate_lyt.below(in_t) != *maybe_do_not_collect))
             {
                 connecting_to_t.emplace_back(gate_lyt.get_node(gate_lyt.below(in_t)));
-                std::cout << "inc tile: " << gate_lyt.below(in_t).x << ',' << gate_lyt.below(in_t).y << std::endl;
             }
         }
 
@@ -308,7 +314,6 @@ class advanced_circuit_design_impl
                 (!maybe_do_not_collect.has_value() || gate_lyt.below(out_t) != *maybe_do_not_collect))
             {
                 connecting_to_t.emplace_back(gate_lyt.get_node(gate_lyt.below(out_t)));
-                std::cout << "out tile: " << gate_lyt.below(out_t).x << ',' << gate_lyt.below(out_t).y << std::endl;
             }
         }
 
@@ -322,7 +327,7 @@ class advanced_circuit_design_impl
     }
 
     static void apply_quantization(std::vector<std::pair<double, uint64_t>>& sorted_success_ratios,
-                                   const double quantization_factor, const bool flatten_top) noexcept
+                                   const double quantization_factor, const double success_rate_ceiling) noexcept
     {
         if (sorted_success_ratios.empty() || quantization_factor <= 0.0)
         {
@@ -342,8 +347,7 @@ class advanced_circuit_design_impl
 
         for (auto& [success_rate, _] : sorted_success_ratios)
         {
-            success_rate = flatten_top ? std::min(0.95, std::round(success_rate * scale) / scale) :
-                                         std::round(success_rate * scale) / scale;
+            success_rate = std::min(success_rate_ceiling, std::round(success_rate * scale) / scale);
         }
     }
 
@@ -471,13 +475,13 @@ class advanced_circuit_design_impl
 
     [[nodiscard]] std::vector<uint64_t> select_gate_implementations_by_successful_trial_ratio(
         std::vector<std::pair<double, uint64_t>>&& successful_trial_ratio_per_gate_implementation,
-        const double quantization_factor, const double selectivity, const bool flatten_top = false) const noexcept
+        const double quantization_factor, const double selectivity, const double success_rate_ceiling) const noexcept
     {
         std::sort(successful_trial_ratio_per_gate_implementation.begin(),
                   successful_trial_ratio_per_gate_implementation.end(),
                   [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });
 
-        apply_quantization(successful_trial_ratio_per_gate_implementation, quantization_factor, flatten_top);
+        apply_quantization(successful_trial_ratio_per_gate_implementation, quantization_factor, success_rate_ceiling);
 
         const uint64_t first_passing_gate_ix =
             determine_first_passing_gate_ix(successful_trial_ratio_per_gate_implementation, selectivity);
@@ -498,76 +502,133 @@ class advanced_circuit_design_impl
 
         return selected_gate_implementation_indices;
     }
-    /**
-     *
-     */
-    bool prune_gate_designs_by_gate_connections(
-        const GateLyt& gate_lyt,
-        std::unordered_map<mockturtle::node<GateLyt>, std::vector<typename SkeletonGateLibrary::fcn_gate>>&
-            operational_gate_designs) const noexcept
+
+    struct VectorHash
     {
-        std::cout << "\nSTARTING TO PRUNE GATE DESIGNS BY GATE CONNECTIONS" << std::endl;
+        template <typename T>
+        std::size_t operator()(const std::vector<T>& v) const
+        {
+            std::size_t seed = v.size();
+            for (const auto& i : v)
+            {
+                seed ^= std::hash<T>()(i) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            }
+            return seed;
+        }
+    };
+    using gate_lyt_window_map =
+        std::unordered_map<std::vector<mockturtle::node<GateLyt>>,
+                           sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>, VectorHash>;
 
-        std::unordered_map<
-            mockturtle::node<GateLyt>,
-            std::unordered_map<mockturtle::node<GateLyt>, sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>>>
-            gate_lyt_window_for_joint_simulation{};  // todo: optimise through symmetry
-        std::unordered_map<mockturtle::node<GateLyt>, std::vector<uint64_t>> selected_gate_implementation_indices{};
+    void build_subcircuits(const std::vector<mockturtle::node<GateLyt>>   root_connections,
+                           std::vector<mockturtle::node<GateLyt>>&        path,
+                           std::unordered_set<mockturtle::node<GateLyt>>& visited, const size_t depth,
+                           const size_t max_depth, gate_lyt_window_map& result) const
+    {
+        // todo: check out symmetry
 
-        is_circuit_operational_params operational_params{};
-        operational_params.simulation_parameters = params.design_gate_params.operational_params.simulation_parameters;
-        operational_params.input_bdl_iterator_params =
-            params.design_gate_params.operational_params.input_bdl_iterator_params;
-        operational_params.termination_cond =
-            is_circuit_operational_params::termination_condition::ALL_INPUT_COMBINATIONS_ASSESSED;
-        operational_params.excited_state_alpha = params.excited_state_alpha;
+        if (depth == max_depth)
+        {
+            // Get tiles corresponding to path nodes
+            std::vector<tile<GateLyt>>                    tiles{};
+            std::unordered_set<mockturtle::node<GateLyt>> nodes{};
+            for (const auto& node : path)
+            {
+                tiles.push_back(stats.gate_layout->get_tile(node));
+                nodes.insert(node);
+            }
 
-        gate_lyt.foreach_node(
+            // filter duplicates (i.e.: RAB, RBA)
+            for (const auto& [other_path, _] : result)
+            {
+                if (path.front() == other_path.front() &&
+                    std::all_of(std::next(other_path.cbegin(), 1), other_path.cend(),
+                                [&](const auto& n) { return nodes.count(n) > 0; }))
+                {
+                    return;
+                }
+            }
+
+            result.insert(
+                {path, sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>{
+                           std::cref(*circuit), tiles,
+                           params.design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params}});
+
+            return;
+        }
+
+        const tile<GateLyt> current_tile = stats.gate_layout->get_tile(path.back());
+
+        std::vector<mockturtle::node<GateLyt>> connections = root_connections;
+        collect_connecting_nodes(*stats.gate_layout, current_tile, connections);
+
+        for (const auto& next_node : connections)
+        {
+            if (visited.count(next_node) > 0)
+            {
+                continue;
+            }
+
+            visited.insert(next_node);
+            path.push_back(next_node);
+
+            build_subcircuits(root_connections, path, visited, depth + 1, max_depth, result);
+
+            path.pop_back();
+            visited.erase(next_node);
+        }
+    }
+    void build_subcircuits_from_root(const mockturtle::node<GateLyt> root, const size_t max_depth,
+                                     gate_lyt_window_map& result) const
+    {
+        const tile<GateLyt> current_tile = stats.gate_layout->get_tile(root);
+
+        std::vector<mockturtle::node<GateLyt>> root_connections;
+        collect_connecting_nodes(*stats.gate_layout, current_tile, root_connections);
+
+        std::vector<mockturtle::node<GateLyt>>        path    = {root};
+        std::unordered_set<mockturtle::node<GateLyt>> visited = {root};
+
+        build_subcircuits(root_connections, path, visited, 0, max_depth, result);
+    }
+    /**
+     * todo
+     */
+    std::variant<bool, CellLyt> prune_gate_designs(const uint64_t level, const std::string_view& level_str) noexcept
+    {
+        std::cout << "\n\nSTARTING TO PRUNE GATE DESIGNS\tLEVEL: " << level_str << std::endl;
+
+        bool global_pruning = false;
+
+        if (level_str == "GLOBAL")
+        {
+            global_pruning = true;
+        }
+
+        std::optional<CellLyt> maybe_lyt{};
+
+        const uint64_t num_input_combinations = 1 << stats.gate_layout->num_pis();
+
+        // todo
+        const uint64_t num_trials           = params.num_trials / level;
+        const double   quantization_factor  = params.quantization_factor * std::pow(1.2, level - 1);
+        const double   selectivity          = params.selectivity / std::pow(3.0, level - 1);
+        const double   success_rate_ceiling = params.success_rate_ceiling + static_cast<double>(level - 1) * 0.1;
+
+        gate_lyt_window_map gate_lyt_windows{};
+
+        stats.gate_layout->foreach_node(
             [&](const auto& n)
             {
-                if (skip_physical_design_for_node(gate_lyt, n))
+                if (skip_physical_design_for_node(*stats.gate_layout, n))
                 {
                     return;
                 }
 
-                const tile<GateLyt> t = gate_lyt.get_tile(n);
-
-                // if (t.x != 1 || t.y != 1)
-                //     return;
-
-                std::cout << "\nNOW DOING TILE " << t.x << ',' << t.y << ',' << t.z << std::endl;
-                std::cout << "tt: ";
-                kitty::print_binary(gate_lyt.node_function(n));
-                if (const auto& at = gate_lyt.above(t); t != at && gate_lyt.is_wire_tile(at))
-                {
-
-                    std::cout << "\t\tabove tt:";
-                    kitty::print_binary(gate_lyt.node_function(gate_lyt.get_node(at)));
-                }
-                std::cout << std::endl;
-
-                std::vector<mockturtle::node<GateLyt>> connecting_to_n{};
-
-                collect_connecting_nodes(gate_lyt, t, connecting_to_n);
-
-                for (const auto& connecting_n : connecting_to_n)
-                {
-                    const tile<GateLyt>& connecting_t = gate_lyt.get_tile(connecting_n);
-
-                    // std::cout << "connecting " << gate_lyt.get_tile(connecting_n).x << ',' <<
-                    // gate_lyt.get_tile(connecting_n).y << ',' << gate_lyt.get_tile(connecting_n).z << std::endl;
-
-                    assert(gate_lyt_window_for_joint_simulation.count(n) == 0 ||
-                           gate_lyt_window_for_joint_simulation.at(n).count(connecting_n) == 0);
-
-                    gate_lyt_window_for_joint_simulation[n].insert(
-                        {connecting_n,
-                         sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>{
-                             std::cref(*circuit),
-                             {t, connecting_t},
-                             params.design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params}});
-                }
+                build_subcircuits_from_root(n, level, gate_lyt_windows);
             });
+
+        std::unordered_map<mockturtle::node<GateLyt>, std::vector<uint64_t>> selected_gate_implementation_indices{};
 
         bool big_fixpoint = false;
 
@@ -579,142 +640,119 @@ class advanced_circuit_design_impl
 
             std::cout << "\nStarting main fixpoint iteration\n" << std::endl;
 
-            gate_lyt.foreach_node(
+            stats.gate_layout->foreach_node(
                 [&](const auto& n)
                 {
-                    if (exit_by_failure || skip_physical_design_for_node(gate_lyt, n))
+                    if (exit_by_failure || skip_physical_design_for_node(*stats.gate_layout, n))
                     {
                         return;
                     }
 
-                    const tile<GateLyt>& t = gate_lyt.get_tile(n);
+                    const tile<GateLyt>& t = stats.gate_layout->get_tile(n);
 
-                    // if (t.y == 1)
-                    //     return;
+                    uint64_t number_of_layouts = 0;
 
-                    // if (t.x != 1 || t.y != 1)
-                    //     return;
+                    for (const auto& [node_vec, gate_lyt_window] : gate_lyt_windows)
+                    {
+                        assert(node_vec.size() > 1 && "The connected nodes vector cannot be singleton");
+
+                        if (n == node_vec.front())
+                        {
+                            number_of_layouts++;
+                        }
+                    }
 
                     std::cout << fmt::format("\nStarting pruning for tile {}", t) << std::endl;
-                    std::cout << fmt::format(
-                                     "Performing {} trials for {} gate connection{} for {} gate implementations",
-                                     params.num_trials, gate_lyt_window_for_joint_simulation.at(n).size(),
-                                     gate_lyt_window_for_joint_simulation.at(n).size() > 1 ? "s" : "",
-                                     operational_gate_designs.at(n).size())
+                    std::cout << fmt::format("Performing {} trials for {} sub-circuit{} for {} gate implementations",
+                                             params.num_trials, number_of_layouts, number_of_layouts > 1 ? "s" : "",
+                                             gate_designs.at(n).size())
                               << std::endl;
 
                     std::vector<std::pair<double, uint64_t>> successful_trial_ratio_per_gate_implementation{};
                     std::mutex                               mutex_to_protect_successful_trial_ratios;
 
-                    // const uint64_t num_threads = 1;
-                    const uint64_t num_threads =
-                        std::min(params.available_threads, operational_gate_designs.at(n).size());
-                    //  const uint64_t num_threads = std::min(uint64_t{20},
-                    //  operational_gate_designs.at(n).size());
-
+                    const uint64_t num_threads = std::min(params.available_threads, gate_designs.at(n).size());
                     const uint64_t chunk_size =
-                        (operational_gate_designs.at(n).size() + num_threads - 1) / num_threads;  // Ceiling division
+                        (gate_designs.at(n).size() + num_threads - 1) / num_threads;  // Ceiling division
 
                     std::vector<std::thread> threads{};
                     threads.reserve(num_threads);
 
 #if (PROGRESS_BARS)
-                    mockturtle::progress_bar bar{
-                        static_cast<uint32_t>(std::min(chunk_size, operational_gate_designs.at(n).size())),
-                        "[i] Determining successful trial ratio for tile " + fmt::format("({},{})", t.x, t.y) +
-                            ": |{0}|"};
+                    mockturtle::progress_bar bar{static_cast<uint32_t>(std::min(chunk_size, gate_designs.at(n).size())),
+                                                 "[i] Determining successful trial ratio for tile " +
+                                                     fmt::format("({},{})", t.x, t.y) + ": |{0}|"};
 #endif
+
+                    std::mutex lyt_mutex{};
 
                     for (uint64_t i = 0; i < num_threads; ++i)
                     {
                         threads.emplace_back(
-                            [&successful_trial_ratio_per_gate_implementation, &t, i, chunk_size,
-                             &operational_gate_designs, &n, &gate_lyt, this, &operational_params,
+                            [&successful_trial_ratio_per_gate_implementation, &t, i, chunk_size, &n, this,
 #if (PROGRESS_BARS)
-
                              &bar,
 #endif
-                             &gate_lyt_window_for_joint_simulation, &mutex_to_protect_successful_trial_ratios]
+                             &gate_lyt_windows, number_of_layouts, &mutex_to_protect_successful_trial_ratios,
+                             num_input_combinations, global_pruning, num_trials, &maybe_lyt, &lyt_mutex]
                             {
                                 const uint64_t start_index = i * chunk_size;
                                 const uint64_t end_index =
-                                    std::min(start_index + chunk_size, operational_gate_designs.at(n).size());
+                                    std::min(start_index + chunk_size, gate_designs.at(n).size());
 
                                 for (uint64_t j = start_index; j < end_index; ++j)
                                 {
-                                    // std::cout << "gate design ix: " << j << std::endl;
-
                                     CellLyt cell_lyt{};
 
                                     // select the first gate implementation for n
                                     assign_gate<CellLyt, SkeletonGateLibrary, GateLyt>(
-                                        cell_lyt,
-                                        *std::next(operational_gate_designs.at(n).cbegin(), static_cast<int64_t>(j)),
-                                        gate_lyt, t);
+                                        cell_lyt, *std::next(gate_designs.at(n).cbegin(), static_cast<int64_t>(j)),
+                                        *stats.gate_layout, t);
 
                                     double successful_trials = 0;
 
-                                    // uint64_t gate_connection_ix = 0;
-                                    for (const auto& [connecting_n, gate_lyt_window] :
-                                         gate_lyt_window_for_joint_simulation.at(n))
+                                    for (const auto& [node_vec, gate_lyt_window] : gate_lyt_windows)
                                     {
-                                        // std::cout << "connecting " << gate_lyt.get_tile(connecting_n).x << ','
-                                        //           << gate_lyt.get_tile(connecting_n).y << ','
-                                        //           << gate_lyt.get_tile(connecting_n).z << std::endl;
-                                        // GateLyt gate_lyt_window_for_gate_connection{};
-
-                                        // std::cout << "gate connection ix: " << gate_connection_ix++ << std::endl;
+                                        if (n != node_vec.front())
+                                        {
+                                            continue;
+                                        }
 
                                         uint64_t current_trial = 0;
 
-                                        // double   avg_time  = 0;
-                                        // uint64_t sample_ix = 0;
-
-                                        while (current_trial < params.num_trials)
+                                        while (current_trial < num_trials)
                                         {
+                                            if (global_pruning)
+                                            {
+                                                std::lock_guard lock{lyt_mutex};
+
+                                                if (maybe_lyt.has_value())
+                                                {
+                                                    return;  // quit if an operational circuit has already been found
+                                                }
+                                            }
+
                                             current_trial++;
-                                            // std::cout << "trial number: " << current_trial << std::endl;
 
                                             CellLyt cell_lyt_clone = cell_lyt.clone();
 
-                                            std::random_device rd;         // a seed source for the random number engine
-                                            std::mt19937       gen(rd());  // mersenne_twister_engine seeded with rd()
-                                            std::uniform_int_distribution<uint64_t> distrib{
-                                                0, operational_gate_designs.at(connecting_n).size() - 1};
+                                            // assign random gate design to other gates
+                                            for (typename std::vector<mockturtle::node<GateLyt>>::const_iterator
+                                                     node_vec_it = std::next(node_vec.cbegin(), 1);
+                                                 node_vec_it != node_vec.cend(); ++node_vec_it)
+                                            {
+                                                std::random_device rd;   // a seed source for the random number engine
+                                                std::mt19937 gen(rd());  // mersenne_twister_engine seeded with rd()
+                                                std::uniform_int_distribution<uint64_t> distrib{
+                                                    0, gate_designs.at(*node_vec_it).size() - 1};
 
-                                            // select a random gate implementation for the tile that connects as
-                                            // input to n
-                                            assign_gate<CellLyt, SkeletonGateLibrary, GateLyt>(
-                                                cell_lyt_clone,
-                                                operational_gate_designs.at(connecting_n).at(distrib(gen)), gate_lyt,
-                                                gate_lyt.get_tile(connecting_n));
+                                                // select a random gate implementation
+                                                assign_gate<CellLyt, SkeletonGateLibrary, GateLyt>(
+                                                    cell_lyt_clone, gate_designs.at(*node_vec_it).at(distrib(gen)),
+                                                    *stats.gate_layout, stats.gate_layout->get_tile(*node_vec_it));
+                                            }
 
-                                            // mockturtle::stopwatch<>::duration time_counter{};
-                                            // {
-                                            //     mockturtle::stopwatch stop{time_counter};
-
-                                            // std::cout << "TT here:";
-                                            // kitty::print_binary(gate_lyt_window_for_joint_simulation.at(n)
-                                            //             .at(connecting_n)
-                                            //             .first.node_function(gate_lyt_window_for_joint_simulation.at(n)
-                                            //             .at(connecting_n)
-                                            //             .first.get_node({1,2,0})));
-                                            // std::cout << std::endl;
-                                            //
-                                            // std::cout << "is po here: " <<
-                                            // gate_lyt_window_for_joint_simulation.at(n)
-                                            //             .at(connecting_n)
-                                            //             .first.is_po_tile({1,2,0}) << std::endl;
-
-                                            // std::cout
-                                            //     << "gate level inputs: "
-                                            //     << gate_lyt_window_for_joint_simulation.at(n)
-                                            //            .at(connecting_n)
-                                            //            .first.gate_layout.num_pis()
-                                            //     << std::endl;
-                                            // std::cout << "cell level inputs: " << cell_lyt_clone.num_pis() <<
-                                            // std::endl;
-
+                                            // sub-circuit logic match assessment
                                             const circuit_operational_assessment<
                                                 CellLyt, local_external_potential_type::BOUNDED>& op_assessment =
                                                 is_circuit_operational<CellLyt, GateLyt,
@@ -725,52 +763,44 @@ class advanced_circuit_design_impl
                                                     operational_params);
 
                                             assert(op_assessment.assessment_per_input.has_value() &&
-                                                   "ALL_COMBINATIONS_ENUMERATED is not set.");
+                                                   "ALL_INPUT_COMBINATIONS_ENUMERATED is not set.");
 
-                                            // if (op_assessment.status == operational_status::OPERATIONAL)
-                                            // {
-                                            double logic_match_sum_for_all_inputs = 0.0;
+                                            uint64_t successful_input_combinations  = 0;
+                                            double   logic_match_sum_for_all_inputs = 0.0;
 
+                                            // sum logic match over the different input combinations
                                             for (const typename circuit_operational_assessment<
                                                      CellLyt, local_external_potential_type::BOUNDED>::
                                                      operational_assessment_for_input& op_assessment_for_input :
                                                  *op_assessment.assessment_per_input)
                                             {
-                                                logic_match_sum_for_all_inputs +=
-                                                    // op_assessment_for_input.status ==
-                                                    //         operational_status::OPERATIONAL ?
-                                                    //     1.0 :
-                                                    //     0.0;
-                                                    op_assessment_for_input.logic_match;
+                                                if (global_pruning &&
+                                                    op_assessment_for_input.status == operational_status::OPERATIONAL)
+                                                {
+                                                    successful_input_combinations++;
+                                                }
+
+                                                logic_match_sum_for_all_inputs += op_assessment_for_input.logic_match;
+                                            }
+
+                                            if (global_pruning &&
+                                                successful_input_combinations == num_input_combinations)
+                                            {
+                                                // all input combinations are operational---operational circuit found
+
+                                                std::lock_guard lock{lyt_mutex};
+
+                                                if (!maybe_lyt.has_value())
+                                                {
+                                                    maybe_lyt.emplace(cell_lyt_clone);
+                                                }
+
+                                                return;
                                             }
 
                                             successful_trials +=
                                                 logic_match_sum_for_all_inputs /
                                                 static_cast<double>(op_assessment.assessment_per_input->size());
-                                            // }
-                                            // }
-
-                                            // if (i == 0)
-                                            // {
-                                            //     sample_ix++;
-                                            //
-                                            //     if (avg_time == 0)
-                                            //     {
-                                            //         avg_time = time_counter.count();
-                                            //     }
-                                            //     else
-                                            //     {
-                                            //         avg_time =
-                                            //             ((sample_ix - 1) * avg_time + time_counter.count()) /
-                                            //             sample_ix;
-                                            //     }
-                                            //
-                                            //     std::cout << fmt::format("time taken: {:.3f} s | avg time: {:.3f}
-                                            //     s",
-                                            //                              time_counter.count() / 1e9, avg_time /
-                                            //                              1e9)
-                                            //               << std::endl;
-                                            // }
                                         }
                                     }
 
@@ -782,9 +812,7 @@ class advanced_circuit_design_impl
 #endif
 
                                     const double successful_trial_ratio =
-                                        successful_trials /
-                                        static_cast<double>(params.num_trials *
-                                                            gate_lyt_window_for_joint_simulation.at(n).size());
+                                        successful_trials / static_cast<double>(num_trials * number_of_layouts);
 
                                     const std::lock_guard lock{mutex_to_protect_successful_trial_ratios};
 
@@ -802,17 +830,25 @@ class advanced_circuit_design_impl
                         }
                     }
 
+                    if (global_pruning)
+                    {
+                        if (maybe_lyt.has_value())
+                        {
+                            return;  // quit if an operational circuit has been found
+                        }
+                    }
+
                     selected_gate_implementation_indices[n] = select_gate_implementations_by_successful_trial_ratio(
-                        std::move(successful_trial_ratio_per_gate_implementation), params.quantization_factor,
-                        params.selectivity, true);
+                        std::move(successful_trial_ratio_per_gate_implementation), quantization_factor, selectivity,
+                        success_rate_ceiling);
 
                     if (selected_gate_implementation_indices.at(n).empty())
                     {
-                        std::cout << "ERROR: ALL GATE IMPLEMENTATIONS ARE PRUNED FOR TILE " << gate_lyt.get_tile(n)
-                                  << std::endl;
+                        std::cout << "ERROR: ALL GATE IMPLEMENTATIONS ARE PRUNED FOR TILE "
+                                  << stats.gate_layout->get_tile(n) << std::endl;
                         exit_by_failure = true;
                     }
-                    else if (selected_gate_implementation_indices.at(n).size() < operational_gate_designs.at(n).size())
+                    else if (selected_gate_implementation_indices.at(n).size() < gate_designs.at(n).size())
                     {
                         big_fixpoint = false;
                     }
@@ -820,632 +856,18 @@ class advanced_circuit_design_impl
 
             std::cout << std::endl;
 
-            gate_lyt.foreach_node(
-                [&](const auto& n)
-                {
-                    if (exit_by_failure || skip_physical_design_for_node(gate_lyt, n))
-                    {
-                        return;
-                    }
-
-                    std::vector<typename SkeletonGateLibrary::fcn_gate> selected_gate_implementations{};
-
-                    for (const uint64_t selected_gate_implementation_index : selected_gate_implementation_indices.at(n))
-                    {
-                        selected_gate_implementations.push_back(
-                            std::move(operational_gate_designs[n][selected_gate_implementation_index]));
-                    }
-
-                    operational_gate_designs[n] = std::move(selected_gate_implementations);
-                });
-        }
-
-        return !exit_by_failure;
-    }
-
-    bool prune_gate_designs_by_two_gate_connections(
-        const GateLyt& gate_lyt,
-        std::unordered_map<mockturtle::node<GateLyt>, std::vector<typename SkeletonGateLibrary::fcn_gate>>&
-            operational_gate_designs) const noexcept
-    {
-        std::cout << "\nSTARTING TO PRUNE GATE DESIGNS BY TWO GATE CONNECTIONS" << std::endl;
-
-        std::unordered_map<
-            mockturtle::node<GateLyt>,
-            std::unordered_map<mockturtle::node<GateLyt>,
-                               std::unordered_map<mockturtle::node<GateLyt>,
-                                                  sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>>>>
-            gate_lyt_window_for_joint_simulation{};  // todo: optimise through symmetry
-        std::unordered_map<mockturtle::node<GateLyt>, std::vector<uint64_t>> selected_gate_implementation_indices{};
-
-        is_circuit_operational_params operational_params{};
-        operational_params.simulation_parameters = params.design_gate_params.operational_params.simulation_parameters;
-        operational_params.input_bdl_iterator_params =
-            params.design_gate_params.operational_params.input_bdl_iterator_params;
-        operational_params.termination_cond =
-            is_circuit_operational_params::termination_condition::ALL_INPUT_COMBINATIONS_ASSESSED;
-        operational_params.excited_state_alpha = params.excited_state_alpha;
-
-        gate_lyt.foreach_node(
-            [&](const auto& n)
+            if (global_pruning)
             {
-                if (skip_physical_design_for_node(gate_lyt, n))
+                if (maybe_lyt.has_value())
                 {
-                    return;
+                    return maybe_lyt.value();  // return the operational circuit
                 }
-
-                const tile<GateLyt> t = gate_lyt.get_tile(n);
-
-                // if (t.x != 0 || t.y != 2)
-                //     return;
-
-                std::cout << "\nNOW DOING TILE " << t.x << ',' << t.y << ',' << t.z << std::endl;
-                std::cout << "tt: ";
-                kitty::print_binary(gate_lyt.node_function(n));
-                if (const auto& at = gate_lyt.above(t); t != at && gate_lyt.is_wire_tile(at))
-                {
-
-                    std::cout << "\t\tabove tt:";
-                    kitty::print_binary(gate_lyt.node_function(gate_lyt.get_node(at)));
-                }
-                std::cout << std::endl;
-
-                std::vector<mockturtle::node<GateLyt>> connecting_to_n{};
-
-                collect_connecting_nodes(gate_lyt, t, connecting_to_n);
-
-                std::unordered_map<mockturtle::node<GateLyt>, std::vector<mockturtle::node<GateLyt>>>
-                    second_gate_connections_to_connecting_n{};
-
-                for (const auto& connecting_n : connecting_to_n)
-                {
-                    const tile<GateLyt>& connecting_t = gate_lyt.get_tile(connecting_n);
-
-                    std::vector<mockturtle::node<GateLyt>> second_gate_connections{};
-
-                    collect_connecting_nodes(gate_lyt, connecting_t, second_gate_connections, std::make_optional(t));
-
-                    second_gate_connections_to_connecting_n[connecting_n] = std::move(second_gate_connections);
-                }
-
-                for (const auto& connecting_n : connecting_to_n)
-                {
-                    const tile<GateLyt>& connecting_t = gate_lyt.get_tile(connecting_n);
-
-                    std::cout << "connecting " << connecting_t.x << ',' << connecting_t.y << ',' << connecting_t.z
-                              << std::endl;
-
-                    for (const auto& connecting_to_connecting_n :
-                         second_gate_connections_to_connecting_n.at(connecting_n))
-                    {
-                        const tile<GateLyt>& connecting_to_connecting_t = gate_lyt.get_tile(connecting_to_connecting_n);
-
-                        // std::cout << "connecting further " << connecting_to_connecting_t.x << ','
-                        //           << connecting_to_connecting_t.y << ',' << connecting_to_connecting_t.z <<
-                        //           std::endl;
-
-                        gate_lyt_window_for_joint_simulation[n][connecting_n].insert(
-                            {connecting_to_connecting_n, sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>{
-                                                             std::cref(*circuit),
-                                                             {t, connecting_t, connecting_to_connecting_t},
-                                                             params.design_gate_params.operational_params
-                                                                 .input_bdl_iterator_params.bdl_wire_params}});
-                    }
-
-                    // assert(gate_lyt_window_for_joint_simulation.count(n) == 0 ||
-                    //        gate_lyt_window_for_joint_simulation.at(n).count(connecting_n) == 0);
-
-                    for (const auto& other_connecting_n : connecting_to_n)
-                    {
-                        const tile<GateLyt>& other_connecting_t = gate_lyt.get_tile(other_connecting_n);
-
-                        if (connecting_t <= other_connecting_t)
-                        {
-                            continue;
-                        }
-
-                        std::cout << "connecting with " << other_connecting_t.x << ',' << other_connecting_t.y << ','
-                                  << other_connecting_t.z << std::endl;
-
-                        gate_lyt_window_for_joint_simulation[n][connecting_n].insert(
-                            {other_connecting_n, sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>{
-                                                     std::cref(*circuit),
-                                                     {t, connecting_t, other_connecting_t},
-                                                     params.design_gate_params.operational_params
-                                                         .input_bdl_iterator_params.bdl_wire_params}});
-                    }
-                }
-            });
-
-        bool big_fixpoint = false;
-
-        bool exit_by_failure = false;
-
-        while (!big_fixpoint)
-        {
-            big_fixpoint = true;
-
-            std::cout << "\nStarting main fixpoint iteration\n" << std::endl;
-
-            gate_lyt.foreach_node(
-                [&](const auto& n)
-                {
-                    if (exit_by_failure || skip_physical_design_for_node(gate_lyt, n))
-                    {
-                        return;
-                    }
-
-                    const tile<GateLyt>& t = gate_lyt.get_tile(n);
-
-                    // if (t.x != 2 || t.y != 3)
-                    //     return;
-
-                    uint64_t number_of_layouts = 0;
-
-                    for (const auto& [_, map] : gate_lyt_window_for_joint_simulation.at(n))
-                    {
-                        number_of_layouts += map.size();
-                    }
-
-                    std::cout << fmt::format("\nStarting pruning for tile {}", t) << std::endl;
-                    std::cout << fmt::format(
-                                     "Performing {} trials for {} gate connection{} for {} gate implementations",
-                                     params.num_trials_for_double_scope, number_of_layouts,
-                                     number_of_layouts > 1 ? "s" : "", operational_gate_designs.at(n).size())
-                              << std::endl;
-
-                    std::vector<std::pair<double, uint64_t>> successful_trial_ratio_per_gate_implementation{};
-                    std::mutex                               mutex_to_protect_successful_trial_ratios;
-
-                    // const uint64_t num_threads = 1;
-                    const uint64_t num_threads =
-                        std::min(params.available_threads, operational_gate_designs.at(n).size());
-                    //  const uint64_t num_threads = std::min(uint64_t{20},
-                    //  operational_gate_designs.at(n).size());
-
-                    const uint64_t chunk_size =
-                        (operational_gate_designs.at(n).size() + num_threads - 1) / num_threads;  // Ceiling division
-
-                    std::vector<std::thread> threads{};
-                    threads.reserve(num_threads);
-
-#if (PROGRESS_BARS)
-                    mockturtle::progress_bar bar{
-                        static_cast<uint32_t>(std::min(chunk_size, operational_gate_designs.at(n).size())),
-                        "[i] Determining successful trial ratio for tile " + fmt::format("({},{})", t.x, t.y) +
-                            ": |{0}|"};
-#endif
-
-                    for (uint64_t i = 0; i < num_threads; ++i)
-                    {
-                        threads.emplace_back(
-                            [&successful_trial_ratio_per_gate_implementation, &t, i, chunk_size,
-                             &operational_gate_designs, &n, &gate_lyt, this, &operational_params,
-#if (PROGRESS_BARS)
-                             &bar,
-#endif
-                             &gate_lyt_window_for_joint_simulation, number_of_layouts,
-                             &mutex_to_protect_successful_trial_ratios]
-                            {
-                                const uint64_t start_index = i * chunk_size;
-                                const uint64_t end_index =
-                                    std::min(start_index + chunk_size, operational_gate_designs.at(n).size());
-
-                                for (uint64_t j = start_index; j < end_index; ++j)
-                                {
-                                    // std::cout << "gate design ix: " << j << std::endl;
-
-                                    CellLyt cell_lyt{};
-
-                                    // select the first gate implementation for n
-                                    assign_gate<CellLyt, SkeletonGateLibrary, GateLyt>(
-                                        cell_lyt,
-                                        *std::next(operational_gate_designs.at(n).cbegin(), static_cast<int64_t>(j)),
-                                        gate_lyt, t);
-
-                                    double successful_trials = 0;
-
-                                    // uint64_t gate_connection_ix = 0;
-                                    for (const auto& [connecting_n, connecting_to_connection_map] :
-                                         gate_lyt_window_for_joint_simulation.at(n))
-                                    {
-                                        // std::cout << "connecting " << gate_lyt.get_tile(connecting_n).x << ','
-                                        //           << gate_lyt.get_tile(connecting_n).y << ','
-                                        //           << gate_lyt.get_tile(connecting_n).z << std::endl;
-
-                                        for (const auto& [connecting_to_connecting_n, gate_lyt_window] :
-                                             connecting_to_connection_map)
-                                        {
-                                            // std::cout << "connecting further "
-                                            //           << gate_lyt.get_tile(connecting_to_connecting_n).x << ','
-                                            //           << gate_lyt.get_tile(connecting_to_connecting_n).y << ','
-                                            //           << gate_lyt.get_tile(connecting_to_connecting_n).z <<
-                                            //           std::endl;
-
-                                            // GateLyt gate_lyt_window_for_gate_connection{};
-
-                                            // std::cout << "gate connection ix: " << gate_connection_ix++ << std::endl;
-
-                                            uint64_t current_trial = 0;
-
-                                            // double   avg_time  = 0;
-                                            // uint64_t sample_ix = 0;
-
-                                            while (current_trial < params.num_trials_for_double_scope)
-                                            {
-                                                current_trial++;
-                                                // std::cout << "trial number: " << current_trial << std::endl;
-
-                                                CellLyt cell_lyt_clone = cell_lyt.clone();
-
-                                                std::random_device rd;   // a seed source for the random number engine
-                                                std::mt19937 gen(rd());  // mersenne_twister_engine seeded with rd()
-                                                std::uniform_int_distribution<uint64_t> distrib{
-                                                    0, operational_gate_designs.at(connecting_n).size() - 1};
-
-                                                // select a random gate implementation for the tile that connects as
-                                                // input to n
-                                                assign_gate<CellLyt, SkeletonGateLibrary, GateLyt>(
-                                                    cell_lyt_clone,
-                                                    operational_gate_designs.at(connecting_n).at(distrib(gen)),
-                                                    gate_lyt, gate_lyt.get_tile(connecting_n));
-
-                                                std::random_device rd2;    // a seed source for the random number engine
-                                                std::mt19937 gen2(rd2());  // mersenne_twister_engine seeded with rd()
-                                                std::uniform_int_distribution<uint64_t> distrib2{
-                                                    0,
-                                                    operational_gate_designs.at(connecting_to_connecting_n).size() - 1};
-
-                                                // select a random gate implementation for the tile that connects as
-                                                // input to n
-                                                assign_gate<CellLyt, SkeletonGateLibrary, GateLyt>(
-                                                    cell_lyt_clone,
-                                                    operational_gate_designs.at(connecting_to_connecting_n)
-                                                        .at(distrib2(gen2)),
-                                                    gate_lyt, gate_lyt.get_tile(connecting_to_connecting_n));
-
-                                                // mockturtle::stopwatch<>::duration time_counter{};
-                                                // {
-                                                //     mockturtle::stopwatch stop{time_counter};
-
-                                                // std::cout << "TT here:";
-                                                // kitty::print_binary(gate_lyt_window_for_joint_simulation.at(n)
-                                                //             .at(connecting_n)
-                                                //             .first.node_function(gate_lyt_window_for_joint_simulation.at(n)
-                                                //             .at(connecting_n)
-                                                //             .first.get_node({1,2,0})));
-                                                // std::cout << std::endl;
-                                                //
-                                                // std::cout << "is po here: " <<
-                                                // gate_lyt_window_for_joint_simulation.at(n)
-                                                //             .at(connecting_n)
-                                                //             .first.is_po_tile({1,2,0}) << std::endl;
-
-                                                // std::cout
-                                                //     << "gate level inputs: " << gate_lyt_window.gate_layout.num_pis()
-                                                //     << std::endl;
-                                                // std::cout << "cell level inputs: " << cell_lyt_clone.num_pis()
-                                                //           << std::endl;
-
-                                                const circuit_operational_assessment<
-                                                    CellLyt, local_external_potential_type::BOUNDED>& op_assessment =
-                                                    is_circuit_operational<CellLyt, GateLyt,
-                                                                           local_external_potential_type::BOUNDED,
-                                                                           SkeletonGateLibrary>(
-                                                        sidb_cell_level_bdl_circuit<CellLyt, GateLyt,
-                                                                                    SkeletonGateLibrary>{
-                                                            cell_lyt_clone, gate_lyt_window},
-                                                        operational_params);
-
-                                                assert(op_assessment.assessment_per_input.has_value() &&
-                                                       "ALL_COMBINATIONS_ENUMERATED is not set.");
-
-                                                // if (op_assessment.status == operational_status::OPERATIONAL)
-                                                // {
-                                                double logic_match_sum_for_all_inputs = 0.0;
-
-                                                for (const typename circuit_operational_assessment<
-                                                         CellLyt, local_external_potential_type::BOUNDED>::
-                                                         operational_assessment_for_input& op_assessment_for_input :
-                                                     *op_assessment.assessment_per_input)
-                                                {
-                                                    logic_match_sum_for_all_inputs +=
-                                                        // op_assessment_for_input.status ==
-                                                        //         operational_status::OPERATIONAL ?
-                                                        //     1.0 :
-                                                        //     0.0;
-                                                        op_assessment_for_input.logic_match;
-                                                }
-
-                                                successful_trials +=
-                                                    logic_match_sum_for_all_inputs /
-                                                    static_cast<double>(op_assessment.assessment_per_input->size());
-                                                // }
-                                                // }
-
-                                                // if (i == 0)
-                                                // {
-                                                //     sample_ix++;
-                                                //
-                                                //     if (avg_time == 0)
-                                                //     {
-                                                //         avg_time = time_counter.count();
-                                                //     }
-                                                //     else
-                                                //     {
-                                                //         avg_time =
-                                                //             ((sample_ix - 1) * avg_time + time_counter.count()) /
-                                                //             sample_ix;
-                                                //     }
-                                                //
-                                                //     std::cout << fmt::format("time taken: {:.3f} s | avg time: {:.3f}
-                                                //     s",
-                                                //                              time_counter.count() / 1e9, avg_time /
-                                                //                              1e9)
-                                                //               << std::endl;
-                                                // }
-                                            }
-                                        }
-                                    }
-
-#if (PROGRESS_BARS)
-                                    if (i == 0)
-                                    {
-                                        bar(j);
-                                    }
-#endif
-
-                                    const double successful_trial_ratio =
-                                        successful_trials /
-                                        static_cast<double>(params.num_trials_for_double_scope * number_of_layouts);
-
-                                    const std::lock_guard lock{mutex_to_protect_successful_trial_ratios};
-
-                                    successful_trial_ratio_per_gate_implementation.emplace_back(successful_trial_ratio,
-                                                                                                j);
-                                }
-                            });
-                    }
-
-                    for (auto& thread : threads)
-                    {
-                        if (thread.joinable())
-                        {
-                            thread.join();
-                        }
-                    }
-
-                    selected_gate_implementation_indices[n] = select_gate_implementations_by_successful_trial_ratio(
-                        std::move(successful_trial_ratio_per_gate_implementation),
-                        params.quantization_factor_for_double_scope, params.selectivity_for_double_scope);
-
-                    if (selected_gate_implementation_indices.at(n).empty())
-                    {
-                        std::cout << "ERROR: ALL GATE IMPLEMENTATIONS ARE PRUNED FOR TILE " << gate_lyt.get_tile(n)
-                                  << std::endl;
-                        exit_by_failure = true;
-                    }
-                    else if (selected_gate_implementation_indices.at(n).size() < operational_gate_designs.at(n).size())
-                    {
-                        big_fixpoint = false;
-                    }
-                });
-
-            std::cout << std::endl;
-
-            gate_lyt.foreach_node(
-                [&](const auto& n)
-                {
-                    if (exit_by_failure || skip_physical_design_for_node(gate_lyt, n))
-                    {
-                        return;
-                    }
-
-                    std::vector<typename SkeletonGateLibrary::fcn_gate> selected_gate_implementations{};
-
-                    for (const uint64_t selected_gate_implementation_index : selected_gate_implementation_indices.at(n))
-                    {
-                        selected_gate_implementations.push_back(
-                            std::move(operational_gate_designs[n][selected_gate_implementation_index]));
-                    }
-
-                    operational_gate_designs[n] = std::move(selected_gate_implementations);
-                });
-        }
-
-        return !exit_by_failure;
-    }
-
-    bool prune_gate_designs_at_global_level(
-        const GateLyt& gate_lyt,
-        std::unordered_map<mockturtle::node<GateLyt>, std::vector<typename SkeletonGateLibrary::fcn_gate>>&
-                                operational_gate_designs,
-        std::optional<CellLyt>& lyt) noexcept
-    {
-        std::cout << "\nSTARTING TO PRUNE GATE DESIGNS WITH GLOBAL SCOPE" << std::endl;
-
-        is_circuit_operational_params operational_params{};
-        operational_params.simulation_parameters = params.design_gate_params.operational_params.simulation_parameters;
-        operational_params.input_bdl_iterator_params =
-            params.design_gate_params.operational_params.input_bdl_iterator_params;
-        operational_params.termination_cond =
-            is_circuit_operational_params::termination_condition::ALL_INPUT_COMBINATIONS_ASSESSED;
-
-        // operational_params.print = true;
-
-        const uint64_t num_input_combinations = 1 << gate_lyt.num_pis();
-
-        std::unordered_map<mockturtle::node<GateLyt>, std::vector<uint64_t>> selected_gate_implementation_indices{};
-
-        bool big_fixpoint = false;
-
-        bool exit_by_failure = false;
-
-        while (!big_fixpoint)
-        {
-            big_fixpoint = true;
-
-            std::cout << "\nStarting main fixpoint iteration\n" << std::endl;
-
-            gate_lyt.foreach_node(
-                [&](const auto& n)
-                {
-                    if (lyt.has_value() || exit_by_failure || skip_physical_design_for_node(gate_lyt, n))
-                    {
-                        return;
-                    }
-
-                    if (operational_gate_designs.at(n).size() == 1)
-                    {
-                        selected_gate_implementation_indices[n] = {0};
-
-                        return;
-                    }
-
-                    const tile<GateLyt>& t = gate_lyt.get_tile(n);
-
-                    std::cout << fmt::format("\nStarting pruning for tile {}\n", t);
-                    std::cout << fmt::format("Performing {} trials for {} gate implementations",
-                                             params.num_trials_for_global_scope, operational_gate_designs.at(n).size())
-                              << std::endl;
-
-                    std::vector<std::pair<double, uint64_t>> successful_trial_ratio_per_gate_implementation{};
-
-#if (PROGRESS_BARS)
-                    mockturtle::progress_bar bar{static_cast<uint32_t>(operational_gate_designs.at(n).size()),
-                                                 "[i] Determining successful trial ratio for tile " +
-                                                     fmt::format("({},{})", t.x, t.y) + ": |{0}|\t"};
-#endif
-
-                    for (uint64_t j = 0; !lyt.has_value() && j < operational_gate_designs.at(n).size(); ++j)
-                    {
-                        CellLyt cell_lyt{};
-
-                        // select the first gate implementation for n
-                        assign_gate<CellLyt, SkeletonGateLibrary, GateLyt>(
-                            cell_lyt, *std::next(operational_gate_designs.at(n).cbegin(), static_cast<int64_t>(j)),
-                            gate_lyt, t);
-
-                        double successful_trials = 0;
-
-                        uint64_t current_trial = 0;
-
-                        while (!lyt.has_value() && current_trial < params.num_trials_for_global_scope)
-                        {
-                            current_trial++;
-
-                            CellLyt cell_lyt_clone = cell_lyt.clone();
-
-                            gate_lyt.foreach_node(
-                                [&](const auto& other_n)
-                                {
-                                    if (skip_physical_design_for_node(gate_lyt, other_n) || other_n == n)
-                                    {
-                                        return;
-                                    }
-
-                                    std::random_device rd;         // a seed source for the random number engine
-                                    std::mt19937       gen(rd());  // mersenne_twister_engine seeded with rd()
-                                    std::uniform_int_distribution<uint64_t> distrib{
-                                        0, operational_gate_designs.at(other_n).size() - 1};
-
-                                    // select a random gate implementation for the tile that connects as
-                                    // input to n
-                                    assign_gate<CellLyt, SkeletonGateLibrary, GateLyt>(
-                                        cell_lyt_clone, operational_gate_designs.at(other_n).at(distrib(gen)), gate_lyt,
-                                        gate_lyt.get_tile(other_n));
-                                });
-
-                            const circuit_operational_assessment<CellLyt>& op_assessment_for_all_inputs =
-                                is_circuit_operational(
-                                    sidb_cell_level_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>{cell_lyt_clone,
-                                                                                                       *circuit},
-                                    operational_params);
-
-                            assert(op_assessment_for_all_inputs.assessment_per_input.has_value() &&
-                                   "Operational assessment termination condition was not set to "
-                                   "ALL_INPUT_COMBINATIONS_ENUMERATED");
-
-                            uint64_t successful_input_combinations = 0;
-                            double   logic_match_sum               = 0.0;
-
-                            for (const typename circuit_operational_assessment<
-                                     CellLyt>::operational_assessment_for_input& op_assessment :
-                                 op_assessment_for_all_inputs.assessment_per_input.value())
-                            {
-                                if (op_assessment.status == operational_status::OPERATIONAL)
-                                {
-                                    successful_input_combinations++;
-                                }
-
-                                logic_match_sum += op_assessment.logic_match;
-                            }
-
-                            if (successful_input_combinations == num_input_combinations)
-                            {
-                                // all input combinations are operational---operational circuit found
-
-                                lyt.emplace(std::move(cell_lyt_clone));
-                            }
-                            else
-                            {
-                                successful_trials += logic_match_sum / static_cast<double>(num_input_combinations);
-                            }
-                        }
-
-                        if (lyt.has_value())
-                        {
-                            break;
-                        }
-
-#if (PROGRESS_BARS)
-                        bar(j);
-#endif
-
-                        const double successful_trial_ratio =
-                            successful_trials /
-                            static_cast<double>(params.num_trials_for_global_scope * num_input_combinations);
-
-                        successful_trial_ratio_per_gate_implementation.emplace_back(successful_trial_ratio, j);
-                    }
-
-                    if (lyt.has_value())
-                    {
-                        return;
-                    }
-
-                    selected_gate_implementation_indices[n] = select_gate_implementations_by_successful_trial_ratio(
-                        std::move(successful_trial_ratio_per_gate_implementation),
-                        params.quantization_factor_for_global_scope, params.selectivity_for_global_scope);
-
-                    if (selected_gate_implementation_indices.at(n).empty())
-                    {
-                        std::cout << "ERROR: ALL GATE IMPLEMENTATIONS ARE PRUNED FOR TILE " << gate_lyt.get_tile(n)
-                                  << std::endl;
-                        exit_by_failure = true;
-                    }
-                    else if (selected_gate_implementation_indices.at(n).size() < operational_gate_designs.at(n).size())
-                    {
-                        big_fixpoint = false;
-                    }
-                });
-
-            if (lyt.has_value() || big_fixpoint)
-            {
-                return true;
             }
 
-            if (exit_by_failure)
-            {
-                return false;
-            }
-
-            std::cout << std::endl;
-
-            gate_lyt.foreach_node(
+            stats.gate_layout->foreach_node(
                 [&](const auto& n)
                 {
-                    if (skip_physical_design_for_node(gate_lyt, n))
+                    if (exit_by_failure || skip_physical_design_for_node(*stats.gate_layout, n))
                     {
                         return;
                     }
@@ -1455,34 +877,14 @@ class advanced_circuit_design_impl
                     for (const uint64_t selected_gate_implementation_index : selected_gate_implementation_indices.at(n))
                     {
                         selected_gate_implementations.push_back(
-                            std::move(operational_gate_designs[n][selected_gate_implementation_index]));
+                            std::move(gate_designs[n][selected_gate_implementation_index]));
                     }
 
-                    operational_gate_designs[n] = std::move(selected_gate_implementations);
+                    gate_designs[n] = std::move(selected_gate_implementations);
                 });
         }
 
-        return !exit_by_failure;
-    }
-    /**
-     * todo
-     */
-    std::optional<CellLyt> prune_gate_designs() noexcept
-    {
-        if (circuit_design_level == 1)
-        {
-            prune_gate_designs_by_gate_connections(*stats.gate_layout, gate_designs);
-            return std::nullopt;
-        }
-        if (circuit_design_level == 2)
-        {
-            prune_gate_designs_by_two_gate_connections(*stats.gate_layout, gate_designs);
-            return std::nullopt;
-        }
-
-        std::optional<CellLyt> maybe_lyt{};
-        prune_gate_designs_at_global_level(*stats.gate_layout, gate_designs, maybe_lyt);
-        return maybe_lyt;
+        return exit_by_failure;
     }
     /**
      * todo
@@ -1490,13 +892,6 @@ class advanced_circuit_design_impl
     std::optional<CellLyt> exhaustively_enumerate_gate_design_combinations() const noexcept
     {
         std::cout << "\n\nLOOKING FOR OPERATIONAL CIRCUIT EXHAUSTIVELY" << std::endl;
-
-        is_circuit_operational_params operational_params{};
-        operational_params.simulation_parameters = params.design_gate_params.operational_params.simulation_parameters;
-        operational_params.input_bdl_iterator_params =
-            params.design_gate_params.operational_params.input_bdl_iterator_params;
-        operational_params.termination_cond =
-            is_circuit_operational_params::termination_condition::ALL_INPUT_COMBINATIONS_ASSESSED;
 
         // operational_params.print = true;
 
@@ -1522,8 +917,9 @@ class advanced_circuit_design_impl
             std::cout << std::endl;
 
             if (is_circuit_operational(
-                    sidb_cell_level_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>{operational_circuit_candidate,
-                                                                                       *circuit},
+                    sidb_cell_level_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>{
+                        operational_circuit_candidate,
+                        sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>{*circuit}},
                     operational_params)
                     .status == operational_status::OPERATIONAL)
             {

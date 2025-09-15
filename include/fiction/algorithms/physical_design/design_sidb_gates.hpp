@@ -191,9 +191,9 @@ class design_sidb_gates_impl
      * @param st Statistics for the gate design process.
      */
     design_sidb_gates_impl(const Lyt& skeleton, const std::vector<TT>& spec, const design_sidb_gates_params<Lyt>& ps,
-                           design_sidb_gates_stats&                                                  st,
+                           design_sidb_gates_stats&                                                      st,
                            const std::optional<sidb_bdl_sub_circuit<Lyt, GateLyt, SkeletonGateLibrary>>& bdl_circuit,
-                           const std::optional<is_circuit_operational_params>&                       op_params) :
+                           const std::optional<is_circuit_operational_params>&                           op_params) :
             skeleton_layout{skeleton},
             truth_table{spec},
             params{set_operational_params_accordingly(ps)},
@@ -448,7 +448,7 @@ class design_sidb_gates_impl
     const design_sidb_gates_params<Lyt> params;
 
     const std::optional<sidb_bdl_sub_circuit<Lyt, GateLyt, SkeletonGateLibrary>>& circuit{};
-    const std::optional<is_circuit_operational_params>&                       circuit_operational_params{};
+    const std::optional<is_circuit_operational_params>&                           circuit_operational_params{};
     /**
      * All cells within the canvas.
      */

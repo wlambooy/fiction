@@ -85,7 +85,6 @@ struct is_circuit_operational_params
      */
     simulation_results_mode simulation_results_retention = simulation_results_mode::DISCARD_SIMULATION_RESULTS;
     bool                    print                        = false;
-    double                  excited_state_alpha          = 1.0;
 };
 
 /**
