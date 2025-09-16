@@ -474,30 +474,26 @@ class sidb_bdl_sub_circuit
         std::vector<std::pair<tile<GateLyt>, tile<GateLyt>>> sub_circuit_gate_connections{};
         sub_circuit_gate_connections.reserve(sub_circuit_bdl_wires.size());
 
-        uint64_t          sub_circuit_bdl_wires_ix = 0;
-        bdl_wire<CellLyt> sub_circuit_bdl_wire     = sub_circuit_bdl_wires.at(sub_circuit_bdl_wires_ix);
-
-        for (uint64_t super_circuit_bdl_wires_ix = 0; super_circuit_bdl_wires_ix < super_circuit.bdl_wires.size();
-             ++super_circuit_bdl_wires_ix)
+        for (const bdl_wire<CellLyt>& sub_circuit_bdl_wire : sub_circuit_bdl_wires)
         {
-            if (sub_circuit_bdl_wire.pairs.front().upper !=
-                super_circuit.bdl_wires.at(super_circuit_bdl_wires_ix).pairs.front().upper)
-            {
-                // no match
+            uint64_t super_circuit_bdl_wires_ix = 0;
 
-                continue;
+            for (; super_circuit_bdl_wires_ix < super_circuit.bdl_wires.size(); ++super_circuit_bdl_wires_ix)
+            {
+                if (sub_circuit_bdl_wire.pairs.front().upper ==
+                        super_circuit.bdl_wires.at(super_circuit_bdl_wires_ix).pairs.front().upper ||
+                    sub_circuit_bdl_wire.pairs.back().upper ==
+                        super_circuit.bdl_wires.at(super_circuit_bdl_wires_ix).pairs.back().upper)
+                {
+                    sub_circuit_gate_connections.push_back(
+                        super_circuit.gate_connections.at(super_circuit_bdl_wires_ix));
+
+                    break;
+                }
             }
 
-            // match
-
-            sub_circuit_gate_connections.push_back(super_circuit.gate_connections.at(super_circuit_bdl_wires_ix));
-
-            if (sub_circuit_bdl_wires_ix == sub_circuit_bdl_wires.size() - 1)
-            {
-                break;
-            }
-
-            sub_circuit_bdl_wire = sub_circuit_bdl_wires.at(++sub_circuit_bdl_wires_ix);
+            assert(super_circuit_bdl_wires_ix < super_circuit.bdl_wires.size() &&
+                   "Sub-circuit BDL wire could not be matched to one of the super circuit.");
         }
 
         return sub_circuit_gate_connections;
@@ -510,7 +506,7 @@ struct sidb_cell_level_bdl_circuit
     /**
      * SiDB cell-level layout.
      */
-    const CellLyt&                                              cell_layout;
+    const CellLyt&                                                     cell_layout;
     const sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>& circuit{};
 
     // todo construct using std::unordered_map<tile<GateLyt>, canvas_positions> ?

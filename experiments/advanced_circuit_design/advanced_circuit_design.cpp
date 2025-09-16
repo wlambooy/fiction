@@ -58,7 +58,7 @@ int main(int argc, char* argv[])  // NOLINT
     using cell_lyt = sidb_cell_clk_lyt_cube;
     using lyt_t    = sidb_defect_surface<cell_lyt>;
 
-    using skeleton = sidb_bdl_skeleton_1;
+    using skeleton = sidb_bdl_skeleton_original_bestagon;
 
     /// DESIGN GATE PARAMS
 
@@ -83,7 +83,9 @@ int main(int argc, char* argv[])  // NOLINT
     //     std::make_unique<compare_by_average_ground_state_isolation<lyt_t>>()};
 
     // needs to be changed if a different skeleton is used.
-    design_gate_params.canvas = {{10, 8}, {31, 19}};
+    // design_gate_params.canvas = {{10, 8}, {31, 19}}; // new_mini_bestagon_august.sqd
+    // design_gate_params.canvas = {{5, 8}, {22, 19}}; // new_mini_bestagon.sqd
+    design_gate_params.canvas = {{23, 12}, {37, 25}};  // original_bestagon.sqd
 
     design_gate_params.number_of_canvas_sidbs        = 4;
     design_gate_params.operational_params.sim_engine = sidb_simulation_engine::CLUSTERCOMPLETE;
@@ -208,7 +210,7 @@ int main(int argc, char* argv[])  // NOLINT
                 params.quantization_factor                     = std::stod(argv[4]);
                 params.selectivity                             = std::stod(argv[5]);
                 params.available_threads                       = std::stoull(argv[6]);
-                // design_gate_params.available_threads           = std::stoull(argv[6]);
+                design_gate_params.available_threads           = std::stoull(argv[6]);
             }
             else if (argc != 1) // todo
             {

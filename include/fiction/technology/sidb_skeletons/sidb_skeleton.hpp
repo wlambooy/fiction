@@ -85,7 +85,7 @@ class sidb_skeleton : public Lyt
                   { return w1.front().x < w2.front().x; });
         std::sort(output_wires.begin(), output_wires.end(),
                   [](const std::vector<cell<Lyt>>& w1, const std::vector<cell<Lyt>>& w2) noexcept
-                  { return w1.front().x < w2.front().x; });
+                  { return w1.back().x < w2.back().x; });
 
         if (input_wires.size() == 1)
         {
@@ -120,14 +120,14 @@ class sidb_skeleton : public Lyt
         assert(bbox.get_x_size() <= GateSizeX && "GateSizeX too small");
         assert(bbox.get_y_size() <= GateSizeY && "GateSizeY too small");
 
+        assert(output_wires.front().size() >= 3 && "not enough cells in output wire");
+
         typename fcn_gate_library<sidb_technology, GateSizeX, GateSizeY>::fcn_gate g =
             fcn_gate_library<sidb_technology, GateSizeX, GateSizeY>::EMPTY_GATE;
 
         static_assert(std::is_same_v<coordinate<Lyt>, offset::ucoord_t>, "Needs to have fiction coordinates");
 
-        const coordinate<Lyt> offset = {(GateSizeX - bbox.get_x_size()) / 2, (GateSizeY - bbox.get_y_size()) / 2};
-        // 2 * (static_cast<double>(GateSizeY - bbox.get_y_size() + 1) / 2) / 2};
-        // (GateSizeY - bbox.get_y_size() + (bbox.get_y_size() % 2)) / 2};
+        decltype(coordinate<Lyt>{}.x) offset_x = (GateSizeX - bbox.get_x_size()) / 2;
 
         for (const auto& [pd, t] : port_direction_indices)
         {
@@ -144,7 +144,7 @@ class sidb_skeleton : public Lyt
                             sidb_technology::cell_type::INPUT :
                             sidb_technology::cell_type::NORMAL;
 
-                    g[c.y - bbox.get_min().y - 1 + offset.y][c.x - bbox.get_min().x + offset.x] = cell_type;
+                    g[c.y - bbox.get_min().y][c.x - bbox.get_min().x + offset_x] = cell_type;
                 }
             }
 
@@ -161,7 +161,7 @@ class sidb_skeleton : public Lyt
                                                           sidb_technology::cell_type::OUTPUT :
                                                           sidb_technology::cell_type::NORMAL;
 
-                    g[c.y - bbox.get_min().y - 1 + offset.y][c.x - bbox.get_min().x + offset.x] = cell_type;
+                    g[c.y - bbox.get_min().y][c.x - bbox.get_min().x + offset_x] = cell_type;
                 }
             }
         }
