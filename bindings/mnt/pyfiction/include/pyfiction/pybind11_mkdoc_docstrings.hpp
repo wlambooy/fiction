@@ -24312,6 +24312,14 @@ static const char *__doc_sidb_bdl_skeleton_1 = R"doc()doc";
 
 static const char *__doc_sidb_bdl_skeleton_1_sidb_bdl_skeleton_1 = R"doc()doc";
 
+static const char *__doc_sidb_bdl_skeleton_august = R"doc()doc";
+
+static const char *__doc_sidb_bdl_skeleton_august_sidb_bdl_skeleton_august = R"doc()doc";
+
+static const char *__doc_sidb_bdl_skeleton_original_bestagon = R"doc()doc";
+
+static const char *__doc_sidb_bdl_skeleton_original_bestagon_sidb_bdl_skeleton_original_bestagon = R"doc()doc";
+
 static const char *__doc_std_hash = R"doc()doc";
 
 static const char *__doc_std_hash_2 = R"doc()doc";
