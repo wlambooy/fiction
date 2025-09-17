@@ -117,17 +117,15 @@ class sidb_skeleton : public Lyt
     typename fcn_gate_library<sidb_technology, GateSizeX, GateSizeY>::fcn_gate
     make_skeleton(const port_list<port_direction>& port_routing) const noexcept
     {
-        assert(bbox.get_x_size() <= GateSizeX && "GateSizeX too small");
-        assert(bbox.get_y_size() <= GateSizeY && "GateSizeY too small");
+        static_assert(std::is_same_v<coordinate<Lyt>, offset::ucoord_t>, "Needs to have fiction coordinates");
 
-        assert(output_wires.front().size() >= 3 && "not enough cells in output wire");
+        assert(bbox.get_x_size() < GateSizeX && "GateSizeX too small");
+        assert(bbox.get_y_size() < GateSizeY && "GateSizeY too small");
 
         typename fcn_gate_library<sidb_technology, GateSizeX, GateSizeY>::fcn_gate g =
             fcn_gate_library<sidb_technology, GateSizeX, GateSizeY>::EMPTY_GATE;
 
-        static_assert(std::is_same_v<coordinate<Lyt>, offset::ucoord_t>, "Needs to have fiction coordinates");
-
-        decltype(coordinate<Lyt>{}.x) offset_x = (GateSizeX - bbox.get_x_size()) / 2;
+        decltype(coordinate<Lyt>{}.x) offset_x = (GateSizeX - bbox.get_x_size() - 1) / 2;
 
         for (const auto& [pd, t] : port_direction_indices)
         {

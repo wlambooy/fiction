@@ -148,7 +148,12 @@ template <uint16_t GateSizeX, uint16_t GateSizeY, typename GateLyt, typename Cel
             {
                 // even rows are shifted in by width / 2
                 absolute_c.x += static_cast<decltype(absolute_c.x)>(static_cast<double>(GateSizeX) / 2.0);
-                // absolute_c.x += static_cast<decltype(absolute_c.x)>(static_cast<double>(GateSizeX + (1 - GateSizeX  % 2) * 1) / 2.0);
+                absolute_c.x += (GateSizeX % 2) * (1 - t.x % 2);
+            }
+            else
+            {
+                absolute_c.x -= (GateSizeX % 2) * (1 - t.x % 2);
+
             }
         }
         else if constexpr (has_odd_column_hex_arrangement_v<GateLyt>)

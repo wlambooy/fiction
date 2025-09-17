@@ -613,7 +613,12 @@ class advanced_circuit_design_impl
         const uint64_t num_trials           = params.num_trials / level;
         const double   quantization_factor  = params.quantization_factor * std::pow(1.2, level - 1);
         const double   selectivity          = params.selectivity / std::pow(3.0, level - 1);
-        const double   success_rate_ceiling = params.success_rate_ceiling + static_cast<double>(level - 1) * 0.1;
+        const double   success_rate_ceiling = params.success_rate_ceiling + static_cast<double>(level - 1) * 0.01;
+
+        std::cout << "\nNumber of trials: " << num_trials << std::endl;
+        std::cout << "Quantization factor: " << fmt::format("{:.3f}", quantization_factor) << std::endl;
+        std::cout << "Selectivity: " << fmt::format("{:.2f}", selectivity) << std::endl;
+        std::cout << "Success_rate_ceiling: " << fmt::format("{:.2f}", success_rate_ceiling) << std::endl;
 
         gate_lyt_window_map gate_lyt_windows{};
 
@@ -664,7 +669,7 @@ class advanced_circuit_design_impl
 
                     std::cout << fmt::format("\nStarting pruning for tile {}", t) << std::endl;
                     std::cout << fmt::format("Performing {} trials for {} sub-circuit{} for {} gate implementations",
-                                             params.num_trials, number_of_layouts, number_of_layouts > 1 ? "s" : "",
+                                             num_trials, number_of_layouts, number_of_layouts > 1 ? "s" : "",
                                              gate_designs.at(n).size())
                               << std::endl;
 

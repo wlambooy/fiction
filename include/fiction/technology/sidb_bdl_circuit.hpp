@@ -78,7 +78,7 @@ class sidb_bdl_circuit
         {
             assert(!wire.pairs.empty() && "BDL wire is empty");
 
-            const bool right_to_left = wire.pairs.front().upper.x > wire.pairs.front().lower.x;
+            const bool right_to_left = wire.pairs.front().upper.x > wire.pairs.back().lower.x;
             const bool is_input_wire = wire.pairs.front().type == sidb_technology::cell_type::INPUT;
 
             std::set<tile<GateLyt>> tiles_in_wire = {};
