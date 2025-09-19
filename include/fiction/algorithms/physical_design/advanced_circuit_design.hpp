@@ -611,8 +611,8 @@ class advanced_circuit_design_impl
 
         // todo
         const uint64_t num_trials           = params.num_trials / level;
-        const double   quantization_factor  = params.quantization_factor * std::pow(1.2, level - 1);
-        const double   selectivity          = params.selectivity / std::pow(3.0, level - 1);
+        const double   quantization_factor  = params.quantization_factor * std::pow(0.8, level - 1);
+        const double   selectivity          = params.selectivity * std::pow(1.2, level - 1);
         const double   success_rate_ceiling = params.success_rate_ceiling + static_cast<double>(level - 1) * 0.01;
 
         std::cout << "\nNumber of trials: " << num_trials << std::endl;

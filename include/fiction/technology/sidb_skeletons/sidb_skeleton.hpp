@@ -41,12 +41,8 @@ class sidb_skeleton : public Lyt
         this->foreach_cell(
             [&](const cell<Lyt>& c)
             {
-                // std::cout << "x: " << c.x << ", y: " << c.y << std::endl;
-                // std::cout << "max_x: " << max.x << ", max_y: " << max.y << std::endl;
-                // std::cout << "min_x: " << min.x << ", min_y: " << min.y << std::endl;
                 if (c.x >= min.x && c.x <= max.x && c.y >= min.y && c.y <= max.y)
                 {
-                    // std::cout <<"yes"<< std::endl;
                     collected_cells.emplace_back(c);
                 }
             });
@@ -54,22 +50,14 @@ class sidb_skeleton : public Lyt
         std::sort(collected_cells.begin(), collected_cells.end(),
                   [](const cell<Lyt>& c1, const cell<Lyt>& c2) noexcept { return c1.y < c2.y; });
 
-        // for (const auto& c : collected_cells)
-        // {
-        //     std::cout << "x: " << c.x << ", y: " << c.y << std::endl;
-        // }
-        // std::cout << std::endl;
-
         typename std::vector<wire>::iterator it = find_wire_in_input_wires(collected_cells);
 
         if (it == input_wires.end())
         {
-            // std::cout << "new inp" << std::endl;
             input_wires.emplace_back(std::move(collected_cells));
         }
         else
         {
-            // std::cout << "new out" << std::endl;
             output_wires.emplace_back(std::move(collected_cells));
             input_wires.erase(it);
         }
@@ -127,6 +115,8 @@ class sidb_skeleton : public Lyt
 
         decltype(coordinate<Lyt>{}.x) offset_x = (GateSizeX - bbox.get_x_size() - 1) / 2;
 
+        decltype(coordinate<Lyt>{}.y) min_y = bbox.get_min().y - bbox.get_min().y % 2;
+
         for (const auto& [pd, t] : port_direction_indices)
         {
             const auto& [w, ix] = t;
@@ -142,7 +132,7 @@ class sidb_skeleton : public Lyt
                             sidb_technology::cell_type::INPUT :
                             sidb_technology::cell_type::NORMAL;
 
-                    g[c.y - bbox.get_min().y][c.x - bbox.get_min().x + offset_x] = cell_type;
+                    g[c.y - min_y][c.x - bbox.get_min().x + offset_x] = cell_type;
                 }
             }
 
@@ -159,7 +149,7 @@ class sidb_skeleton : public Lyt
                                                           sidb_technology::cell_type::OUTPUT :
                                                           sidb_technology::cell_type::NORMAL;
 
-                    g[c.y - bbox.get_min().y][c.x - bbox.get_min().x + offset_x] = cell_type;
+                    g[c.y - min_y][c.x - bbox.get_min().x + offset_x] = cell_type;
                 }
             }
         }
