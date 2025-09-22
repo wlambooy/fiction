@@ -210,7 +210,16 @@ int main(int argc, char* argv[])  // NOLINT
                 params.quantization_factor                     = std::stod(argv[4]);
                 params.selectivity                             = std::stod(argv[5]);
                 params.available_threads                       = std::stoull(argv[6]);
-                design_gate_params.available_threads           = std::stoull(argv[6]);
+            }
+            else if (argc == 8)
+            {
+                design_gate_params.number_of_canvas_sidbs      = std::stoull(argv[1]);
+                design_gate_params.maximum_number_of_solutions = std::stoull(argv[2]);
+                params.num_trials                              = std::stoull(argv[3]);
+                params.quantization_factor                     = std::stod(argv[4]);
+                params.selectivity                             = std::stod(argv[5]);
+                params.available_threads                       = std::stoull(argv[6]);
+                design_gate_params.available_threads           = std::stoull(argv[7]);
             }
             else if (argc != 1) // todo
             {
