@@ -5446,8 +5446,6 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl_gate_fitnes
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_gate_fitness_assessment_selected = R"doc()doc";
 
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_gate_fitness_assessment_trialed_indices = R"doc()doc";
-
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_lattice_tiling = R"doc(Gate-level layout.)doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_network = R"doc(Network.)doc";
