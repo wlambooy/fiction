@@ -5434,6 +5434,16 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl_exhaustivel
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_gate_designs = R"doc()doc";
 
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_gate_fitness_assessment = R"doc()doc";
+
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_gate_fitness_assessment_fitness = R"doc()doc";
+
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_gate_fitness_assessment_gate_fitness_assessment = R"doc()doc";
+
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_gate_fitness_assessment_gate_index = R"doc()doc";
+
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_gate_fitness_assessment_selected = R"doc()doc";
+
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_lattice_tiling = R"doc(Gate-level layout.)doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_network = R"doc(Network.)doc";
@@ -5442,13 +5452,15 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl_operational
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_params = R"doc(Parameters for the on-the-fly circuit design.)doc";
 
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_perform_trial = R"doc()doc";
+
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_print_skeleton_gate_layout = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_print_success_rate_distribution = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_prune_gate_designs = R"doc(todo)doc";
 
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_select_gate_implementations_by_successful_trial_ratio = R"doc()doc";
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_select_gate_implementations_by_fitness = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_stats = R"doc(Statistics for the on-the-fly circuit design.)doc";
 
