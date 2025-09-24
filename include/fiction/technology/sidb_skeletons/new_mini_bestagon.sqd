@@ -4,13 +4,13 @@
     <program>
         <file_purpose>save</file_purpose>
         <version>0.3.3</version>
-        <date>2025-09-19 00:23:30</date>
+        <date>2025-09-24 14:36:00</date>
     </program>
     <!--GUI Flags-->
     <gui>
-        <zoom>0.143244</zoom>
-        <displayed_region x1="36.3017" y1="24.7131" x2="154.771" y2="109.882"/>
-        <scroll x="363" y="529"/>
+        <zoom>0.0607658</zoom>
+        <displayed_region x1="-9.38028" y1="96.9296" x2="165.225" y2="189.087"/>
+        <scroll x="598" y="-48"/>
     </gui>
     <!--Layer Properties-->
     <!--Layer ID is intrinsic to the layer order-->
@@ -93,56 +93,56 @@
             </dbdot>
             <dbdot>
                 <layer_id>2</layer_id>
-                <latcoord n="27" m="18" l="0"/>
-                <physloc x="103.68" y="138.24"/>
+                <latcoord n="27" m="19" l="0"/>
+                <physloc x="103.68" y="145.92"/>
                 <color>#ffc8c8c8</color>
             </dbdot>
             <dbdot>
                 <layer_id>2</layer_id>
-                <latcoord n="31" m="18" l="1"/>
-                <physloc x="119.04" y="140.49"/>
+                <latcoord n="30" m="20" l="1"/>
+                <physloc x="115.2" y="155.85"/>
                 <color>#ffc8c8c8</color>
             </dbdot>
             <dbdot>
                 <layer_id>2</layer_id>
-                <latcoord n="26" m="16" l="1"/>
-                <physloc x="99.84" y="125.13"/>
+                <latcoord n="26" m="17" l="1"/>
+                <physloc x="99.84" y="132.81"/>
                 <color>#ffc8c8c8</color>
             </dbdot>
             <dbdot>
                 <layer_id>2</layer_id>
-                <latcoord n="21" m="18" l="1"/>
-                <physloc x="80.64" y="140.49"/>
+                <latcoord n="22" m="20" l="1"/>
+                <physloc x="84.48" y="155.85"/>
                 <color>#ffc8c8c8</color>
             </dbdot>
             <dbdot>
                 <layer_id>2</layer_id>
-                <latcoord n="25" m="18" l="0"/>
-                <physloc x="96" y="138.24"/>
+                <latcoord n="25" m="19" l="0"/>
+                <physloc x="96" y="145.92"/>
                 <color>#ffc8c8c8</color>
             </dbdot>
             <dbdot>
                 <layer_id>2</layer_id>
-                <latcoord n="18" m="7" l="1"/>
-                <physloc x="69.12" y="56.01"/>
+                <latcoord n="17" m="8" l="1"/>
+                <physloc x="65.28" y="63.69"/>
                 <color>#ffc8c8c8</color>
             </dbdot>
             <dbdot>
                 <layer_id>2</layer_id>
-                <latcoord n="20" m="8" l="0"/>
-                <physloc x="76.8" y="61.44"/>
+                <latcoord n="19" m="9" l="1"/>
+                <physloc x="72.96" y="71.37"/>
                 <color>#ffc8c8c8</color>
             </dbdot>
             <dbdot>
                 <layer_id>2</layer_id>
-                <latcoord n="34" m="7" l="1"/>
-                <physloc x="130.56" y="56.01"/>
+                <latcoord n="35" m="8" l="1"/>
+                <physloc x="134.4" y="63.69"/>
                 <color>#ffc8c8c8</color>
             </dbdot>
             <dbdot>
                 <layer_id>2</layer_id>
-                <latcoord n="32" m="8" l="0"/>
-                <physloc x="122.88" y="61.44"/>
+                <latcoord n="33" m="9" l="1"/>
+                <physloc x="126.72" y="71.37"/>
                 <color>#ffc8c8c8</color>
             </dbdot>
         </layer>
@@ -198,7 +198,7 @@
             </electrode>
             <electrode>
                 <layer_id>3</layer_id>
-                <dim x1="63.4" y1="115.85" x2="102.181" y2="153.65"/>
+                <dim x1="63.4" y1="123.53" x2="102.181" y2="161.33"/>
                 <pixel_per_angstrom>100</pixel_per_angstrom>
                 <angle>0</angle>
                 <color>#aad2be74</color>
@@ -222,7 +222,7 @@
             </electrode>
             <electrode>
                 <layer_id>3</layer_id>
-                <dim x1="98.5666" y1="117.09" x2="142.597" y2="156.72"/>
+                <dim x1="98.5666" y1="124.77" x2="142.597" y2="164.4"/>
                 <pixel_per_angstrom>100</pixel_per_angstrom>
                 <angle>0</angle>
                 <color>#aad2be74</color>
@@ -246,7 +246,7 @@
             </electrode>
             <electrode>
                 <layer_id>3</layer_id>
-                <dim x1="98.0669" y1="106.926" x2="136.067" y2="161.266"/>
+                <dim x1="98.0669" y1="114.606" x2="136.067" y2="168.946"/>
                 <pixel_per_angstrom>100</pixel_per_angstrom>
                 <angle>0</angle>
                 <color>#aad2be74</color>
@@ -270,7 +270,7 @@
             </electrode>
             <electrode>
                 <layer_id>3</layer_id>
-                <dim x1="64.0888" y1="105.33" x2="101.551" y2="157.94"/>
+                <dim x1="64.0888" y1="113.01" x2="101.551" y2="165.62"/>
                 <pixel_per_angstrom>100</pixel_per_angstrom>
                 <angle>0</angle>
                 <color>#aad2be74</color>

@@ -449,12 +449,12 @@ class is_circuit_operational_impl
     assess_logic_match_of_charge_distribution(const charge_distribution_surface<Lyt, ExtPotType>& given_cds,
                                               const uint64_t input_pattern) noexcept
     {
-        const bool print_it = false;  // std::round(static_cast<double>(std::rand()) / (RAND_MAX + 1.0) * 10000) ==
-                                      // 5000;
+        const bool print_it = parameters.print;  // std::round(static_cast<double>(std::rand()) / (RAND_MAX + 1.0) *
+                                                 // 10000) == 5000;
         if (print_it)
         {
-            std::cout << std::endl;
-            print_layout(given_cds);
+            // std::cout << std::endl;
+            // print_layout(given_cds);
             std::cout << "input_pattern: " << input_pattern << std::endl;
         }
         operational_assessment_for_input op_assessment{operational_status::NON_OPERATIONAL};
@@ -518,9 +518,11 @@ class is_circuit_operational_impl
                 assert(input_pair.type == sidb_technology::cell_type::INPUT &&
                        "BDL wire connecting to a PI does not start with an input BDL pair");
 
-                successful_bdl_pairs_count += static_cast<uint64_t>(
-                    (current_bit_set && given_cds.get_charge_state(input_pair.lower) == sidb_charge_state::NEGATIVE) ||
-                    (!current_bit_set && given_cds.get_charge_state(input_pair.upper) == sidb_charge_state::NEGATIVE));
+                // successful_bdl_pairs_count += static_cast<uint64_t>(
+                //     (current_bit_set && given_cds.get_charge_state(input_pair.lower) == sidb_charge_state::NEGATIVE)
+                //     ||
+                //     (!current_bit_set && given_cds.get_charge_state(input_pair.upper) ==
+                //     sidb_charge_state::NEGATIVE));
 
                 if (print_it)
                 {
@@ -623,9 +625,11 @@ class is_circuit_operational_impl
         }
 
         op_assessment.logic_match = static_cast<double>(successful_bdl_pairs_count) /
-                                    static_cast<double>(implemented_circuit.circuit.num_bdl_pairs);
+                                    static_cast<double>(implemented_circuit.circuit.num_bdl_pairs -
+                                                        implemented_circuit.circuit.gate_layout.num_pis());
 
-        if (successful_bdl_pairs_count == implemented_circuit.circuit.num_bdl_pairs)
+        if (successful_bdl_pairs_count ==
+            implemented_circuit.circuit.num_bdl_pairs - implemented_circuit.circuit.gate_layout.num_pis())
         {
             op_assessment.status = operational_status::OPERATIONAL;
         }

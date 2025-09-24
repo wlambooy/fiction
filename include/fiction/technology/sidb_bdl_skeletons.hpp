@@ -14,7 +14,7 @@
 
 using namespace fiction;
 
-class sidb_bdl_skeleton_1 : public sidb_skeleton_gate_library<27, 30>  // width and height of a hexagon
+class sidb_bdl_skeleton_1 : public sidb_skeleton_gate_library<27, 32>  // width and height of a hexagon
 {
   public:
     sidb_bdl_skeleton_1() noexcept :

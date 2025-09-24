@@ -774,7 +774,7 @@ class advanced_circuit_design_impl
             stats.gate_layout->foreach_node(
                 [&](const auto& n)
                 {
-                    if (skip_physical_design_for_node(*stats.gate_layout, n))
+                    if (skip_physical_design_for_node(*stats.gate_layout, n) || gate_designs.at(n).size() == 1)
                     {
                         return;
                     }
@@ -949,7 +949,7 @@ class advanced_circuit_design_impl
             stats.gate_layout->foreach_node(
                 [&](const auto& n)
                 {
-                    if (skip_physical_design_for_node(*stats.gate_layout, n))
+                    if (skip_physical_design_for_node(*stats.gate_layout, n) || gate_designs.at(n).size() == 1)
                     {
                         return;
                     }
@@ -974,11 +974,11 @@ class advanced_circuit_design_impl
     /**
      * todo
      */
-    std::optional<CellLyt> exhaustively_enumerate_gate_design_combinations() const noexcept
+    std::optional<CellLyt> exhaustively_enumerate_gate_design_combinations() noexcept
     {
         std::cout << "\n\nLOOKING FOR OPERATIONAL CIRCUIT EXHAUSTIVELY" << std::endl;
 
-        // operational_params.print = true;
+        operational_params.print = true;  // after comment: reenable function constness
 
         std::vector<uint64_t> indices(gate_designs.size(), 0);
 

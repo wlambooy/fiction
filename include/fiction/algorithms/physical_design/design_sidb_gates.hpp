@@ -543,7 +543,7 @@ class design_sidb_gates_impl
                                                                     ,
                                                                     &bar
 #endif
-        ](const canvas_combination& combination) noexcept
+        ](const canvas_combination& combination, const uint64_t i) noexcept
         {
             // canvas SiDBs are added to the skeleton
             const auto layout_with_added_cells = skeleton_layout_with_canvas_sidbs(combination);
@@ -583,7 +583,7 @@ class design_sidb_gates_impl
 
 #if (PROGRESS_BARS)
             if (params.termination_cond == design_sidb_gates_params<Lyt>::termination_condition::OBTAINED_N_SOLUTIONS &&
-                num_solutions_found < params.maximum_number_of_solutions)
+                i == 0 && num_solutions_found < params.maximum_number_of_solutions)
             {
                 // update the progress bar
                 bar(num_solutions_found);
@@ -617,7 +617,7 @@ class design_sidb_gates_impl
                             return;
                         }
 
-                        add_combination_to_layout_and_check_operation(candidate_combinations[j]);
+                        add_combination_to_layout_and_check_operation(candidate_combinations[j], i);
 
 #if (PROGRESS_BARS)
                         if (params.termination_cond ==
