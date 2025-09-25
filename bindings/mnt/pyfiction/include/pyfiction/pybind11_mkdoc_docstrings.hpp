@@ -201,6 +201,8 @@ static const char *__doc_fiction_advanced_circuit_design_params_exact_design_par
 
 static const char *__doc_fiction_advanced_circuit_design_params_influence_radius_charged_defects = R"doc()doc";
 
+static const char *__doc_fiction_advanced_circuit_design_params_maximum_discrimination_attempts = R"doc()doc";
+
 static const char *__doc_fiction_advanced_circuit_design_params_num_trials = R"doc()doc";
 
 static const char *__doc_fiction_advanced_circuit_design_params_quantization_factor = R"doc()doc";
@@ -5442,11 +5444,15 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl_gate_fitnes
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_gate_fitness_assessment_gate_fitness_assessment = R"doc()doc";
 
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_gate_fitness_assessment_gate_fitness_assessment_2 = R"doc()doc";
+
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_gate_fitness_assessment_gate_index = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_gate_fitness_assessment_selected = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_lattice_tiling = R"doc(Gate-level layout.)doc";
+
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_make_trial_based_fitness_assessments = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_network = R"doc(Network.)doc";
 
