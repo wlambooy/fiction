@@ -795,8 +795,7 @@ class design_sidb_gates_impl
      */
     [[nodiscard]] Lyt skeleton_layout_with_canvas_sidbs(const canvas_combination& cell_indices) const noexcept
     {
-        Lyt lyt = apply_gate_library<Lyt, SkeletonGateLibrary, GateLyt>(
-            circuit->gate_layout, std::make_optional(std::set<tile<GateLyt>>{*circuit->gate_tile}));
+        Lyt lyt = skeleton_layout.clone();
 
         for (const auto i : cell_indices)
         {

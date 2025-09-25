@@ -116,13 +116,16 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, Ga
                                                sidb_on_the_fly_gate_library::gate_y_size(), GateLyt, CellLyt>(
                 lyt, t, cell<CellLyt>{0, 0});
 
-        const auto gate = SkeletonGateLibrary{}.set_up_gate(lyt, t);
-        if (gate == sidb_on_the_fly_gate_library::EMPTY_GATE)
-        {
-            return {sidb_on_the_fly_gate_library::EMPTY_GATE};
-        }
+        // const auto gate = SkeletonGateLibrary{}.set_up_gate(lyt, t);
+        // if (gate == sidb_on_the_fly_gate_library::EMPTY_GATE)
+        // {
+        //     return {sidb_on_the_fly_gate_library::EMPTY_GATE};
+        // }
+        //
+        // const auto skeleton = gate_to_cell_level_layout<CellLyt>(gate);
 
-        const auto skeleton = gate_to_cell_level_layout<CellLyt>(gate);
+        const auto skeleton = apply_gate_library<CellLyt, SkeletonGateLibrary, GateLyt>(
+            lyt, std::make_optional(std::set<tile<GateLyt>>{t}));
 
         try
         {

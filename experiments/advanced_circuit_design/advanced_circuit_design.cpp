@@ -231,8 +231,30 @@ int main(int argc, char* argv[])  // NOLINT
                 params.quantization_factor                     = std::stod(argv[4]);
                 params.selectivity                             = std::stod(argv[5]);
                 params.success_rate_ceiling                    = std::stod(argv[6]);
-                params.available_threads                       = std::stoull(argv[7]);
-                design_gate_params.available_threads           = std::stoull(argv[8]);
+                if (strncmp(argv[7], "e", 1) == 0)
+                {
+                    design_gate_params.design_mode =
+                        design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::EXHAUSTIVE;
+                    params.available_threads = std::stoull(argv[8]);
+                }
+                else
+                {
+                    params.available_threads             = std::stoull(argv[7]);
+                    design_gate_params.available_threads = std::stoull(argv[8]);
+                }
+            }
+            else if (argc == 10)
+            {
+                design_gate_params.number_of_canvas_sidbs      = std::stoull(argv[1]);
+                design_gate_params.maximum_number_of_solutions = std::stoull(argv[2]);
+                params.num_trials                              = std::stoull(argv[3]);
+                params.quantization_factor                     = std::stod(argv[4]);
+                params.selectivity                             = std::stod(argv[5]);
+                params.success_rate_ceiling                    = std::stod(argv[6]);
+                params.available_threads                       = std::stoull(argv[8]);
+                design_gate_params.available_threads           = std::stoull(argv[9]);
+
+                design_gate_params.design_mode = design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::EXHAUSTIVE;
             }
             else if (argc != 1)  // todo
             {
