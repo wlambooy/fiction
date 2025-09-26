@@ -316,195 +316,6 @@ class advanced_circuit_design_impl
         }
     }
 
-    struct gate_fitness_assessment
-    {
-        uint64_t gate_index;
-        double   fitness;
-        bool     selected{false};
-
-        gate_fitness_assessment() = default;
-
-        gate_fitness_assessment(const uint64_t gate_index_, const double fitness_) :
-                gate_index(gate_index_),
-                fitness(fitness_)
-        {}
-    };
-
-    static void apply_quantization(std::vector<gate_fitness_assessment>& sorted_fitness_assessments,
-                                   const double quantization_factor, const double success_rate_ceiling) noexcept
-    {
-        // apply ceiling
-        for (auto& fitness_assessment : sorted_fitness_assessments)
-        {
-            fitness_assessment.fitness = std::min(success_rate_ceiling, fitness_assessment.fitness);
-        }
-
-        if (sorted_fitness_assessments.empty() || quantization_factor <= 0.0)
-        {
-            return;
-        }
-
-        const double min_fitness = sorted_fitness_assessments.front().fitness;
-        const double max_fitness = sorted_fitness_assessments.back().fitness;
-
-        // If all values are identical, nothing to do.
-        if (std::abs(min_fitness - max_fitness) < std::numeric_limits<double>::epsilon())
-        {
-            return;
-        }
-
-        const double scale = std::floor(1.0 / quantization_factor);
-
-        for (auto& fitness_assessment : sorted_fitness_assessments)
-        {
-            fitness_assessment.fitness =
-                std::min(success_rate_ceiling, std::round(fitness_assessment.fitness * scale) / scale);
-        }
-    }
-
-    [[nodiscard]] static uint64_t
-    determine_first_passing_gate_ix(const std::vector<gate_fitness_assessment>& fitness_assessments,
-                                    const double                                selectivity) noexcept
-    {
-        const auto first_passing_gate_ix =
-            static_cast<int64_t>(selectivity * static_cast<double>(fitness_assessments.size()));
-
-        const bool same_as_first =
-            std::abs(fitness_assessments.front().fitness -
-                     fitness_assessments.at(static_cast<uint64_t>(first_passing_gate_ix)).fitness) <
-            std::numeric_limits<double>::epsilon();
-
-        const bool same_as_last =
-            std::abs(fitness_assessments.back().fitness -
-                     fitness_assessments.at(static_cast<uint64_t>(first_passing_gate_ix)).fitness) <
-            std::numeric_limits<double>::epsilon();
-
-        if (same_as_first && same_as_last)
-        {
-            return 0;
-        }
-
-        // todo update comment
-        // if the success ratio of the first passing gate index is the same lowest and there also a higher success
-        // ratio dir = +1, otherwise, dir = -1
-
-        // for the case of dir = -1
-        // walk down (i.e., decrementing success ratio) to the first gate implementation with a different success
-        // ratio opposite for dir = +1
-
-        std::array<int64_t, 2> first_passing_gate_up_or_down{{first_passing_gate_ix, first_passing_gate_ix}};
-
-        for (const int64_t dir : same_as_first || same_as_last ? std::vector<int64_t>{same_as_last ? -1 : +1} :
-                                                                 std::vector<int64_t>{{-1, +1}})
-        {
-            const uint64_t index = static_cast<uint64_t>(dir + 1) / 2;
-
-            for (;
-                 std::abs(
-                     fitness_assessments.at(static_cast<uint64_t>(first_passing_gate_up_or_down[index] + dir)).fitness -
-                     fitness_assessments.at(static_cast<uint64_t>(first_passing_gate_up_or_down[index])).fitness) <
-                 std::numeric_limits<double>::epsilon();
-                 first_passing_gate_up_or_down[index] += dir)
-            {}
-
-            if (dir == +1)
-            {
-                ++first_passing_gate_up_or_down[index];
-            }
-        }
-
-        if (same_as_last)
-        {
-            return static_cast<uint64_t>(first_passing_gate_up_or_down[0]);
-        }
-
-        if (same_as_first)
-        {
-            return static_cast<uint64_t>(first_passing_gate_up_or_down[1]);
-        }
-
-        return static_cast<uint64_t>(
-            first_passing_gate_up_or_down[first_passing_gate_up_or_down[1] - first_passing_gate_ix >=
-                                                  first_passing_gate_ix - first_passing_gate_up_or_down[0] ?
-                                              0 :
-                                              1]);
-    }
-
-    static void print_success_rate_distribution(const std::vector<gate_fitness_assessment>& fitness_assessments,
-                                                const uint64_t first_passing_gate_ix) noexcept
-    {
-        const double selectivity_threshold = fitness_assessments.at(first_passing_gate_ix).fitness;
-
-        std::cout << "\nDetermined success threshold: " << std::fixed << std::setprecision(1)
-                  << selectivity_threshold * 100
-                  << fmt::format("% — pruning {} out of {} gate designs — reduced pool by {:.1f}%\n\n",
-                                 first_passing_gate_ix, fitness_assessments.size(),
-                                 static_cast<double>(first_passing_gate_ix) /
-                                     static_cast<double>(fitness_assessments.size()) * 100);
-
-        // Map: success_rate -> count of gates with this rate
-        std::map<double, uint64_t> count_by_success_rate;
-
-        // Count how many gates per success rate
-        for (const gate_fitness_assessment& fitness_assessment : fitness_assessments)
-        {
-            ++count_by_success_rate[fitness_assessment.fitness];
-        }
-
-        // Total number of gates
-        const uint64_t total_gates = fitness_assessments.size();
-
-        assert(total_gates > 0 && "The distribution is empty.");
-
-        std::cout << "Success Rate | Status | Gate Count | Graph\n";
-        std::cout
-            << "-------------|--------|------------|--------------------------------------------------------------\n";
-
-        for (const auto& [rate, count] : count_by_success_rate)
-        {
-            constexpr size_t max_bar_length = 60;
-
-            const bool        is_kept = rate >= selectivity_threshold;
-            const std::string status  = is_kept ? "KEPT" : "PRUNED";
-
-            // Bar length proportional to total count
-            const auto bar_len = 1 + static_cast<size_t>(static_cast<double>(count) / static_cast<double>(total_gates) *
-                                                         (max_bar_length - 1));
-
-            std::string bar(bar_len, is_kept ? 'o' : 'X');
-
-            std::cout << std::right << std::setw(11) << std::fixed << std::setprecision(1) << rate * 100 << "%"
-                      << " | " << std::setw(6) << status << " | " << std::setw(10) << count << " | " << std::left
-                      << std::setw(max_bar_length) << bar << '\n';
-        }
-
-        std::cout << std::endl;
-    }
-
-    [[nodiscard]] bool
-    select_gate_implementations_by_fitness(std::vector<gate_fitness_assessment>& gate_fitness_assessments,
-                                           const double quantization_factor, const double selectivity,
-                                           const double success_rate_ceiling) const noexcept
-    {
-        std::sort(gate_fitness_assessments.begin(), gate_fitness_assessments.end(),
-                  [](const auto& lhs, const auto& rhs) { return lhs.fitness < rhs.fitness; });
-
-        apply_quantization(gate_fitness_assessments, quantization_factor, success_rate_ceiling);
-
-        const uint64_t first_passing_gate_ix = determine_first_passing_gate_ix(gate_fitness_assessments, selectivity);
-
-        print_success_rate_distribution(gate_fitness_assessments, first_passing_gate_ix);
-
-        for (uint64_t current_tile_gate_implementation_index = first_passing_gate_ix;
-             current_tile_gate_implementation_index < gate_fitness_assessments.size();
-             ++current_tile_gate_implementation_index)
-        {
-            gate_fitness_assessments.at(current_tile_gate_implementation_index).selected = true;
-        }
-
-        return first_passing_gate_ix == 0;
-    }
-
     struct VectorHash
     {
         template <typename T>
@@ -518,6 +329,7 @@ class advanced_circuit_design_impl
             return seed;
         }
     };
+
     using gate_lyt_window_map =
         std::unordered_map<std::vector<mockturtle::node<GateLyt>>,
                            sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>, VectorHash>;
@@ -666,10 +478,11 @@ class advanced_circuit_design_impl
         num_trials = actual_num_trials;  // update trial count to actual number sampled
     }
 
-    uint64_t perform_trial(const sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>& sub_circuit,
-                           const std::vector<mockturtle::node<GateLyt>>&                      node_vec,
-                           foreach_node<std::vector<uint64_t>>&& indices_to_trial, const uint64_t trial_number,
-                           double& logic_match_average_over_inputs, CellLyt& cell_lyt_clone) const noexcept
+    [[nodiscard]] uint64_t perform_trial(const sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>& sub_circuit,
+                                         const std::vector<mockturtle::node<GateLyt>>&                      node_vec,
+                                         foreach_node<std::vector<uint64_t>>&& indices_to_trial,
+                                         const uint64_t trial_number, double& logic_match_average_over_inputs,
+                                         CellLyt& cell_lyt_clone) const noexcept
     {
         // assign random gate design to other gates
         for (typename std::vector<mockturtle::node<GateLyt>>::const_iterator node_vec_it =
@@ -714,6 +527,20 @@ class advanced_circuit_design_impl
 
         return successful_input_combinations;
     }
+
+    struct gate_fitness_assessment
+    {
+        uint64_t gate_index;
+        double   fitness;
+        bool     selected{false};
+
+        gate_fitness_assessment() = default;
+
+        gate_fitness_assessment(const uint64_t gate_index_, const double fitness_) :
+                gate_index(gate_index_),
+                fitness(fitness_)
+        {}
+    };
 
     void make_trial_based_fitness_assessments(const gate_lyt_window_map&       gate_lyt_windows,
                                               const mockturtle::node<GateLyt>& n, const tile<GateLyt>& t,
@@ -842,6 +669,200 @@ class advanced_circuit_design_impl
         }
     }
 
+    static void apply_quantization(std::vector<gate_fitness_assessment>& sorted_fitness_assessments,
+                                   const double quantization_factor, const double success_rate_ceiling) noexcept
+    {
+        // apply ceiling
+        for (auto& fitness_assessment : sorted_fitness_assessments)
+        {
+            fitness_assessment.fitness = std::min(success_rate_ceiling, fitness_assessment.fitness);
+        }
+
+        if (sorted_fitness_assessments.empty() || quantization_factor <= 0.0)
+        {
+            return;
+        }
+
+        const double min_fitness = sorted_fitness_assessments.front().fitness;
+        const double max_fitness = sorted_fitness_assessments.back().fitness;
+
+        // If all values are identical, nothing to do.
+        if (std::abs(min_fitness - max_fitness) < std::numeric_limits<double>::epsilon())
+        {
+            return;
+        }
+
+        const double scale = std::floor(1.0 / quantization_factor);
+
+        for (auto& fitness_assessment : sorted_fitness_assessments)
+        {
+            fitness_assessment.fitness =
+                std::min(success_rate_ceiling, std::round(fitness_assessment.fitness * scale) / scale);
+        }
+    }
+
+    static void print_success_rate_distribution(const std::vector<gate_fitness_assessment>& fitness_assessments,
+                                                const uint64_t first_passing_gate_ix) noexcept
+    {
+        const double selectivity_threshold = fitness_assessments.at(first_passing_gate_ix).fitness;
+
+        std::cout << "\nDetermined success threshold: " << std::fixed << std::setprecision(1)
+                  << selectivity_threshold * 100
+                  << fmt::format("% — pruning {} out of {} gate designs — reduced pool by {:.1f}%\n\n",
+                                 first_passing_gate_ix, fitness_assessments.size(),
+                                 static_cast<double>(first_passing_gate_ix) /
+                                     static_cast<double>(fitness_assessments.size()) * 100);
+
+        // Map: success_rate -> count of gates with this rate
+        std::map<double, uint64_t> count_by_success_rate;
+
+        // Count how many gates per success rate
+        for (const gate_fitness_assessment& fitness_assessment : fitness_assessments)
+        {
+            ++count_by_success_rate[fitness_assessment.fitness];
+        }
+
+        // Total number of gates
+        const uint64_t total_gates = fitness_assessments.size();
+
+        assert(total_gates > 0 && "The distribution is empty.");
+
+        std::cout << "Success Rate | Status | Gate Count | Graph\n";
+        std::cout
+            << "-------------|--------|------------|--------------------------------------------------------------\n";
+
+        for (const auto& [rate, count] : count_by_success_rate)
+        {
+            constexpr size_t max_bar_length = 60;
+
+            const bool        is_kept = rate >= selectivity_threshold;
+            const std::string status  = is_kept ? "KEPT" : "PRUNED";
+
+            // Bar length proportional to total count
+            const auto bar_len = 1 + static_cast<size_t>(static_cast<double>(count) / static_cast<double>(total_gates) *
+                                                         (max_bar_length - 1));
+
+            std::string bar(bar_len, is_kept ? 'o' : 'X');
+
+            std::cout << std::right << std::setw(11) << std::fixed << std::setprecision(1) << rate * 100 << "%"
+                      << " | " << std::setw(6) << status << " | " << std::setw(10) << count << " | " << std::left
+                      << std::setw(max_bar_length) << bar << '\n';
+        }
+
+        std::cout << std::endl;
+    }
+
+    [[nodiscard]] bool discriminate_fitness_assessments(
+        const double selectivity, const double quantization_factor, const double success_rate_ceiling,
+        std::vector<typename SkeletonGateLibrary::fcn_gate>& remaining_gate_designs,
+        std::vector<gate_fitness_assessment>& gate_fitness_assessments, uint64_t& min_bound, uint64_t& max_bound,
+        uint64_t& attempt_number, bool& big_fixpoint) const noexcept
+    {
+        std::sort(gate_fitness_assessments.begin(), gate_fitness_assessments.end(),
+                  [](const auto& lhs, const auto& rhs) { return lhs.fitness < rhs.fitness; });
+
+        auto threshold_ix =
+            static_cast<uint64_t>(std::round(static_cast<double>(gate_fitness_assessments.size()) * selectivity));
+
+        const auto threshold_val_is_above_success_rate_ceiling = [&]
+        {
+            return gate_fitness_assessments.at(threshold_ix).fitness >
+                   success_rate_ceiling - std::numeric_limits<double>::epsilon();
+        };
+
+        while (threshold_ix > 0 && threshold_val_is_above_success_rate_ceiling())
+        {
+            --threshold_ix;
+        }
+
+        const auto lb_ix = static_cast<uint64_t>(std::distance(
+            gate_fitness_assessments.cbegin(),
+            std::lower_bound(gate_fitness_assessments.cbegin(), gate_fitness_assessments.cend(),
+                             gate_fitness_assessments.at(threshold_ix).fitness,
+
+                             [](const gate_fitness_assessment& fitness_assessment, const double& val)
+                             { return fitness_assessment.fitness < val - std::numeric_limits<double>::epsilon(); })));
+        const auto ub_ix = static_cast<uint64_t>(std::distance(
+            gate_fitness_assessments.cbegin(),
+            std::upper_bound(gate_fitness_assessments.cbegin(), gate_fitness_assessments.cend(),
+                             gate_fitness_assessments.at(threshold_ix).fitness,
+                             [](const double val, const gate_fitness_assessment& fitness_assessment)
+                             { return val + std::numeric_limits<double>::epsilon() < fitness_assessment.fitness; })));
+
+        if (ub_ix - lb_ix == 1 || threshold_val_is_above_success_rate_ceiling() ||
+            attempt_number == params.maximum_discrimination_attempts)
+        {
+            apply_quantization(gate_fitness_assessments, quantization_factor, success_rate_ceiling);
+
+            const uint64_t first_passing_ix = ub_ix - threshold_ix >= threshold_ix - lb_ix ? lb_ix : ub_ix;
+
+            print_success_rate_distribution(gate_fitness_assessments, first_passing_ix);
+
+            for (uint64_t gate_index = first_passing_ix; gate_index < gate_fitness_assessments.size(); ++gate_index)
+            {
+                gate_fitness_assessments.at(gate_index).selected = true;
+            }
+
+            if (first_passing_ix != 0)
+            {
+                big_fixpoint = false;
+            }
+
+            return true;
+        }
+
+        const auto reorder_in_place = [](std::vector<typename SkeletonGateLibrary::fcn_gate>& data,
+                                         const std::vector<gate_fitness_assessment>&          order)
+        {
+            std::vector visited(data.size(), false);
+
+            for (size_t i = 0; i < data.size(); ++i)
+            {
+                if (visited[i] || order[i].gate_index == i)
+                {
+                    continue;  // already in place or visited
+                }
+
+                size_t j = i;
+
+                typename SkeletonGateLibrary::fcn_gate temp = std::move(data[i]);
+
+                // Follow the cycle
+                while (!visited[j])
+                {
+                    visited[j] = true;
+
+                    size_t next = order[j].gate_index;
+
+                    data[j] = std::move(next == i ? temp : data[next]);
+
+                    j = next;
+                }
+            }
+        };
+
+        reorder_in_place(remaining_gate_designs, gate_fitness_assessments);
+
+        for (uint64_t i = 0; i < gate_fitness_assessments.size(); ++i)
+        {
+            gate_fitness_assessments[i].gate_index = i;
+        }
+
+        if (min_bound != lb_ix || max_bound != ub_ix)
+        {
+            attempt_number = 0;
+        }
+        else
+        {
+            ++attempt_number;
+        }
+
+        min_bound = lb_ix;
+        max_bound = ub_ix;
+
+        return false;
+    }
+
     /**
      * todo
      */
@@ -899,7 +920,6 @@ class advanced_circuit_design_impl
                 {
                     if (!skip_physical_design_for_node(*stats.gate_layout, n))
                     {
-                        // gate_fitness_assessments[n].clear();
                         gate_fitness_assessments[n].resize(gate_designs.at(n).size());
                     }
                 });
@@ -955,115 +975,12 @@ class advanced_circuit_design_impl
                             }
                         }
 
-                        std::sort(gate_fitness_assessments[n].begin(), gate_fitness_assessments[n].end(),
-                                  [](const auto& lhs, const auto& rhs) { return lhs.fitness < rhs.fitness; });
-
-                        auto threshold_ix = static_cast<uint64_t>(
-                            std::round(static_cast<double>(gate_fitness_assessments.at(n).size()) * selectivity));
-
-                        const auto threshold_val_is_above_success_rate_ceiling = [&]
+                        if (discriminate_fitness_assessments(selectivity, quantization_factor, success_rate_ceiling,
+                                                             gate_designs[n], gate_fitness_assessments[n], min_bound,
+                                                             max_bound, attempt_number, big_fixpoint))
                         {
-                            return gate_fitness_assessments.at(n).at(threshold_ix).fitness >
-                                   success_rate_ceiling - std::numeric_limits<double>::epsilon();
-                        };
-
-                        while (threshold_ix > 0 && threshold_val_is_above_success_rate_ceiling())
-                        {
-                            --threshold_ix;
-                        }
-
-                        const auto lb_ix = static_cast<uint64_t>(std::distance(
-                            gate_fitness_assessments.at(n).cbegin(),
-                            std::lower_bound(
-                                gate_fitness_assessments.at(n).cbegin(), gate_fitness_assessments.at(n).cend(),
-                                gate_fitness_assessments.at(n).at(threshold_ix).fitness,
-
-                                [](const gate_fitness_assessment& fitness_assessment, const double& val)
-                                {
-                                    return fitness_assessment.fitness < val - std::numeric_limits<double>::epsilon();
-                                })));
-                        const auto ub_ix = static_cast<uint64_t>(std::distance(
-                            gate_fitness_assessments.at(n).cbegin(),
-                            std::upper_bound(
-                                gate_fitness_assessments.at(n).cbegin(), gate_fitness_assessments.at(n).cend(),
-                                gate_fitness_assessments.at(n).at(threshold_ix).fitness,
-                                [](const double val, const gate_fitness_assessment& fitness_assessment)
-                                {
-                                    return val + std::numeric_limits<double>::epsilon() < fitness_assessment.fitness;
-                                })));
-
-                        if (ub_ix - lb_ix == 1 || threshold_val_is_above_success_rate_ceiling() ||
-                            attempt_number == params.maximum_discrimination_attempts)
-                        {
-                            apply_quantization(gate_fitness_assessments[n], quantization_factor, success_rate_ceiling);
-
-                            const uint64_t first_passing_ix =
-                                ub_ix - threshold_ix >= threshold_ix - lb_ix ? lb_ix : ub_ix;
-
-                            print_success_rate_distribution(gate_fitness_assessments.at(n), first_passing_ix);
-
-                            for (uint64_t gate_index = first_passing_ix;
-                                 gate_index < gate_fitness_assessments.at(n).size(); ++gate_index)
-                            {
-                                gate_fitness_assessments.at(n).at(gate_index).selected = true;
-                            }
-
-                            if (first_passing_ix != 0)
-                            {
-                                big_fixpoint = false;
-                            }
-
                             break;
                         }
-
-                        const auto reorder_in_place = [](std::vector<typename SkeletonGateLibrary::fcn_gate>& data,
-                                                         const std::vector<gate_fitness_assessment>&          order)
-                        {
-                            std::vector visited(data.size(), false);
-
-                            for (size_t i = 0; i < data.size(); ++i)
-                            {
-                                if (visited[i] || order[i].gate_index == i)
-                                {
-                                    continue;  // already in place or visited
-                                }
-
-                                size_t j = i;
-
-                                typename SkeletonGateLibrary::fcn_gate temp = std::move(data[i]);
-
-                                // Follow the cycle
-                                while (!visited[j])
-                                {
-                                    visited[j] = true;
-
-                                    size_t next = order[j].gate_index;
-
-                                    data[j] = std::move(next == i ? temp : data[next]);
-
-                                    j = next;
-                                }
-                            }
-                        };
-
-                        reorder_in_place(gate_designs[n], gate_fitness_assessments.at(n));
-
-                        for (uint64_t i = 0; i < gate_fitness_assessments.at(n).size(); ++i)
-                        {
-                            gate_fitness_assessments[n][i].gate_index = i;
-                        }
-
-                        if (min_bound != lb_ix || max_bound != ub_ix)
-                        {
-                            attempt_number = 0;
-                        }
-                        else
-                        {
-                            ++attempt_number;
-                        }
-
-                        min_bound = lb_ix;
-                        max_bound = ub_ix;
                     }
                 });
 

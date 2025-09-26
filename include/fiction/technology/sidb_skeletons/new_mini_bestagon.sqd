@@ -4,13 +4,13 @@
     <program>
         <file_purpose>save</file_purpose>
         <version>0.3.3</version>
-        <date>2025-09-24 14:36:00</date>
+        <date>2025-09-26 01:49:59</date>
     </program>
     <!--GUI Flags-->
     <gui>
         <zoom>0.0607658</zoom>
-        <displayed_region x1="-9.38028" y1="96.9296" x2="165.225" y2="189.087"/>
-        <scroll x="598" y="-48"/>
+        <displayed_region x1="-9.38028" y1="67.3076" x2="165.225" y2="159.465"/>
+        <scroll x="418" y="-48"/>
     </gui>
     <!--Layer Properties-->
     <!--Layer ID is intrinsic to the layer order-->
@@ -69,38 +69,26 @@
         <layer type="DB">
             <dbdot>
                 <layer_id>2</layer_id>
-                <latcoord n="13" m="5" l="1"/>
-                <physloc x="49.92" y="40.65"/>
+                <latcoord n="13" m="5" l="0"/>
+                <physloc x="49.92" y="38.4"/>
                 <color>#ffc8c8c8</color>
             </dbdot>
             <dbdot>
                 <layer_id>2</layer_id>
-                <latcoord n="14" m="7" l="0"/>
-                <physloc x="53.76" y="53.76"/>
+                <latcoord n="13" m="6" l="1"/>
+                <physloc x="49.92" y="48.33"/>
                 <color>#ffc8c8c8</color>
             </dbdot>
             <dbdot>
                 <layer_id>2</layer_id>
-                <latcoord n="38" m="7" l="0"/>
-                <physloc x="145.92" y="53.76"/>
+                <latcoord n="39" m="6" l="1"/>
+                <physloc x="149.76" y="48.33"/>
                 <color>#ffc8c8c8</color>
             </dbdot>
             <dbdot>
                 <layer_id>2</layer_id>
-                <latcoord n="39" m="5" l="1"/>
-                <physloc x="149.76" y="40.65"/>
-                <color>#ffc8c8c8</color>
-            </dbdot>
-            <dbdot>
-                <layer_id>2</layer_id>
-                <latcoord n="27" m="19" l="0"/>
-                <physloc x="103.68" y="145.92"/>
-                <color>#ffc8c8c8</color>
-            </dbdot>
-            <dbdot>
-                <layer_id>2</layer_id>
-                <latcoord n="30" m="20" l="1"/>
-                <physloc x="115.2" y="155.85"/>
+                <latcoord n="39" m="5" l="0"/>
+                <physloc x="149.76" y="38.4"/>
                 <color>#ffc8c8c8</color>
             </dbdot>
             <dbdot>
@@ -111,38 +99,44 @@
             </dbdot>
             <dbdot>
                 <layer_id>2</layer_id>
-                <latcoord n="22" m="20" l="1"/>
-                <physloc x="84.48" y="155.85"/>
+                <latcoord n="29" m="19" l="0"/>
+                <physloc x="111.36" y="145.92"/>
                 <color>#ffc8c8c8</color>
             </dbdot>
             <dbdot>
                 <layer_id>2</layer_id>
-                <latcoord n="25" m="19" l="0"/>
-                <physloc x="96" y="145.92"/>
+                <latcoord n="26" m="16" l="0"/>
+                <physloc x="99.84" y="122.88"/>
                 <color>#ffc8c8c8</color>
             </dbdot>
             <dbdot>
                 <layer_id>2</layer_id>
-                <latcoord n="17" m="8" l="1"/>
-                <physloc x="65.28" y="63.69"/>
+                <latcoord n="23" m="19" l="0"/>
+                <physloc x="88.32" y="145.92"/>
                 <color>#ffc8c8c8</color>
             </dbdot>
             <dbdot>
                 <layer_id>2</layer_id>
-                <latcoord n="19" m="9" l="1"/>
-                <physloc x="72.96" y="71.37"/>
+                <latcoord n="16" m="8" l="0"/>
+                <physloc x="61.44" y="61.44"/>
                 <color>#ffc8c8c8</color>
             </dbdot>
             <dbdot>
                 <layer_id>2</layer_id>
-                <latcoord n="35" m="8" l="1"/>
-                <physloc x="134.4" y="63.69"/>
+                <latcoord n="18" m="9" l="1"/>
+                <physloc x="69.12" y="71.37"/>
                 <color>#ffc8c8c8</color>
             </dbdot>
             <dbdot>
                 <layer_id>2</layer_id>
-                <latcoord n="33" m="9" l="1"/>
-                <physloc x="126.72" y="71.37"/>
+                <latcoord n="36" m="8" l="0"/>
+                <physloc x="138.24" y="61.44"/>
+                <color>#ffc8c8c8</color>
+            </dbdot>
+            <dbdot>
+                <layer_id>2</layer_id>
+                <latcoord n="34" m="9" l="1"/>
+                <physloc x="130.56" y="71.37"/>
                 <color>#ffc8c8c8</color>
             </dbdot>
         </layer>
@@ -198,7 +192,7 @@
             </electrode>
             <electrode>
                 <layer_id>3</layer_id>
-                <dim x1="63.4" y1="123.53" x2="102.181" y2="161.33"/>
+                <dim x1="63.4" y1="115.85" x2="102.181" y2="153.65"/>
                 <pixel_per_angstrom>100</pixel_per_angstrom>
                 <angle>0</angle>
                 <color>#aad2be74</color>
@@ -222,7 +216,7 @@
             </electrode>
             <electrode>
                 <layer_id>3</layer_id>
-                <dim x1="98.5666" y1="124.77" x2="142.597" y2="164.4"/>
+                <dim x1="98.5666" y1="117.09" x2="142.597" y2="156.72"/>
                 <pixel_per_angstrom>100</pixel_per_angstrom>
                 <angle>0</angle>
                 <color>#aad2be74</color>
@@ -246,7 +240,7 @@
             </electrode>
             <electrode>
                 <layer_id>3</layer_id>
-                <dim x1="98.0669" y1="114.606" x2="136.067" y2="168.946"/>
+                <dim x1="98.0669" y1="106.926" x2="136.067" y2="161.266"/>
                 <pixel_per_angstrom>100</pixel_per_angstrom>
                 <angle>0</angle>
                 <color>#aad2be74</color>
@@ -270,7 +264,7 @@
             </electrode>
             <electrode>
                 <layer_id>3</layer_id>
-                <dim x1="64.0888" y1="113.01" x2="101.551" y2="165.62"/>
+                <dim x1="64.0888" y1="105.33" x2="101.551" y2="157.94"/>
                 <pixel_per_angstrom>100</pixel_per_angstrom>
                 <angle>0</angle>
                 <color>#aad2be74</color>
