@@ -5432,7 +5432,7 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl_design_circ
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_design_sidb_layout = R"doc()doc";
 
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_determine_first_passing_gate_ix = R"doc()doc";
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_discriminate_fitness_assessments = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_exhaustively_enumerate_gate_design_combinations = R"doc(todo)doc";
 
@@ -5467,8 +5467,6 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl_print_skele
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_print_success_rate_distribution = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_prune_gate_designs = R"doc(todo)doc";
-
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_select_gate_implementations_by_fitness = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_stats = R"doc(Statistics for the on-the-fly circuit design.)doc";
 
