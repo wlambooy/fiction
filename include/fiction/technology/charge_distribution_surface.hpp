@@ -2402,6 +2402,14 @@ class charge_distribution_surface<Lyt, ExtPotType, false> : public Lyt
             strg->cell_charge[i] = combined_vector[i].second;
         }
     }
+    /**
+     * Invokes the private initializers for the nm distance and potential matrices.
+     */
+    void initialize_matrices_for_electrostatic_calculation() noexcept
+    {
+        this->initialize_nm_distance_matrix();
+        this->initialize_potential_matrix();
+    }
 
   private:
     storage strg;
@@ -2433,6 +2441,8 @@ class charge_distribution_surface<Lyt, ExtPotType, false> : public Lyt
         strg->max_charge_index = static_cast<uint64_t>(
             std::pow(static_cast<double>(strg->simulation_parameters.base), this->num_cells()) - 1);
 
+        strg->local_pot_caused_by_defects.resize(this->num_cells(), 0);
+
         if (configuration == cds_configuration::CHARGE_LOCATION_ONLY)
         {
             return;
@@ -2440,7 +2450,6 @@ class charge_distribution_surface<Lyt, ExtPotType, false> : public Lyt
 
         this->initialize_nm_distance_matrix();
         this->initialize_potential_matrix();
-        strg->local_pot_caused_by_defects.resize(this->num_cells(), 0);
         this->update_local_internal_potential();
         if constexpr (is_sidb_defect_surface_v<Lyt>)
         {
@@ -2454,7 +2463,7 @@ class charge_distribution_surface<Lyt, ExtPotType, false> : public Lyt
     /**
      * This function is used when three state simulations are required (i.e., is_three_state_simulation_required =
      * true) to set the base number to three. However, it is distinguished between the cells that can be positively
-     * charged an the ones that cannot.
+     * charged and the ones that cannot.
      *
      * @note is_three_state_simulation_required() has to be executed first.
      */

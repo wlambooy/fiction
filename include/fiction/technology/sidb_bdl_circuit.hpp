@@ -500,15 +500,22 @@ class sidb_bdl_sub_circuit
                 }
             });
 
-        charge_distribution_surface<CellLyt> cds{lyt, super_circuit.sim_params, sidb_charge_state::NEGATIVE};
+        charge_distribution_surface<CellLyt> cds{lyt, super_circuit.sim_params, sidb_charge_state::NEGATIVE,
+                                                 cds_configuration::CHARGE_LOCATION_ONLY};
 
         for (const cell<CellLyt>& c : positive_sidbs)
         {
             cds.assign_charge_state(c, sidb_charge_state::POSITIVE, charge_index_mode::KEEP_CHARGE_INDEX);
         }
 
+        cds.initialize_matrices_for_electrostatic_calculation();
         cds.update_local_internal_potential();
         cds.recompute_electrostatic_potential_energy();
+
+        // todo: defects ... & check validity?
+
+        cds.determine_effective_charge_transition_thresholds();
+        cds.validity_check();
 
         return cds.get_electrostatic_potential_energy();
     }
@@ -691,7 +698,7 @@ class sidb_bdl_sub_circuit
                     sidb_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>::make_skeleton_with_canvasses(
                         super_circuit.gate_layout, super_circuit.skeleton, super_circuit.canvas, false,
                         sub_circuit_tiles),
-                    super_circuit.sim_params, sidb_charge_state::NEUTRAL};
+                    super_circuit.sim_params, sidb_charge_state::NEUTRAL, cds_configuration::CHARGE_LOCATION_ONLY};
 
                 for (const cell<CellLyt>& p : super_circuit.output_perturbers)
                 {
@@ -880,8 +887,15 @@ class sidb_bdl_sub_circuit
                         }
                     });
 
-                current_cds.update_after_charge_change(dependent_cell_mode::FIXED,
-                                                       energy_calculation::KEEP_OLD_ENERGY_VALUE);
+                current_cds.initialize_matrices_for_electrostatic_calculation();
+                current_cds.update_local_internal_potential();
+
+                // todo: defect influence
+                // if constexpr (is_sidb_defect_surface_v<CellLyt>)
+                // {
+                //     CellLyt::foreach_sidb_defect([&current_cds](const auto cd)
+                //                                  { current_cds.add_sidb_defect_to_potential_landscape(cd.first, cd.second); });
+                // }
 
                 super_circuit_simulated_bdl_wires[super_circuit_input_index].emplace(std::move(current_cds));
             }
