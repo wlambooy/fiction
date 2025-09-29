@@ -67,11 +67,13 @@ struct advanced_circuit_design_params
     std::optional<CellLyt> defect_surface{};
     double                 influence_radius_charged_defects = 15;
 
-    uint64_t num_trials                      = 500;
-    double   quantization_factor             = 0.075;
-    double   selectivity                     = 0.5;
-    double   success_rate_ceiling            = 0.95;
-    uint64_t maximum_discrimination_attempts = 5;
+    uint64_t num_trials           = 500;
+    double   quantization_factor  = 0.075;
+    double   selectivity          = 0.5;
+    double   success_rate_ceiling = 0.95;
+
+    uint64_t maximum_repeated_discrimination_attempts = 5;
+    uint64_t maximum_discrimination_attempts          = 25;
 
     uint64_t available_threads = std::thread::hardware_concurrency();
 };
@@ -725,7 +727,7 @@ class advanced_circuit_design_impl
         const double selectivity, const double quantization_factor, const double success_rate_ceiling,
         std::vector<typename SkeletonGateLibrary::fcn_gate>& remaining_gate_designs,
         std::vector<gate_fitness_assessment>& gate_fitness_assessments, uint64_t& min_bound, uint64_t& max_bound,
-        uint64_t& attempt_number, bool& big_fixpoint) const noexcept
+        uint64_t& repeated_attempt_number, uint64_t& attempt_number, bool& big_fixpoint) const noexcept
     {
         std::sort(gate_fitness_assessments.begin(), gate_fitness_assessments.end(),
                   [](const auto& lhs, const auto& rhs) { return lhs.fitness < rhs.fitness; });
@@ -759,6 +761,7 @@ class advanced_circuit_design_impl
                              { return val + std::numeric_limits<double>::epsilon() < fitness_assessment.fitness; })));
 
         if (ub_ix - lb_ix == 1 || threshold_val_is_above_success_rate_ceiling(0) ||
+            repeated_attempt_number == params.maximum_repeated_discrimination_attempts ||
             attempt_number == params.maximum_discrimination_attempts)
         {
             apply_quantization(gate_fitness_assessments, quantization_factor, success_rate_ceiling);
@@ -819,12 +822,14 @@ class advanced_circuit_design_impl
 
         if (min_bound != lb_ix || max_bound != ub_ix)
         {
-            attempt_number = 0;
+            repeated_attempt_number = 0;
         }
         else
         {
-            ++attempt_number;
+            ++repeated_attempt_number;
         }
+
+        ++attempt_number;
 
         min_bound = lb_ix;
         max_bound = ub_ix;
@@ -928,7 +933,8 @@ class advanced_circuit_design_impl
                     uint64_t min_bound = 0;                          // inclusive
                     uint64_t max_bound = gate_designs.at(n).size();  // exclusive
 
-                    uint64_t attempt_number = 0;
+                    uint64_t repeated_attempt_number = 0;
+                    uint64_t attempt_number          = 0;
 
                     while (true)
                     {
@@ -946,7 +952,8 @@ class advanced_circuit_design_impl
 
                         if (discriminate_fitness_assessments(selectivity, quantization_factor, success_rate_ceiling,
                                                              gate_designs[n], gate_fitness_assessments[n], min_bound,
-                                                             max_bound, attempt_number, big_fixpoint))
+                                                             max_bound, repeated_attempt_number, attempt_number,
+                                                             big_fixpoint))
                         {
                             break;
                         }
