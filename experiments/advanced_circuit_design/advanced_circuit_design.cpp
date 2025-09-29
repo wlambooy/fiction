@@ -85,7 +85,7 @@ int main(int argc, char* argv[])  // NOLINT
     // needs to be changed if a different skeleton is used.
     // design_gate_params.canvas = {{10, 8}, {31, 19}}; // new_mini_bestagon_august.sqd
     // design_gate_params.canvas = {{23, 12}, {37, 25}};  // original_bestagon.sqd
-    design_gate_params.canvas = {{5, 12}, {21, 19}};  // new_mini_bestagon.sqd
+    design_gate_params.canvas = {{8, 12}, {18, 19}};  // new_mini_bestagon.sqd
     // design_gate_params.canvas = {{5, 8}, {21, 21}};  // new_mini_bestagon.sqd
 
     design_gate_params.number_of_canvas_sidbs        = 4;

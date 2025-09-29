@@ -855,9 +855,8 @@ class design_sidb_gates_impl
             return c;
         }
 
-        return relative_to_absolute_cell_position<SkeletonGateLibrary::gate_x_size(),
-                                                  SkeletonGateLibrary::gate_y_size(), GateLyt, Lyt>(
-            circuit->gate_layout, *circuit->gate_tile, c);
+        return circuit->super_circuit.relative_to_absolute_canvas_position(circuit->gate_layout, c,
+                                                                           *circuit->gate_tile);
     };
     /**
      * This function makes sure that underlying parameters for `is_operational` are set according to the given

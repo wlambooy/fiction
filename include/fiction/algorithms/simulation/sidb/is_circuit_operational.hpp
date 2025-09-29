@@ -226,7 +226,7 @@ class is_circuit_operational_impl
         if (parameters.termination_cond ==
             is_circuit_operational_params::termination_condition::ALL_INPUT_COMBINATIONS_ASSESSED)
         {
-            assessment_results_per_input.reserve(1 << implemented_circuit.circuit.gate_layout.num_pis());
+            assessment_results_per_input.reserve(1 << implemented_circuit.circuit.num_inputs);
         }
 
         // when `simulation_results_mode::KEEP_SIMULATION_RESULTS` is set, the simulation results must be collected for
@@ -235,14 +235,14 @@ class is_circuit_operational_impl
         if (parameters.simulation_results_retention ==
             is_circuit_operational_params::simulation_results_mode::KEEP_SIMULATION_RESULTS)
         {
-            sim_res_per_input.reserve(1 << implemented_circuit.circuit.gate_layout.num_pis());
+            sim_res_per_input.reserve(1 << implemented_circuit.circuit.num_inputs);
         }
 
         bdl_input_iterator<Lyt> bii{implemented_circuit.cell_layout, parameters.input_bdl_iterator_params};
         bii = 0;
 
         // number of different input combinations
-        for (auto i = 0u; i < 1 << implemented_circuit.circuit.gate_layout.num_pis(); ++i, ++bii)
+        for (auto i = 0u; i < 1 << implemented_circuit.circuit.num_inputs; ++i, ++bii)
         {
             operational_assessment_for_input assessment_results_for_this_input_combination{
                 operational_status::OPERATIONAL};
@@ -289,41 +289,57 @@ class is_circuit_operational_impl
 
                 uint64_t total_environment_count = 0;
 
-                bdl_input_iterator<Lyt, simulate_bdl_wire_logic::COLLECT_EXPECTED_CHARGE_DISTRIBUTIONS, GateLyt,
-                                   SkeletonGateLibrary>
-                    bii_super_circuit{implemented_circuit.circuit.super_circuit.skeleton,
-                                      parameters.input_bdl_iterator_params,
-                                      std::make_optional(std::cref(implemented_circuit)),
-                                      std::make_optional(bii.get_current_input_index())};
-
-                for (auto j = 0u; j < 1 << implemented_circuit.circuit.super_circuit.gate_layout.num_pis();
-                     ++j, ++bii_super_circuit)
+                if (simulation_results->charge_distributions.size() > 1)
                 {
-                    if (!bii_super_circuit.has_simulated_bdl_wires_for_current_input_index())
+                    // bdl_input_iterator<Lyt, simulate_bdl_wire_logic::COLLECT_EXPECTED_CHARGE_DISTRIBUTIONS, GateLyt,
+                    //                    SkeletonGateLibrary>
+                    //     bii_super_circuit{implemented_circuit.circuit.super_circuit.skeleton,
+                    //                       parameters.input_bdl_iterator_params,
+                    //                       std::make_optional(std::cref(implemented_circuit)),
+                    //                       std::make_optional(bii.get_current_input_index())};
+
+                    for (auto j = 0u; j < 1 << implemented_circuit.circuit.super_circuit.gate_layout.num_pis();
+                         ++j)  //, ++bii_super_circuit)
                     {
-                        continue;
+                        if (!implemented_circuit.circuit.get_simulated_bdl_wires_for_input_indices(i, j)
+                                 .get()
+                                 .has_value())
+                        {
+                            continue;
+                        }
+
+                        total_environment_count++;
+
+                        std::vector<std::pair<double, uint64_t>> sort_energies{};
+                        sort_energies.reserve(simulation_results->charge_distributions.size());
+
+                        for (uint64_t cds_ix = 0; cds_ix < simulation_results->charge_distributions.size(); ++cds_ix)
+                        {
+                            sort_energies.emplace_back(
+                                implemented_circuit.circuit
+                                    .get_energy_of_expected_charge_distribution_with_sub_circuit_charge_distribution(
+                                        i, j, simulation_results->charge_distributions.at(cds_ix)),
+                                cds_ix);
+                            // const auto& expected_charge_distribution_for_input =
+                            //     bii_super_circuit.get_expected_charge_distribution_with_sub_circuit_charge_distribution(
+                            //         simulation_results->charge_distributions.at(cds_ix));
+                            //
+                            // sort_energies.emplace_back(
+                            //     expected_charge_distribution_for_input.get_electrostatic_potential_energy(), cds_ix);
+                            //     todo: test equivalence
+                        }
+
+                        std::sort(sort_energies.begin(), sort_energies.end(),
+                                  [&](const std::pair<double, uint64_t>& a, const std::pair<double, uint64_t>& b)
+                                  { return a.first < b.first; });
+
+                        ground_state_in_environment_count[sort_energies.front().second]++;
                     }
-
-                    total_environment_count++;
-
-                    std::vector<std::pair<double, uint64_t>> sort_energies{};
-                    sort_energies.reserve(simulation_results->charge_distributions.size());
-
-                    for (uint64_t cds_ix = 0; cds_ix < simulation_results->charge_distributions.size(); ++cds_ix)
-                    {
-                        const auto& expected_charge_distribution_for_input =
-                            bii_super_circuit.get_expected_charge_distribution_with_sub_circuit_charge_distribution(
-                                simulation_results->charge_distributions.at(cds_ix));
-
-                        sort_energies.emplace_back(
-                            expected_charge_distribution_for_input.get_electrostatic_potential_energy(), cds_ix);
-                    }
-
-                    std::sort(sort_energies.begin(), sort_energies.end(),
-                              [&](const std::pair<double, uint64_t>& a, const std::pair<double, uint64_t>& b)
-                              { return a.first < b.first; });
-
-                    ground_state_in_environment_count[sort_energies.front().second]++;
+                }
+                else
+                {
+                    ground_state_in_environment_count.push_back(1);
+                    total_environment_count = 1;
                 }
 
                 for (uint64_t cds_ix = 0; cds_ix < simulation_results->charge_distributions.size(); ++cds_ix)
@@ -508,8 +524,8 @@ class is_circuit_operational_impl
                        "PI is visited twice");
 
                 const bool current_bit_set =
-                    (input_pattern & (uint64_t{1ull} << (implemented_circuit.circuit.gate_layout.num_pis() - 1 -
-                                                         current_input_number++))) != 0ull;
+                    (input_pattern &
+                     (uint64_t{1ull} << (implemented_circuit.circuit.num_inputs - 1 - current_input_number++))) != 0ull;
 
                 expected_signal_at_gate_connection[lower_tile].insert({upper_tile, current_bit_set});
 
@@ -624,12 +640,12 @@ class is_circuit_operational_impl
                                             tt_inp)});
         }
 
-        op_assessment.logic_match = static_cast<double>(successful_bdl_pairs_count) /
-                                    static_cast<double>(implemented_circuit.circuit.num_bdl_pairs -
-                                                        implemented_circuit.circuit.gate_layout.num_pis());
+        op_assessment.logic_match =
+            static_cast<double>(successful_bdl_pairs_count) /
+            static_cast<double>(implemented_circuit.circuit.num_bdl_pairs - implemented_circuit.circuit.num_inputs);
 
         if (successful_bdl_pairs_count ==
-            implemented_circuit.circuit.num_bdl_pairs - implemented_circuit.circuit.gate_layout.num_pis())
+            implemented_circuit.circuit.num_bdl_pairs - implemented_circuit.circuit.num_inputs)
         {
             op_assessment.status = operational_status::OPERATIONAL;
         }
@@ -666,15 +682,7 @@ class is_circuit_operational_impl
         if constexpr (ExtPotType == local_external_potential_type::BOUNDED)
         {
             clustercomplete_params<cell<Lyt>, ExtPotType> cc_params{parameters.simulation_parameters};
-
             cc_params.available_threads = 1;
-
-            bdl_input_iterator<Lyt, simulate_bdl_wire_logic::COLLECT_EXPECTED_CHARGE_DISTRIBUTIONS, GateLyt,
-                               SkeletonGateLibrary>
-                bii_super_circuit{implemented_circuit.circuit.super_circuit.skeleton,
-                                  parameters.input_bdl_iterator_params,
-                                  std::make_optional(std::cref(implemented_circuit)),
-                                  std::make_optional(bdl_iterator.get_current_input_index())};
 
             Lyt cell_lyt{};
 
@@ -697,11 +705,11 @@ class is_circuit_operational_impl
                         }
                     });
 
-            for (auto i = 0u; i < 1 << implemented_circuit.circuit.super_circuit.gate_layout.num_pis();
-                 ++i, ++bii_super_circuit)
+            for (auto i = 0u; i < 1 << implemented_circuit.circuit.super_circuit.num_inputs; ++i)
             {
-                const auto& maybe_expected_charge_distribution_for_input =
-                    bii_super_circuit.get_expected_charge_distribution_with_sub_circuit_neutralized();
+                const std::optional<charge_distribution_surface<Lyt>>& maybe_expected_charge_distribution_for_input =
+                    implemented_circuit.circuit.get_simulated_bdl_wires_for_input_indices(
+                        bdl_iterator.get_current_input_index(), i);
 
                 if (!maybe_expected_charge_distribution_for_input.has_value())
                 {

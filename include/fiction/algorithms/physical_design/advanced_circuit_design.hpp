@@ -117,9 +117,6 @@ class advanced_circuit_design_impl
 
     [[nodiscard]] std::optional<CellLyt> design_sidb_layout(const uint64_t num_gates_to_design)
     {
-        circuit.emplace(*stats.gate_layout,
-                        params.design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params);
-
         operational_params.termination_cond =
             is_circuit_operational_params::termination_condition::ON_FIRST_NON_OPERATIONAL;
 
@@ -163,7 +160,9 @@ class advanced_circuit_design_impl
             return std::nullopt;
         }
 
-        print_skeleton_gate_layout(*stats.gate_layout);
+        circuit.emplace(*stats.gate_layout, params.design_gate_params.operational_params.simulation_parameters,
+                        params.design_gate_params.canvas,
+                        params.design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params);
 
         uint64_t number_of_gates_to_design = 0;
 
@@ -225,36 +224,6 @@ class advanced_circuit_design_impl
     gate_designs_per_node gate_designs{};
 
     uint64_t circuit_design_level = 0;
-
-    void print_skeleton_gate_layout(const GateLyt& gate_layout) const noexcept
-    {
-        CellLyt lyt = apply_gate_library<CellLyt, SkeletonGateLibrary, GateLyt>(gate_layout);
-
-        gate_layout.foreach_node(
-            [&](const auto& n)
-            {
-                if (skip_physical_design_for_node(gate_layout, n))
-                {
-                    return;
-                }
-
-                const auto& t = gate_layout.get_tile(n);
-
-                for (const cell<CellLyt>& relative_c : all_coordinates_in_spanned_area(
-                         params.design_gate_params.canvas.first, params.design_gate_params.canvas.second))
-                {
-                    const cell<CellLyt> absolute_c =
-                        relative_to_absolute_cell_position<SkeletonGateLibrary::gate_x_size(),
-                                                           SkeletonGateLibrary::gate_y_size(), GateLyt, CellLyt>(
-                            gate_layout, t, relative_c);
-                    lyt.assign_cell_type(absolute_c, sidb_technology::cell_type::LOGIC);
-                }
-            });
-
-        std::cout << "Skeleton looks like:" << std::endl;
-        print_layout(lyt);
-        std::cout << std::endl;
-    }
 
     void collect_initial_gate_designs()
     {
@@ -764,13 +733,13 @@ class advanced_circuit_design_impl
         auto threshold_ix =
             static_cast<uint64_t>(std::round(static_cast<double>(gate_fitness_assessments.size()) * selectivity));
 
-        const auto threshold_val_is_above_success_rate_ceiling = [&]
+        const auto threshold_val_is_above_success_rate_ceiling = [&](const uint8_t offset)
         {
-            return gate_fitness_assessments.at(threshold_ix).fitness >
+            return gate_fitness_assessments.at(threshold_ix - offset).fitness >
                    success_rate_ceiling - std::numeric_limits<double>::epsilon();
         };
 
-        while (threshold_ix > 0 && threshold_val_is_above_success_rate_ceiling())
+        while (threshold_ix > 0 && threshold_val_is_above_success_rate_ceiling(1))
         {
             --threshold_ix;
         }
@@ -789,7 +758,7 @@ class advanced_circuit_design_impl
                              [](const double val, const gate_fitness_assessment& fitness_assessment)
                              { return val + std::numeric_limits<double>::epsilon() < fitness_assessment.fitness; })));
 
-        if (ub_ix - lb_ix == 1 || threshold_val_is_above_success_rate_ceiling() ||
+        if (ub_ix - lb_ix == 1 || threshold_val_is_above_success_rate_ceiling(0) ||
             attempt_number == params.maximum_discrimination_attempts)
         {
             apply_quantization(gate_fitness_assessments, quantization_factor, success_rate_ceiling);
