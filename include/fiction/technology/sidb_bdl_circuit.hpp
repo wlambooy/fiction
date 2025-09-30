@@ -460,64 +460,108 @@ class sidb_bdl_sub_circuit
 
     [[nodiscard]] double get_energy_of_expected_charge_distribution_with_sub_circuit_charge_distribution(
         const uint64_t sub_circuit_input_index, const uint64_t super_circuit_input_index,
-        const charge_distribution_surface<CellLyt, local_external_potential_type::BOUNDED>&
-            sub_circuit_charge_distribution) const noexcept
+        charge_distribution_surface<CellLyt, local_external_potential_type::BOUNDED>& sub_circuit_charge_distribution, bool& b)
+        const noexcept
     {
         const charge_distribution_surface<CellLyt>& simulated_bdl_wires =
             *get_simulated_bdl_wires_for_input_indices(sub_circuit_input_index, super_circuit_input_index).get();
 
-        std::vector<cell<CellLyt>> positive_sidbs{};
+        typename charge_distribution_surface<
+            CellLyt, local_external_potential_type::BOUNDED>::local_external_potential_map_t& pot_from_super_circuit = sub_circuit_charge_distribution.get_local_external_potentials_reference();
 
-        CellLyt lyt{};
-
-        super_circuit.skeleton.foreach_cell(
-            [&](const cell<CellLyt>& c)
-            {
-                if (simulated_bdl_wires.get_charge_state(c) == sidb_charge_state::NEGATIVE)
-                {
-                    lyt.assign_cell_type(c, sidb_technology::cell_type::NORMAL);
-                }
-            });
-
-        sub_circuit_charge_distribution.foreach_cell(
-            [&](const auto& c)
-            {
-                if (const auto ct = sub_circuit_charge_distribution.get_cell_type(c);
-                    ct == sidb_technology::cell_type::OUTPUT_PERTURBER &&
-                    super_circuit.skeleton.get_cell_type(c) != sidb_technology::cell_type::OUTPUT_PERTURBER)
-                {
-                    return;
-                }
-
-                if (sub_circuit_charge_distribution.get_charge_state(c) == sidb_charge_state::NEGATIVE)
-                {
-                    lyt.assign_cell_type(c, sidb_technology::cell_type::NORMAL);
-                }
-                else if (sub_circuit_charge_distribution.get_charge_state(c) == sidb_charge_state::POSITIVE)
-                {
-                    lyt.assign_cell_type(c, sidb_technology::cell_type::NORMAL);
-                    positive_sidbs.push_back(c);
-                }
-            });
-
-        charge_distribution_surface<CellLyt> cds{lyt, super_circuit.sim_params, sidb_charge_state::NEGATIVE,
-                                                 cds_configuration::CHARGE_LOCATION_ONLY};
-
-        for (const cell<CellLyt>& c : positive_sidbs)
+        for (const cell<CellLyt>& c : sub_circuit_charge_distribution.get_sidb_order())
         {
-            cds.assign_charge_state(c, sidb_charge_state::POSITIVE, charge_index_mode::KEEP_CHARGE_INDEX);
+            assert(simulated_bdl_wires.get_local_internal_potential(c).has_value() && "c is not part of the layout");
+
+            pot_from_super_circuit[c] = {simulated_bdl_wires.get_local_internal_potential(c).value(),
+                                         simulated_bdl_wires.get_local_internal_potential(c).value()};
         }
 
-        cds.initialize_matrices_for_electrostatic_calculation();
-        cds.update_local_internal_potential();
-        cds.recompute_electrostatic_potential_energy();
+        sub_circuit_charge_distribution.update_local_external_potential();
+        sub_circuit_charge_distribution.recompute_electrostatic_potential_energy();
+        sub_circuit_charge_distribution.determine_effective_charge_transition_thresholds();
+        sub_circuit_charge_distribution.validity_check();
+        b |= sub_circuit_charge_distribution.is_physically_valid();
 
-        // todo: defects ... & check validity?
+        // if (!sub_circuit_charge_distribution.is_physically_valid())
+        // {
+        // print_layout(sub_circuit_charge_distribution, ss);
+        //     // std::cout << "weeeeeeeeeeeeeeeeeeewwwwwwwwwwwwwwwwwoooooooooooooooooooooooooooooooo\n\n\n\n\n" << std::endl;
+        //     sub_circuit_charge_distribution.validity_check(&ss);
+        // }
+        //
+        // std::cout << "energy bounds:" << std::endl;
+        // std::cout << sub_circuit_charge_distribution.get_electrostatic_potential_energy()[0] << std::endl;
+        // std::cout << sub_circuit_charge_distribution.get_electrostatic_potential_energy()[1] << std::endl;
+        // assert(std::abs(sub_circuit_charge_distribution.get_electrostatic_potential_energy()[0] -
+        //                 sub_circuit_charge_distribution.get_electrostatic_potential_energy()[1]) <
+        //            std::numeric_limits<double>::epsilon() &&
+        //        "Bound collapsing failed.");
+        // std::cout << std::endl;
 
-        cds.determine_effective_charge_transition_thresholds();
-        cds.validity_check();
+        return sub_circuit_charge_distribution.get_electrostatic_potential_energy()[0];
 
-        return cds.get_electrostatic_potential_energy();
+        // std::vector<cell<CellLyt>> positive_sidbs{};
+        //
+        // CellLyt lyt{};
+        //
+        // super_circuit.skeleton.foreach_cell(
+        //     [&](const cell<CellLyt>& c)
+        //     {
+        //         if (simulated_bdl_wires.get_charge_state(c) == sidb_charge_state::NEGATIVE)
+        //         {
+        //             lyt.assign_cell_type(c, sidb_technology::cell_type::NORMAL);
+        //         }
+        //     });
+        //
+        // sub_circuit_charge_distribution.foreach_cell(
+        //     [&](const auto& c)
+        //     {
+        //         if (const auto ct = sub_circuit_charge_distribution.get_cell_type(c);
+        //             ct == sidb_technology::cell_type::OUTPUT_PERTURBER &&
+        //             super_circuit.skeleton.get_cell_type(c) != sidb_technology::cell_type::OUTPUT_PERTURBER)
+        //         {
+        //             return;
+        //         }
+        //
+        //         if (sub_circuit_charge_distribution.get_charge_state(c) == sidb_charge_state::NEGATIVE)
+        //         {
+        //             lyt.assign_cell_type(c, sidb_technology::cell_type::NORMAL);
+        //         }
+        //         else if (sub_circuit_charge_distribution.get_charge_state(c) == sidb_charge_state::POSITIVE)
+        //         {
+        //             lyt.assign_cell_type(c, sidb_technology::cell_type::NORMAL);
+        //             positive_sidbs.push_back(c);
+        //         }
+        //     });
+        //
+        // charge_distribution_surface<CellLyt> cds{lyt, super_circuit.sim_params, sidb_charge_state::NEGATIVE,
+        //                                          cds_configuration::CHARGE_LOCATION_ONLY};
+        //
+        // for (const cell<CellLyt>& c : positive_sidbs)
+        // {
+        //     cds.assign_charge_state(c, sidb_charge_state::POSITIVE, charge_index_mode::KEEP_CHARGE_INDEX);
+        // }
+        //
+        // cds.initialize_matrices_for_electrostatic_calculation();
+        // cds.update_local_internal_potential();
+        // cds.recompute_electrostatic_potential_energy();
+        //
+        // // todo: defects ... & check validity?
+        //
+        // cds.determine_effective_charge_transition_thresholds();
+        // cds.validity_check();
+        //
+        // if (!cds.is_physically_valid())
+        // {
+        //     print_layout(cds);
+        //     std::cout << "weeeeeeeeeeeeeeeeeeewwwwwwwwwwwwwwwwwoooooooooooooooooooooooooooooooo\n\n\n\n\n" <<
+        //     std::endl;
+        // }
+        //
+        // // todo
+        //
+        // return cds.get_electrostatic_potential_energy();
     }
 
   private:
@@ -894,7 +938,8 @@ class sidb_bdl_sub_circuit
                 // if constexpr (is_sidb_defect_surface_v<CellLyt>)
                 // {
                 //     CellLyt::foreach_sidb_defect([&current_cds](const auto cd)
-                //                                  { current_cds.add_sidb_defect_to_potential_landscape(cd.first, cd.second); });
+                //                                  { current_cds.add_sidb_defect_to_potential_landscape(cd.first,
+                //                                  cd.second); });
                 // }
 
                 super_circuit_simulated_bdl_wires[super_circuit_input_index].emplace(std::move(current_cds));
