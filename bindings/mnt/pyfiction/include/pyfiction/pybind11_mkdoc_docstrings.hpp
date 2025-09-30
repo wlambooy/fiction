@@ -203,6 +203,8 @@ static const char *__doc_fiction_advanced_circuit_design_params_influence_radius
 
 static const char *__doc_fiction_advanced_circuit_design_params_maximum_discrimination_attempts = R"doc()doc";
 
+static const char *__doc_fiction_advanced_circuit_design_params_maximum_repeated_discrimination_attempts = R"doc()doc";
+
 static const char *__doc_fiction_advanced_circuit_design_params_num_trials = R"doc()doc";
 
 static const char *__doc_fiction_advanced_circuit_design_params_quantization_factor = R"doc()doc";
