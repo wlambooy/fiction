@@ -291,15 +291,7 @@ class is_circuit_operational_impl
 
                 if (simulation_results->charge_distributions.size() > 1)
                 {
-                    // bdl_input_iterator<Lyt, simulate_bdl_wire_logic::COLLECT_EXPECTED_CHARGE_DISTRIBUTIONS, GateLyt,
-                    //                    SkeletonGateLibrary>
-                    //     bii_super_circuit{implemented_circuit.circuit.super_circuit.skeleton,
-                    //                       parameters.input_bdl_iterator_params,
-                    //                       std::make_optional(std::cref(implemented_circuit)),
-                    //                       std::make_optional(bii.get_current_input_index())};
-
-                    for (auto j = 0u; j < 1 << implemented_circuit.circuit.super_circuit.gate_layout.num_pis();
-                         ++j)  //, ++bii_super_circuit)
+                    for (auto j = 0u; j < 1 << implemented_circuit.circuit.super_circuit.gate_layout.num_pis(); ++j)
                     {
                         if (!implemented_circuit.circuit.get_simulated_bdl_wires_for_input_indices(i, j)
                                  .get()
@@ -308,94 +300,28 @@ class is_circuit_operational_impl
                             continue;
                         }
 
-                        // std::stringstream ss;
-
-                        // ss << "\n\nsuper circuit input index: " << j << "\tsub circuit input index: " << i << std::endl;
-                        // print_layout(
-                        //     implemented_circuit.circuit.get_simulated_bdl_wires_for_input_indices(i, j).get().value(),
-                        //     ss);
-
                         total_environment_count++;
 
-                        bool b = false;
+                        bool at_least_one_physically_valid_ground_state_for_super_circuit_input_combination = false;
 
                         std::vector<std::pair<double, uint64_t>> sort_energies{};
                         sort_energies.reserve(simulation_results->charge_distributions.size());
 
                         for (uint64_t cds_ix = 0; cds_ix < simulation_results->charge_distributions.size(); ++cds_ix)
                         {
-                            // ss << "\ncds number: " << cds_ix << std::endl;
-
                             sort_energies.emplace_back(
                                 implemented_circuit.circuit
                                     .get_energy_of_expected_charge_distribution_with_sub_circuit_charge_distribution(
-                                        i, j, simulation_results->charge_distributions.at(cds_ix), b),
+                                        i, j, simulation_results->charge_distributions.at(cds_ix),
+                                        at_least_one_physically_valid_ground_state_for_super_circuit_input_combination),
                                 cds_ix);
-                            // const auto& expected_charge_distribution_for_input =
-                            //     bii_super_circuit.get_expected_charge_distribution_with_sub_circuit_charge_distribution(
-                            //         simulation_results->charge_distributions.at(cds_ix));
-                            //
-                            // sort_energies.emplace_back(
-                            //     expected_charge_distribution_for_input.get_electrostatic_potential_energy(), cds_ix);
-                            //     todo: test equivalence
                         }
 
-                        if (!b)
+                        if (!at_least_one_physically_valid_ground_state_for_super_circuit_input_combination)
                         {
                             total_environment_count = 0;
 
                             break;
-                            //
-                            // clustercomplete_params<cell<Lyt>> cc_params{parameters.simulation_parameters};
-                            // // quickexact_params<cell<Lyt>>      qe_params{
-                            // //     parameters.simulation_parameters,
-                            // //     quickexact_params<cell<Lyt>>::automatic_base_number_detection::OFF};
-                            // cc_params.available_threads = 1;
-                            //
-                            // Lyt cell_lyt{};
-                            //
-                            // const charge_distribution_surface<Lyt>& expected_charge_distribution_for_input =
-                            //     *implemented_circuit.circuit.get_simulated_bdl_wires_for_input_indices(i, j).get();
-                            //
-                            // (*bii).foreach_cell(
-                            //     [&](const auto& c)
-                            //     {
-                            //         assert(expected_charge_distribution_for_input.get_local_internal_potential(c)
-                            //                    .has_value() &&
-                            //                "c is not part of the layout");
-                            //         if (const auto ct = (*bii).get_cell_type(c);
-                            //             ct != sidb_technology::cell_type::OUTPUT_PERTURBER ||
-                            //             implemented_circuit.circuit.super_circuit.skeleton.get_cell_type(c) ==
-                            //                 sidb_technology::cell_type::OUTPUT_PERTURBER)
-                            //         {
-                            //             cell_lyt.assign_cell_type(c, ct);
-                            //             cc_params.local_external_potential[c] =
-                            //                 *expected_charge_distribution_for_input.get_local_internal_potential(c);
-                            //             // qe_params.local_external_potential[c] =
-                            //             //     *expected_charge_distribution_for_input.get_local_internal_potential(c);
-                            //         }
-                            //     });
-                            //
-                            // std::cout << "LAYOUT TO VERIFY: " << std::endl;
-                            // print_layout(cell_lyt);
-                            // const auto res2 = clustercomplete<Lyt>(cell_lyt, cc_params);
-                            // // const auto res2_qe = quickexact<Lyt>(cell_lyt, qe_params);
-                            //
-                            // ss << "\n\nactual CC res:\t(num = " << res2.charge_distributions.size() <<
-                            //     // ", num_QE = " << res2_qe.charge_distributions.size() <<
-                            //         ")" << std::endl;
-                            // for (const auto& cds : res2.charge_distributions)
-                            // {
-                            //     print_layout(cds, ss);
-                            //     ss << std::endl;
-                            // }
-                            // // for (const auto& cds : res2_qe.charge_distributions)
-                            // // {
-                            // //     print_layout(cds, ss);
-                            // //     ss << std::endl;
-                            // // }
-                            //
-                            // std::cout << ss.str() << "\n\n\n\n" << std::endl;
                         }
 
                         std::sort(sort_energies.begin(), sort_energies.end(),
@@ -420,13 +346,13 @@ class is_circuit_operational_impl
                             continue;
                         }
 
-                        const operational_assessment_for_input& op_assessment = assess_logic_match_of_charge_distribution(
-                            simulation_results->charge_distributions.at(cds_ix), i);
-                        // std::cout << "bdl_logic_match = " << op_assessment.logic_match << std::endl;
+                        const operational_assessment_for_input& op_assessment =
+                            assess_logic_match_of_charge_distribution(
+                                simulation_results->charge_distributions.at(cds_ix), i);
 
                         logic_match += static_cast<double>(ground_state_in_environment_count.at(cds_ix)) /
                                        static_cast<double>(total_environment_count) * op_assessment.logic_match;
-                        // std::cout << "logic_match: " << logic_match << std::endl;
+
                         if (op_assessment.status == operational_status::OPERATIONAL)
                         {
                             status = operational_status::OPERATIONAL;
@@ -638,11 +564,6 @@ class is_circuit_operational_impl
             const uint32_t num_inputs = implemented_circuit.circuit.gate_layout
                                             .node_function(implemented_circuit.circuit.gate_layout.get_node(lower_tile))
                                             .num_vars();
-            // std::cout << "tt: ";
-            // kitty::print_binary(gate_layout.node_function(gate_layout.get_node(lower_tile)));
-            // std::cout << std::endl;
-            // std::cout << "num inputs at " << lower_tile.x << ',' << lower_tile.y << ',' << lower_tile.z << ": "
-            //           << num_inputs << std::endl;
 
             assert(expected_signal_at_gate_connection.at(lower_tile).size() <= num_inputs &&
                    "Number of tiles visited connecting to the current tile exceeds the number of inputs to the node "
