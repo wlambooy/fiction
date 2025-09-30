@@ -765,16 +765,6 @@ R"doc(Returns the current input index.
 Returns:
     The current input index.)doc";
 
-static const char *__doc_fiction_bdl_input_iterator_get_expected_charge_distribution_with_sub_circuit_charge_distribution = R"doc()doc";
-
-static const char *__doc_fiction_bdl_input_iterator_get_expected_charge_distribution_with_sub_circuit_neutralized = R"doc()doc";
-
-static const char *__doc_fiction_bdl_input_iterator_has_simulated_bdl_wires_for_current_input_index =
-R"doc(Returns the current input index.todo
-
-Returns:
-    The current input index.)doc";
-
 static const char *__doc_fiction_bdl_input_iterator_input_bdl_wires = R"doc(The detected input BDL wires.)doc";
 
 static const char *__doc_fiction_bdl_input_iterator_input_pairs = R"doc(The detected input BDL pairs.)doc";
@@ -782,8 +772,6 @@ static const char *__doc_fiction_bdl_input_iterator_input_pairs = R"doc(The dete
 static const char *__doc_fiction_bdl_input_iterator_last_bdl_for_each_wire = R"doc(Last BDL pairs for each BDL wire.)doc";
 
 static const char *__doc_fiction_bdl_input_iterator_layout = R"doc(The layout to iterate over.)doc";
-
-static const char *__doc_fiction_bdl_input_iterator_make_super_circuit_with_sub_circuit = R"doc()doc";
 
 static const char *__doc_fiction_bdl_input_iterator_num_input_pairs =
 R"doc(Returns the total number of input BDL pairs of the given SiDB gate
@@ -996,14 +984,6 @@ index. The input index is interpreted as a binary number, where the
 BDL pair. If the bit is `1`, the lower BDL dot is set and the upper
 BDL dot removed. If the bit is `0`, the upper BDL dot is removed and
 the lower BDL dot set.)doc";
-
-static const char *__doc_fiction_bdl_input_iterator_simulate_bdl_wires_in_circuit = R"doc()doc";
-
-static const char *__doc_fiction_bdl_input_iterator_sub_circuit = R"doc()doc";
-
-static const char *__doc_fiction_bdl_input_iterator_sub_circuit_input_index = R"doc()doc";
-
-static const char *__doc_fiction_bdl_input_iterator_super_circuit_with_sub_circuit = R"doc()doc";
 
 static const char *__doc_fiction_bdl_pair =
 R"doc(A Binary-dot Logic (BDL) pair is a pair of SiDBs that are close to
@@ -5461,8 +5441,6 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl_operational
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_params = R"doc(Parameters for the on-the-fly circuit design.)doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_perform_trial = R"doc()doc";
-
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_print_skeleton_gate_layout = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_print_success_rate_distribution = R"doc()doc";
 
@@ -20499,17 +20477,25 @@ static const char *__doc_fiction_sidb_bdl_circuit_bdl_wires = R"doc()doc";
 
 static const char *__doc_fiction_sidb_bdl_circuit_gate_layout = R"doc(SiDB gate-level layout.)doc";
 
-static const char *__doc_fiction_sidb_bdl_circuit_gate_tile = R"doc()doc";
-
 static const char *__doc_fiction_sidb_bdl_circuit_get_number_of_bdl_pairs = R"doc()doc";
 
+static const char *__doc_fiction_sidb_bdl_circuit_get_output_perturbers = R"doc()doc";
+
 static const char *__doc_fiction_sidb_bdl_circuit_input_bdl_pairs = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_circuit_make_skeleton_with_canvasses = R"doc()doc";
 
 static const char *__doc_fiction_sidb_bdl_circuit_num_bdl_pairs = R"doc()doc";
 
 static const char *__doc_fiction_sidb_bdl_circuit_num_inputs = R"doc()doc";
 
+static const char *__doc_fiction_sidb_bdl_circuit_output_perturbers = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_circuit_relative_to_absolute_canvas_position = R"doc()doc";
+
 static const char *__doc_fiction_sidb_bdl_circuit_sidb_bdl_circuit = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_circuit_sim_params = R"doc()doc";
 
 static const char *__doc_fiction_sidb_bdl_circuit_skeleton = R"doc()doc";
 
@@ -20524,6 +20510,10 @@ static const char *__doc_fiction_sidb_bdl_sub_circuit_create_gate_lyt_window_for
 static const char *__doc_fiction_sidb_bdl_sub_circuit_gate_layout = R"doc(SiDB gate-level layout.)doc";
 
 static const char *__doc_fiction_sidb_bdl_sub_circuit_gate_tile = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_sub_circuit_get_energy_of_expected_charge_distribution_with_sub_circuit_charge_distribution = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_sub_circuit_get_simulated_bdl_wires_for_input_indices = R"doc()doc";
 
 static const char *__doc_fiction_sidb_bdl_sub_circuit_input_bdl_pairs = R"doc()doc";
 
@@ -21866,12 +21856,6 @@ static const char *__doc_fiction_simple_gate_layout_tile_drawer_tile_fillcolor =
 static const char *__doc_fiction_simple_gate_layout_tile_drawer_tile_id = R"doc()doc";
 
 static const char *__doc_fiction_simple_gate_layout_tile_drawer_tile_label = R"doc()doc";
-
-static const char *__doc_fiction_simulate_bdl_wire_logic = R"doc()doc";
-
-static const char *__doc_fiction_simulate_bdl_wire_logic_COLLECT_EXPECTED_CHARGE_DISTRIBUTIONS = R"doc()doc";
-
-static const char *__doc_fiction_simulate_bdl_wire_logic_DO_NOT_COLLECT_EXPECTED_CHARGE_DISTRIBUTIONS = R"doc()doc";
 
 static const char *__doc_fiction_singleton_multiset_conf_to_charge_state =
 R"doc(Function to convert a singleton cluster charge state in its compressed
