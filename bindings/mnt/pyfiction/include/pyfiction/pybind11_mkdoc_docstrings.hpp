@@ -9302,6 +9302,8 @@ Returns:
     (either `OPERATIONAL` or `NON_OPERATIONAL`) and the second element
     indicating the reason if it is non-operational.)doc";
 
+static const char *__doc_fiction_detail_is_circuit_operational_impl_thread_counter = R"doc()doc";
+
 static const char *__doc_fiction_detail_is_east_south_colored = R"doc()doc";
 
 static const char *__doc_fiction_detail_is_eastern_po_orientation_available = R"doc()doc";
@@ -11283,6 +11285,18 @@ Returns:
 static const char *__doc_fiction_detail_technology_mapping_impl_stats = R"doc(Technology mapping statistics.)doc";
 
 static const char *__doc_fiction_detail_technology_mapping_impl_technology_mapping_impl = R"doc()doc";
+
+static const char *__doc_fiction_detail_thread_count_manager = R"doc()doc";
+
+static const char *__doc_fiction_detail_thread_count_manager_count = R"doc()doc";
+
+static const char *__doc_fiction_detail_thread_count_manager_mutex = R"doc()doc";
+
+static const char *__doc_fiction_detail_thread_count_manager_reserve_threads = R"doc()doc";
+
+static const char *__doc_fiction_detail_thread_count_manager_return_threads = R"doc()doc";
+
+static const char *__doc_fiction_detail_thread_count_manager_thread_count_manager = R"doc()doc";
 
 static const char *__doc_fiction_detail_to_hex =
 R"doc(Utility function to transform a Cartesian tile into a hexagonal one.
