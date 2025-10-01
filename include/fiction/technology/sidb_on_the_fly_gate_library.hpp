@@ -399,11 +399,11 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, Ga
             return gates;
         };
 
-        const auto params = is_sidb_gate_design_impossible_params{
-            parameters.design_gate_params.operational_params.simulation_parameters};
-
         if constexpr (is_sidb_defect_surface_v<LytSkeleton>)
         {
+            const auto params = is_sidb_gate_design_impossible_params{
+                parameters.design_gate_params.operational_params.simulation_parameters};
+
             if (is_sidb_gate_design_impossible(skeleton, spec, params))
             {
                 throw gate_design_exception<tt, GateLyt>(tile, spec.front(), p);

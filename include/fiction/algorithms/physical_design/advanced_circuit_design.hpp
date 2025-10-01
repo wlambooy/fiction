@@ -310,25 +310,19 @@ class advanced_circuit_design_impl
                            std::unordered_set<mockturtle::node<GateLyt>>& visited, const size_t depth,
                            const size_t max_depth, gate_lyt_window_map& result) const
     {
-        // todo: check out symmetry
-
         if (depth == max_depth)
         {
             // Get tiles corresponding to path nodes
-            std::vector<tile<GateLyt>>                    tiles{};
-            std::unordered_set<mockturtle::node<GateLyt>> nodes{};
+            std::vector<tile<GateLyt>> tiles{};
             for (const auto& node : path)
             {
                 tiles.push_back(stats.gate_layout->get_tile(node));
-                nodes.insert(node);
             }
 
-            // filter duplicates (i.e.: RAB, RBA)
             for (const auto& [other_path, _] : result)
             {
-                if (path.front() == other_path.front() &&
-                    std::all_of(std::next(other_path.cbegin(), 1), other_path.cend(),
-                                [&](const auto& n) { return nodes.count(n) > 0; }))
+                if (std::all_of(other_path.cbegin(), other_path.cend(),
+                                [&](const auto& n) { return visited.count(n) > 0; }))
                 {
                     return;
                 }
@@ -377,19 +371,25 @@ class advanced_circuit_design_impl
         build_subcircuits(root_connections, path, visited, 0, max_depth, result);
     }
 
-    void collect_indices_to_trial(const std::vector<mockturtle::node<GateLyt>>& node_vec, uint64_t& num_trials,
+    void collect_indices_to_trial(const mockturtle::node<GateLyt>&              n,
+                                  const std::vector<mockturtle::node<GateLyt>>& node_vec, uint64_t& num_trials,
                                   foreach_node<std::vector<uint64_t>>& sampled_indices) const noexcept
     {
-        const size_t                       num_nodes = node_vec.size() - 1;  // skip the first node
+        const size_t                       num_nodes = node_vec.size() - 1;  // skip n
         std::vector<std::vector<uint64_t>> trialable_indices_per_node;
         std::vector<uint64_t>              bases;  // base for each position (number of valid indices per node)
 
         uint64_t num_possible_trials = 1;
-        for (auto node_vec_it = std::next(node_vec.cbegin(), 1); node_vec_it != node_vec.cend(); ++node_vec_it)
+        for (const mockturtle::node<GateLyt>& node : node_vec)
         {
+            if (node == n)
+            {
+                continue;
+            }
+
             std::vector<uint64_t> trialable_indices;
 
-            for (uint64_t i = 0; i < gate_designs.at(*node_vec_it).size(); ++i)
+            for (uint64_t i = 0; i < gate_designs.at(node).size(); ++i)
             {
                 trialable_indices.emplace_back(i);
             }
@@ -431,42 +431,51 @@ class advanced_circuit_design_impl
         }
 
         // Step 3: Populate sampled_indices per node
-        size_t node_idx = 1;  // skip first node
-        for (auto node_vec_it = std::next(node_vec.cbegin(), 1); node_vec_it != node_vec.cend();
-             ++node_vec_it, ++node_idx)
+        for (uint64_t node_idx = 0, other_node_idx = 0; node_idx < node_vec.size(); ++node_idx)
         {
+            if (node_vec.at(node_idx) == n)
+            {
+                continue;
+            }
+
             std::vector<uint64_t> node_trials;
             node_trials.reserve(actual_num_trials);
 
             for (const auto& combo : combinations)
             {
-                node_trials.emplace_back(combo[node_idx - 1]);  // offset by one
+                node_trials.emplace_back(combo[other_node_idx]);
             }
 
-            sampled_indices[*node_vec_it] = std::move(node_trials);
+            ++other_node_idx;
+
+            sampled_indices[node_vec[node_idx]] = std::move(node_trials);
         }
 
         num_trials = actual_num_trials;  // update trial count to actual number sampled
     }
 
     [[nodiscard]] uint64_t perform_trial(const sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>& sub_circuit,
+                                         const mockturtle::node<GateLyt>&                                   n,
                                          const std::vector<mockturtle::node<GateLyt>>&                      node_vec,
                                          foreach_node<std::vector<uint64_t>>&& indices_to_trial,
                                          const uint64_t trial_number, double& logic_match_average_over_inputs,
                                          CellLyt& cell_lyt_clone) const noexcept
     {
         // assign random gate design to other gates
-        for (typename std::vector<mockturtle::node<GateLyt>>::const_iterator node_vec_it =
-                 std::next(node_vec.cbegin(), 1);
-             node_vec_it != node_vec.cend(); ++node_vec_it)
+        for (const mockturtle::node<GateLyt>& node : node_vec)
         {
-            assert(trial_number < indices_to_trial.at(*node_vec_it).size() &&
+            if (node == n)
+            {
+                continue;
+            }
+
+            assert(trial_number < indices_to_trial.at(node).size() &&
                    "Trial number exceeds the number of available samples");
 
             // select a random gate implementation
             assign_gate<CellLyt, SkeletonGateLibrary, GateLyt>(
-                cell_lyt_clone, gate_designs.at(*node_vec_it).at(indices_to_trial.at(*node_vec_it).at(trial_number)),
-                *stats.gate_layout, stats.gate_layout->get_tile(*node_vec_it));
+                cell_lyt_clone, gate_designs.at(node).at(indices_to_trial.at(node).at(trial_number)),
+                *stats.gate_layout, stats.gate_layout->get_tile(node));
         }
 
         const sidb_cell_level_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary> c{cell_lyt_clone, sub_circuit};
@@ -565,14 +574,14 @@ class advanced_circuit_design_impl
                         // for each sub-circuit
                         for (const auto& [node_vec, gate_lyt_window] : gate_lyt_windows)
                         {
-                            if (n != node_vec.front())
+                            if (std::find(node_vec.cbegin(), node_vec.cend(), n) == node_vec.cend())
                             {
                                 continue;
                             }
 
                             uint64_t actual_num_trials = num_trials;
 
-                            collect_indices_to_trial(node_vec, actual_num_trials, sampled_indices);
+                            collect_indices_to_trial(n, node_vec, actual_num_trials, sampled_indices);
 
                             total_number_of_trials += actual_num_trials;
 
@@ -593,8 +602,8 @@ class advanced_circuit_design_impl
                                 CellLyt cell_lyt_clone = cell_lyt.clone();
 
                                 const uint64_t successful_input_combinations =
-                                    perform_trial(gate_lyt_window, node_vec, std::move(sampled_indices), current_trial,
-                                                  successful_trials, cell_lyt_clone);
+                                    perform_trial(gate_lyt_window, n, node_vec, std::move(sampled_indices),
+                                                  current_trial, successful_trials, cell_lyt_clone);
 
                                 if (global_pruning && successful_input_combinations == num_input_combinations)
                                 {
@@ -916,7 +925,7 @@ class advanced_circuit_design_impl
                     {
                         assert(node_vec.size() > 1 && "The connected nodes vector cannot be singleton");
 
-                        if (n != node_vec.front())
+                        if (std::find(node_vec.cbegin(), node_vec.cend(), n) == node_vec.cend())
                         {
                             continue;
                         }
