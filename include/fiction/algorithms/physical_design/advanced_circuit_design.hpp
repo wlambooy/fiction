@@ -7,7 +7,6 @@
 
 #include "fiction/algorithms/physical_design/exact.hpp"
 #include "fiction/algorithms/simulation/sidb/is_circuit_operational.hpp"
-#include "fiction/algorithms/simulation/sidb/is_operational.hpp"
 #include "fiction/technology/sidb_on_the_fly_gate_library.hpp"
 #include "fiction/technology/sidb_surface_analysis.hpp"
 #include "fiction/traits.hpp"
@@ -459,7 +458,8 @@ class advanced_circuit_design_impl
                                          const std::vector<mockturtle::node<GateLyt>>&                      node_vec,
                                          foreach_node<std::vector<uint64_t>>&& indices_to_trial,
                                          const uint64_t trial_number, double& logic_match_average_over_inputs,
-                                         CellLyt& cell_lyt_clone) const noexcept
+                                         CellLyt&                                     cell_lyt_clone,
+                                         const std::unique_ptr<thread_count_manager>& tcm) const noexcept
     {
         // assign random gate design to other gates
         for (const mockturtle::node<GateLyt>& node : node_vec)
@@ -483,7 +483,7 @@ class advanced_circuit_design_impl
         // sub-circuit logic match assessment
         const circuit_operational_assessment<CellLyt, local_external_potential_type::BOUNDED>& op_assessment =
             is_circuit_operational<CellLyt, GateLyt, local_external_potential_type::BOUNDED, SkeletonGateLibrary>(
-                c, operational_params);
+                c, operational_params, tcm);
 
         assert(op_assessment.assessment_per_input.has_value() && "ALL_INPUT_COMBINATIONS_ENUMERATED is not set.");
 
@@ -545,10 +545,13 @@ class advanced_circuit_design_impl
         std::vector<std::thread> threads{};
         threads.reserve(num_threads);
 
+        std::unique_ptr<thread_count_manager> tcm =
+            std::make_unique<thread_count_manager>(params.available_threads - num_threads);
+
         for (uint64_t i = 0; i < num_threads; ++i)
         {
             threads.emplace_back(
-                [&gate_fitness_assessments, &maybe_lyt, &lyt_mutex, num_input_combinations, &t, &n, i,
+                [&gate_fitness_assessments, &maybe_lyt, &lyt_mutex, &tcm, num_input_combinations, &t, &n, i,
 #if (PROGRESS_BARS)
                  &bar,
 #endif
@@ -603,7 +606,7 @@ class advanced_circuit_design_impl
 
                                 const uint64_t successful_input_combinations =
                                     perform_trial(gate_lyt_window, n, node_vec, std::move(sampled_indices),
-                                                  current_trial, successful_trials, cell_lyt_clone);
+                                                  current_trial, successful_trials, cell_lyt_clone, tcm);
 
                                 if (global_pruning && successful_input_combinations == num_input_combinations)
                                 {
@@ -637,6 +640,8 @@ class advanced_circuit_design_impl
                         gate_fitness_assessments[j].fitness    = successful_trial_ratio;
                         gate_fitness_assessments[j].selected   = false;
                     }
+
+                    tcm->return_threads(1);
                 });
         }
 

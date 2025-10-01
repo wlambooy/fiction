@@ -26,7 +26,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
-#include <set>
+#include <memory>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -173,6 +173,35 @@ struct circuit_operational_assessment
 namespace detail
 {
 
+struct thread_count_manager
+{
+    std::mutex mutex{};
+    uint64_t count;
+
+    explicit thread_count_manager(const uint64_t thread_count) : count{thread_count} {}
+
+    uint64_t reserve_threads() noexcept
+    {
+        const std::lock_guard lock{mutex};
+
+        const uint64_t reserved_threads = count;
+
+        count = 0;
+
+        return reserved_threads;
+    }
+
+    void return_threads(const uint64_t num) noexcept
+    {
+        if (num > 0)
+        {
+            const std::lock_guard lock{mutex};
+
+            count += num;
+        }
+    }
+};
+
 /**
  * Implementation of the `is_operational` algorithm for a given SiDB layout.
  *
@@ -202,9 +231,10 @@ class is_circuit_operational_impl
      */
     is_circuit_operational_impl(
         const sidb_cell_level_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>& implemented_bdl_circuit,
-        const is_circuit_operational_params&                                  params) :
+        const is_circuit_operational_params& params, const std::unique_ptr<thread_count_manager>& tcm) :
             implemented_circuit{implemented_bdl_circuit},
-            parameters{params}
+            parameters{params},
+            thread_counter{tcm}
     {}
     /**
      * Run the `is_operational` algorithm.
@@ -657,7 +687,8 @@ class is_circuit_operational_impl
     /**
      * Parameters for the `is_operational` algorithm.
      */
-    const is_circuit_operational_params& parameters;
+    const is_circuit_operational_params&  parameters;
+    const std::unique_ptr<thread_count_manager>& thread_counter;
 
     /**
      * This function conducts physical simulation of the given SiDB layout.
@@ -675,7 +706,7 @@ class is_circuit_operational_impl
         if constexpr (ExtPotType == local_external_potential_type::BOUNDED)
         {
             clustercomplete_params<cell<Lyt>, ExtPotType> cc_params{parameters.simulation_parameters};
-            cc_params.available_threads = 1;
+            cc_params.available_threads = 1 + (thread_counter ? thread_counter->reserve_threads() : 0);
 
             Lyt cell_lyt{};
 
@@ -737,7 +768,14 @@ class is_circuit_operational_impl
                 cc_params.local_external_potential[c] = bounds;
             }
 
-            return clustercomplete<Lyt, ExtPotType>(cell_lyt, cc_params);
+            const auto& sim_res = clustercomplete<Lyt, ExtPotType>(cell_lyt, cc_params);
+
+            if (thread_counter)
+            {
+                thread_counter->return_threads(cc_params.available_threads - 1);
+            }
+
+            return sim_res;
         }
         else
         {
@@ -823,7 +861,7 @@ template <typename Lyt, typename GateLyt,
           typename SkeletonGateLibrary>
 [[nodiscard]] circuit_operational_assessment<Lyt, ExtPotType>
 is_circuit_operational(const sidb_cell_level_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>& implemented_circuit,
-                       const is_circuit_operational_params&                                  params = {}) noexcept
+                       const is_circuit_operational_params& params = {}, const std::unique_ptr<detail::thread_count_manager>& tcm = nullptr) noexcept
 {
     static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout");
     static_assert(has_sidb_technology_v<Lyt>, "Lyt is not an SiDB layout");
@@ -837,7 +875,8 @@ is_circuit_operational(const sidb_cell_level_bdl_circuit<Lyt, GateLyt, SkeletonG
     assert(implemented_circuit.circuit.gate_layout.num_pos() * 2 == implemented_circuit.cell_layout.num_pos() &&
            "Each PO in the gate lyt needs to be implemented by a BDL pair");
 
-    detail::is_circuit_operational_impl<Lyt, GateLyt, ExtPotType, SkeletonGateLibrary> p{implemented_circuit, params};
+    detail::is_circuit_operational_impl<Lyt, GateLyt, ExtPotType, SkeletonGateLibrary> p{implemented_circuit, params,
+                                                                                         tcm};
 
     const auto& assessment_result = p.run();
 
