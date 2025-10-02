@@ -781,9 +781,10 @@ class advanced_circuit_design_impl
             // todo put before determining lb_ix/ub_ix?
             apply_quantization(gate_fitness_assessments, quantization_factor, success_rate_ceiling);
 
-            const uint64_t first_passing_ix =
-                ub_ix == gate_fitness_assessments.size() || ub_ix - threshold_ix >= threshold_ix - lb_ix ? lb_ix :
-                                                                                                           ub_ix;
+            const uint64_t first_passing_ix = ub_ix == gate_fitness_assessments.size() ||
+                                                      (lb_ix != 0 && ub_ix - threshold_ix >= threshold_ix - lb_ix) ?
+                                                  lb_ix :
+                                                  ub_ix;
 
             print_success_rate_distribution(gate_fitness_assessments, first_passing_ix);
 
