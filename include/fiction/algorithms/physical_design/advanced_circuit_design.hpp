@@ -686,6 +686,14 @@ class advanced_circuit_design_impl
         }
     }
 
+    struct DoubleComparator
+    {
+        bool operator()(const double lhs, const double rhs) const
+        {
+            return lhs + std::numeric_limits<double>::epsilon() < rhs;
+        }
+    };
+
     static void print_success_rate_distribution(const std::vector<gate_fitness_assessment>& fitness_assessments,
                                                 const uint64_t first_passing_gate_ix) noexcept
     {
@@ -699,7 +707,7 @@ class advanced_circuit_design_impl
                                      static_cast<double>(fitness_assessments.size()) * 100);
 
         // Map: success_rate -> count of gates with this rate
-        std::map<double, uint64_t> count_by_success_rate;
+        std::map<double, uint64_t, DoubleComparator> count_by_success_rate;
 
         // Count how many gates per success rate
         for (const gate_fitness_assessment& fitness_assessment : fitness_assessments)
