@@ -5388,6 +5388,10 @@ Parameter ``signals``:
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl = R"doc()doc";
 
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_DoubleComparator = R"doc()doc";
+
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_DoubleComparator_operator_call = R"doc()doc";
+
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_VectorHash = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_VectorHash_operator_call = R"doc()doc";
