@@ -25,8 +25,8 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <optional>
 #include <memory>
+#include <optional>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -176,7 +176,7 @@ namespace detail
 struct thread_count_manager
 {
     std::mutex mutex{};
-    uint64_t count;
+    uint64_t   count;
 
     explicit thread_count_manager(const uint64_t thread_count) : count{thread_count} {}
 
@@ -687,7 +687,7 @@ class is_circuit_operational_impl
     /**
      * Parameters for the `is_operational` algorithm.
      */
-    const is_circuit_operational_params&  parameters;
+    const is_circuit_operational_params&         parameters;
     const std::unique_ptr<thread_count_manager>& thread_counter;
 
     /**
@@ -861,7 +861,8 @@ template <typename Lyt, typename GateLyt,
           typename SkeletonGateLibrary>
 [[nodiscard]] circuit_operational_assessment<Lyt, ExtPotType>
 is_circuit_operational(const sidb_cell_level_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>& implemented_circuit,
-                       const is_circuit_operational_params& params = {}, const std::unique_ptr<detail::thread_count_manager>& tcm = nullptr) noexcept
+                       const is_circuit_operational_params&                                  params = {},
+                       const std::unique_ptr<detail::thread_count_manager>&                  tcm    = nullptr) noexcept
 {
     static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout");
     static_assert(has_sidb_technology_v<Lyt>, "Lyt is not an SiDB layout");

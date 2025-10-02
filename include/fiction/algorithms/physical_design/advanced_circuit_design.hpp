@@ -778,9 +778,12 @@ class advanced_circuit_design_impl
             repeated_attempt_number == params.maximum_repeated_discrimination_attempts ||
             attempt_number == params.maximum_discrimination_attempts)
         {
+            // todo put before determining lb_ix/ub_ix?
             apply_quantization(gate_fitness_assessments, quantization_factor, success_rate_ceiling);
 
-            const uint64_t first_passing_ix = ub_ix - threshold_ix >= threshold_ix - lb_ix ? lb_ix : ub_ix;
+            const uint64_t first_passing_ix =
+                ub_ix == gate_fitness_assessments.size() || ub_ix - threshold_ix >= threshold_ix - lb_ix ? lb_ix :
+                                                                                                           ub_ix;
 
             print_success_rate_distribution(gate_fitness_assessments, first_passing_ix);
 
@@ -1012,11 +1015,11 @@ class advanced_circuit_design_impl
     /**
      * todo
      */
-    std::optional<CellLyt> exhaustively_enumerate_gate_design_combinations() noexcept
+    std::optional<CellLyt> exhaustively_enumerate_gate_design_combinations() const noexcept
     {
         std::cout << "\n\nLOOKING FOR OPERATIONAL CIRCUIT EXHAUSTIVELY" << std::endl;
 
-        operational_params.print = true;  // after comment: reenable function constness
+        // operational_params.print = true;  // after comment: reenable function constness
 
         std::vector<uint64_t> indices(gate_designs.size(), 0);
 
