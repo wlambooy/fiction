@@ -38,6 +38,7 @@
 #include <cassert>
 #include <cstdint>
 #include <cstdlib>
+#include <stdexcept>
 #include <optional>
 #include <string>
 
@@ -191,6 +192,22 @@ int main(int argc, char* argv[])  // NOLINT
             // params.num_trials                   = 100;
             // params.selectivity                  = 0.93;
 
+            auto set_sub_circuit_design_mode = [](const char* arg)
+            {
+                if (strlen(arg) != 1)
+                {
+                    throw std::invalid_argument("invalid sub_circuit_mode");
+                }
+
+                switch (arg[0])
+                {
+                    case 'c': return advanced_circuit_design_params<lyt_t>::sub_circuit_creation_mode::CONNECTED_GATES;
+                    case 'n': return advanced_circuit_design_params<lyt_t>::sub_circuit_creation_mode::ADJACENT_GATES;
+                    case 'a': return advanced_circuit_design_params<lyt_t>::sub_circuit_creation_mode::ALL_GATES;
+                    default: throw std::invalid_argument("invalid sub_circuit_mode");
+                }
+            };
+
             if (argc == 3)
             {
                 design_gate_params.number_of_canvas_sidbs = std::stoull(argv[1]);
@@ -214,16 +231,7 @@ int main(int argc, char* argv[])  // NOLINT
                 params.selectivity                             = std::stod(argv[5]);
                 params.selectivity_tolerance                   = std::stod(argv[6]);
                 params.success_rate_ceiling                    = std::stod(argv[7]);
-
-                if (strncmp(argv[8], "e", 1) == 0)
-                {
-                    design_gate_params.design_mode =
-                        design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::EXHAUSTIVE;
-                }
-                else
-                {
-                    params.available_threads = std::stoull(argv[8]);
-                }
+                set_sub_circuit_design_mode(argv[8]);
             }
             else if (argc == 10)
             {
@@ -234,16 +242,16 @@ int main(int argc, char* argv[])  // NOLINT
                 params.selectivity                             = std::stod(argv[5]);
                 params.selectivity_tolerance                   = std::stod(argv[6]);
                 params.success_rate_ceiling                    = std::stod(argv[7]);
-                if (strncmp(argv[8], "e", 1) == 0)
+                set_sub_circuit_design_mode(argv[8]);
+
+                if (strncmp(argv[9], "e", 1) == 0)
                 {
                     design_gate_params.design_mode =
                         design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::EXHAUSTIVE;
-                    params.available_threads = std::stoull(argv[9]);
                 }
                 else
                 {
-                    params.available_threads             = std::stoull(argv[8]);
-                    design_gate_params.available_threads = std::stoull(argv[9]);
+                    params.available_threads = std::stoull(argv[9]);
                 }
             }
             else if (argc == 11)
@@ -255,16 +263,37 @@ int main(int argc, char* argv[])  // NOLINT
                 params.selectivity                             = std::stod(argv[5]);
                 params.selectivity_tolerance                   = std::stod(argv[6]);
                 params.success_rate_ceiling                    = std::stod(argv[7]);
-                params.available_threads                       = std::stoull(argv[9]);
-                design_gate_params.available_threads           = std::stoull(argv[10]);
+                set_sub_circuit_design_mode(argv[8]);
+                if (strncmp(argv[9], "e", 1) == 0)
+                {
+                    design_gate_params.design_mode =
+                        design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::EXHAUSTIVE;
+                    params.available_threads = std::stoull(argv[10]);
+                }
+                else
+                {
+                    params.available_threads             = std::stoull(argv[9]);
+                    design_gate_params.available_threads = std::stoull(argv[10]);
+                }
+            }
+            else if (argc == 12)
+            {
+                design_gate_params.number_of_canvas_sidbs      = std::stoull(argv[1]);
+                design_gate_params.maximum_number_of_solutions = std::stoull(argv[2]);
+                params.num_trials                              = std::stoull(argv[3]);
+                params.quantization_factor                     = std::stod(argv[4]);
+                params.selectivity                             = std::stod(argv[5]);
+                params.selectivity_tolerance                   = std::stod(argv[6]);
+                params.success_rate_ceiling                    = std::stod(argv[7]);
+                set_sub_circuit_design_mode(argv[8]);
+                params.available_threads             = std::stoull(argv[10]);
+                design_gate_params.available_threads = std::stoull(argv[11]);
 
                 design_gate_params.design_mode = design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::EXHAUSTIVE;
             }
-            else if (argc != 1)  // todo
+            else if (argc != 1)
             {
-                design_gate_params.maximum_number_of_solutions = std::stoull(argv[1]);
-                params.num_trials                              = std::stoull(argv[2]);
-                params.selectivity                             = std::stod(argv[3]);
+                throw std::invalid_argument("invalid sub_circuit_mode");
             }
 
             params.exact_design_parameters.scheme        = "ROW4";

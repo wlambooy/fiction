@@ -51,6 +51,12 @@ namespace fiction
 template <typename CellLyt>
 struct advanced_circuit_design_params
 {
+    enum sub_circuit_creation_mode
+    {
+        CONNECTED_GATES,
+        ADJACENT_GATES,
+        ALL_GATES
+    };
     /**
      * Parameters for the *exact* placement and routing algorithm.
      */
@@ -74,6 +80,8 @@ struct advanced_circuit_design_params
 
     uint64_t maximum_repeated_discrimination_attempts = 5;
     uint64_t maximum_discrimination_attempts          = 25;
+
+    sub_circuit_creation_mode sub_circuit_mode = sub_circuit_creation_mode::CONNECTED_GATES;
 
     uint64_t available_threads = std::thread::hardware_concurrency();
 };
@@ -131,9 +139,18 @@ class advanced_circuit_design_impl
         while (++circuit_design_level < num_gates_to_design - 1)
         {
             // prune by assessing gate design combinations for increasingly large sets of connected gates
-            prune_gate_designs(circuit_design_level,
-                               std::string_view{std::to_string(circuit_design_level) + " GATE CONNECTION" +
-                                                (circuit_design_level > 1 ? "S" : "")});
+            prune_gate_designs(
+                circuit_design_level,
+                std::string_view{
+                    std::to_string(circuit_design_level) +
+                    (params.sub_circuit_mode ==
+                             advanced_circuit_design_params<CellLyt>::sub_circuit_creation_mode::CONNECTED_GATES ?
+                         " CONNECTED GATE" :
+                     params.sub_circuit_mode ==
+                             advanced_circuit_design_params<CellLyt>::sub_circuit_creation_mode::ADJACENT_GATES ?
+                         " ADJACENT GATE" :
+                         "GATE") +
+                    (circuit_design_level > 1 ? "S" : "")});
         }
 
         // prune at the global level (all gates are considered together)
@@ -255,35 +272,64 @@ class advanced_circuit_design_impl
         }
     }
 
-    static void
-    collect_connecting_nodes(const GateLyt& gate_lyt, const tile<GateLyt>& t,
-                             std::vector<mockturtle::node<GateLyt>>& connecting_to_t,
-                             const std::optional<tile<GateLyt>>&     maybe_do_not_collect = std::nullopt) noexcept
+    void collect_nodes(const tile<GateLyt>&                           t,
+                       std::unordered_set<mockturtle::node<GateLyt>>& collected_nodes) const noexcept
     {
-        for (const auto& in_t : gate_lyt.incoming_data_flow(t))
+        switch (params.sub_circuit_mode)
         {
-            if (!gate_lyt.is_pi(gate_lyt.get_node(in_t)) &&
-                (!maybe_do_not_collect.has_value() || gate_lyt.below(in_t) != *maybe_do_not_collect))
-            {
-                connecting_to_t.emplace_back(gate_lyt.get_node(gate_lyt.below(in_t)));
-            }
-        }
+            case advanced_circuit_design_params<CellLyt>::sub_circuit_creation_mode::CONNECTED_GATES:
+                for (const auto& in_t : stats.gate_layout->incoming_data_flow(t))
+                {
+                    if (!stats.gate_layout->is_pi(stats.gate_layout->get_node(in_t)))
+                    {
+                        collected_nodes.emplace(stats.gate_layout->get_node(stats.gate_layout->below(in_t)));
+                    }
+                }
 
-        for (const auto& out_t : gate_lyt.outgoing_data_flow(t))
-        {
-            if (!gate_lyt.is_po(gate_lyt.get_node(out_t)) &&
-                (!maybe_do_not_collect.has_value() || gate_lyt.below(out_t) != *maybe_do_not_collect))
-            {
-                connecting_to_t.emplace_back(gate_lyt.get_node(gate_lyt.below(out_t)));
-            }
-        }
+                for (const auto& out_t : stats.gate_layout->outgoing_data_flow(t))
+                {
+                    if (!stats.gate_layout->is_po(stats.gate_layout->get_node(out_t)))
+                    {
+                        collected_nodes.emplace(stats.gate_layout->get_node(stats.gate_layout->below(out_t)));
+                    }
+                }
 
-        if (gate_lyt.is_wire_tile(t))
-        {
-            if (const auto above_t = gate_lyt.above(t); t != above_t && gate_lyt.is_wire_tile(above_t))
-            {
-                collect_connecting_nodes(gate_lyt, above_t, connecting_to_t, maybe_do_not_collect);
-            }
+                if (stats.gate_layout->is_wire_tile(t))
+                {
+                    if (const auto above_t = stats.gate_layout->above(t);
+                        t != above_t && stats.gate_layout->is_wire_tile(above_t))
+                    {
+                        collect_nodes(above_t, collected_nodes);
+                    }
+                }
+
+                break;
+            case advanced_circuit_design_params<CellLyt>::sub_circuit_creation_mode::ADJACENT_GATES:
+                stats.gate_layout->foreach_adjacent_coordinate(
+                    t,
+                    [&](const auto& c)
+                    {
+                        if (const auto& n = stats.gate_layout->get_node(c);
+                            !skip_physical_design_for_node(*stats.gate_layout, n))
+                        {
+                            collected_nodes.emplace(n);
+                        }
+                    });
+                break;
+            default:  // advanced_circuit_design_params<CellLyt>::sub_circuit_creation_mode::ALL_GATES:
+                stats.gate_layout->foreach_node(
+                    [&](const auto& n)
+                    {
+                        if (skip_physical_design_for_node(*stats.gate_layout, n))
+                        {
+                            return;
+                        }
+
+                        if (const tile<GateLyt>& other_t = stats.gate_layout->get_tile(n); other_t != t)
+                        {
+                            collected_nodes.emplace(n);
+                        }
+                    });
         }
     }
 
@@ -305,8 +351,8 @@ class advanced_circuit_design_impl
         std::unordered_map<std::vector<mockturtle::node<GateLyt>>,
                            sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>, VectorHash>;
 
-    void build_subcircuits(const std::vector<mockturtle::node<GateLyt>>   root_connections,
-                           std::vector<mockturtle::node<GateLyt>>&        path,
+    void build_subcircuits(const std::unordered_set<mockturtle::node<GateLyt>>& root_collection,
+                           std::vector<mockturtle::node<GateLyt>>&              path,
                            std::unordered_set<mockturtle::node<GateLyt>>& visited, const size_t depth,
                            const size_t max_depth, gate_lyt_window_map& result) const
     {
@@ -338,10 +384,10 @@ class advanced_circuit_design_impl
 
         const tile<GateLyt> current_tile = stats.gate_layout->get_tile(path.back());
 
-        std::vector<mockturtle::node<GateLyt>> connections = root_connections;
-        collect_connecting_nodes(*stats.gate_layout, current_tile, connections);
+        std::unordered_set<mockturtle::node<GateLyt>> collection = root_collection;
+        collect_nodes(current_tile, collection);
 
-        for (const auto& next_node : connections)
+        for (const auto& next_node : collection)
         {
             if (visited.count(next_node) > 0)
             {
@@ -351,7 +397,7 @@ class advanced_circuit_design_impl
             visited.insert(next_node);
             path.push_back(next_node);
 
-            build_subcircuits(root_connections, path, visited, depth + 1, max_depth, result);
+            build_subcircuits(root_collection, path, visited, depth + 1, max_depth, result);
 
             path.pop_back();
             visited.erase(next_node);
@@ -362,13 +408,13 @@ class advanced_circuit_design_impl
     {
         const tile<GateLyt> current_tile = stats.gate_layout->get_tile(root);
 
-        std::vector<mockturtle::node<GateLyt>> root_connections;
-        collect_connecting_nodes(*stats.gate_layout, current_tile, root_connections);
+        std::unordered_set<mockturtle::node<GateLyt>> root_collection;
+        collect_nodes(current_tile, root_collection);
 
         std::vector<mockturtle::node<GateLyt>>        path    = {root};
         std::unordered_set<mockturtle::node<GateLyt>> visited = {root};
 
-        build_subcircuits(root_connections, path, visited, 0, max_depth, result);
+        build_subcircuits(root_collection, path, visited, 0, max_depth, result);
     }
 
     void collect_indices_to_trial(const mockturtle::node<GateLyt>&              n,
