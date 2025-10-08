@@ -211,6 +211,8 @@ static const char *__doc_fiction_advanced_circuit_design_params_quantization_fac
 
 static const char *__doc_fiction_advanced_circuit_design_params_selectivity = R"doc()doc";
 
+static const char *__doc_fiction_advanced_circuit_design_params_selectivity_tolerance = R"doc()doc";
+
 static const char *__doc_fiction_advanced_circuit_design_params_success_rate_ceiling = R"doc()doc";
 
 static const char *__doc_fiction_advanced_circuit_design_stats = R"doc(Statistics for the on-the-fly defect-aware circuit design.)doc";
