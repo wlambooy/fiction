@@ -38,8 +38,8 @@
 #include <cassert>
 #include <cstdint>
 #include <cstdlib>
-#include <stdexcept>
 #include <optional>
+#include <stdexcept>
 #include <string>
 
 // This script conducts defect-aware placement and routing with defect-aware on-the-fly SiDB gate design. Thereby, SiDB

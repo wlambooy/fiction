@@ -796,7 +796,7 @@ class advanced_circuit_design_impl
         const double selectivity, const double quantization_factor, const double success_rate_ceiling,
         std::vector<typename SkeletonGateLibrary::fcn_gate>& remaining_gate_designs,
         std::vector<gate_fitness_assessment>& gate_fitness_assessments, uint64_t& min_bound, uint64_t& max_bound,
-        uint64_t& repeated_attempt_number, uint64_t& attempt_number, bool& fixpoint) const noexcept
+        uint64_t& repeated_attempt_number, uint64_t& attempt_number, bool& fixpoint, bool global_pruning) const noexcept
     {
         std::sort(gate_fitness_assessments.begin(), gate_fitness_assessments.end(),
                   [](const auto& lhs, const auto& rhs) { return lhs.fitness < rhs.fitness; });
@@ -850,7 +850,7 @@ class advanced_circuit_design_impl
             }
 
             if (static_cast<double>(first_passing_ix) / static_cast<double>(gate_fitness_assessments.size()) >
-                params.selectivity_tolerance * selectivity)
+                (global_pruning ? 1.0 : params.selectivity_tolerance) * selectivity)
             {
                 fixpoint = false;
             }
@@ -1028,7 +1028,7 @@ class advanced_circuit_design_impl
                         if (discriminate_fitness_assessments(selectivity, quantization_factor, success_rate_ceiling,
                                                              gate_designs[n], gate_fitness_assessments[n], min_bound,
                                                              max_bound, repeated_attempt_number, attempt_number,
-                                                             fixpoint))
+                                                             fixpoint, global_pruning))
                         {
                             break;
                         }
