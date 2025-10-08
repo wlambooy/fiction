@@ -231,7 +231,7 @@ int main(int argc, char* argv[])  // NOLINT
                 params.selectivity                             = std::stod(argv[5]);
                 params.selectivity_tolerance                   = std::stod(argv[6]);
                 params.success_rate_ceiling                    = std::stod(argv[7]);
-                set_sub_circuit_design_mode(argv[8]);
+                params.sub_circuit_mode = set_sub_circuit_design_mode(argv[8]);
             }
             else if (argc == 10)
             {
@@ -242,7 +242,7 @@ int main(int argc, char* argv[])  // NOLINT
                 params.selectivity                             = std::stod(argv[5]);
                 params.selectivity_tolerance                   = std::stod(argv[6]);
                 params.success_rate_ceiling                    = std::stod(argv[7]);
-                set_sub_circuit_design_mode(argv[8]);
+                params.sub_circuit_mode = set_sub_circuit_design_mode(argv[8]);
 
                 if (strncmp(argv[9], "e", 1) == 0)
                 {
@@ -263,7 +263,7 @@ int main(int argc, char* argv[])  // NOLINT
                 params.selectivity                             = std::stod(argv[5]);
                 params.selectivity_tolerance                   = std::stod(argv[6]);
                 params.success_rate_ceiling                    = std::stod(argv[7]);
-                set_sub_circuit_design_mode(argv[8]);
+                params.sub_circuit_mode = set_sub_circuit_design_mode(argv[8]);
                 if (strncmp(argv[9], "e", 1) == 0)
                 {
                     design_gate_params.design_mode =
@@ -285,7 +285,7 @@ int main(int argc, char* argv[])  // NOLINT
                 params.selectivity                             = std::stod(argv[5]);
                 params.selectivity_tolerance                   = std::stod(argv[6]);
                 params.success_rate_ceiling                    = std::stod(argv[7]);
-                set_sub_circuit_design_mode(argv[8]);
+                params.sub_circuit_mode = set_sub_circuit_design_mode(argv[8]);
                 params.available_threads             = std::stoull(argv[10]);
                 design_gate_params.available_threads = std::stoull(argv[11]);
 
