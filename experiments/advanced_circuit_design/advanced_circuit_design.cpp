@@ -85,7 +85,7 @@ int main(int argc, char* argv[])  // NOLINT
     // needs to be changed if a different skeleton is used.
     // design_gate_params.canvas = {{10, 8}, {31, 19}}; // new_mini_bestagon_august.sqd
     // design_gate_params.canvas = {{23, 12}, {37, 25}};  // original_bestagon.sqd
-    design_gate_params.canvas = {{8, 12}, {18, 19}};  // new_mini_bestagon.sqd
+    design_gate_params.canvas = {{8, 11}, {18, 20}};  // new_mini_bestagon.sqd
     // design_gate_params.canvas = {{5, 8}, {21, 21}};  // new_mini_bestagon.sqd
 
     design_gate_params.number_of_canvas_sidbs        = 4;
@@ -195,15 +195,6 @@ int main(int argc, char* argv[])  // NOLINT
             {
                 design_gate_params.number_of_canvas_sidbs = std::stoull(argv[1]);
             }
-            else if (argc == 7)
-            {
-                design_gate_params.number_of_canvas_sidbs      = std::stoull(argv[1]);
-                design_gate_params.maximum_number_of_solutions = std::stoull(argv[2]);
-                params.num_trials                              = std::stoull(argv[3]);
-                params.quantization_factor                     = std::stod(argv[4]);
-                params.selectivity                             = std::stod(argv[5]);
-                params.success_rate_ceiling                    = std::stod(argv[6]);
-            }
             else if (argc == 8)
             {
                 design_gate_params.number_of_canvas_sidbs      = std::stoull(argv[1]);
@@ -211,17 +202,8 @@ int main(int argc, char* argv[])  // NOLINT
                 params.num_trials                              = std::stoull(argv[3]);
                 params.quantization_factor                     = std::stod(argv[4]);
                 params.selectivity                             = std::stod(argv[5]);
-                params.success_rate_ceiling                    = std::stod(argv[6]);
-
-                if (strncmp(argv[7], "e", 1) == 0)
-                {
-                    design_gate_params.design_mode =
-                        design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::EXHAUSTIVE;
-                }
-                else
-                {
-                    params.available_threads = std::stoull(argv[7]);
-                }
+                params.selectivity_tolerance                   = std::stod(argv[6]);
+                params.success_rate_ceiling                    = std::stod(argv[7]);
             }
             else if (argc == 9)
             {
@@ -230,17 +212,17 @@ int main(int argc, char* argv[])  // NOLINT
                 params.num_trials                              = std::stoull(argv[3]);
                 params.quantization_factor                     = std::stod(argv[4]);
                 params.selectivity                             = std::stod(argv[5]);
-                params.success_rate_ceiling                    = std::stod(argv[6]);
-                if (strncmp(argv[7], "e", 1) == 0)
+                params.selectivity_tolerance                   = std::stod(argv[6]);
+                params.success_rate_ceiling                    = std::stod(argv[7]);
+
+                if (strncmp(argv[8], "e", 1) == 0)
                 {
                     design_gate_params.design_mode =
                         design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::EXHAUSTIVE;
-                    params.available_threads = std::stoull(argv[8]);
                 }
                 else
                 {
-                    params.available_threads             = std::stoull(argv[7]);
-                    design_gate_params.available_threads = std::stoull(argv[8]);
+                    params.available_threads = std::stoull(argv[8]);
                 }
             }
             else if (argc == 10)
@@ -250,9 +232,31 @@ int main(int argc, char* argv[])  // NOLINT
                 params.num_trials                              = std::stoull(argv[3]);
                 params.quantization_factor                     = std::stod(argv[4]);
                 params.selectivity                             = std::stod(argv[5]);
-                params.success_rate_ceiling                    = std::stod(argv[6]);
-                params.available_threads                       = std::stoull(argv[8]);
-                design_gate_params.available_threads           = std::stoull(argv[9]);
+                params.selectivity_tolerance                   = std::stod(argv[6]);
+                params.success_rate_ceiling                    = std::stod(argv[7]);
+                if (strncmp(argv[8], "e", 1) == 0)
+                {
+                    design_gate_params.design_mode =
+                        design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::EXHAUSTIVE;
+                    params.available_threads = std::stoull(argv[9]);
+                }
+                else
+                {
+                    params.available_threads             = std::stoull(argv[8]);
+                    design_gate_params.available_threads = std::stoull(argv[9]);
+                }
+            }
+            else if (argc == 11)
+            {
+                design_gate_params.number_of_canvas_sidbs      = std::stoull(argv[1]);
+                design_gate_params.maximum_number_of_solutions = std::stoull(argv[2]);
+                params.num_trials                              = std::stoull(argv[3]);
+                params.quantization_factor                     = std::stod(argv[4]);
+                params.selectivity                             = std::stod(argv[5]);
+                params.selectivity_tolerance                   = std::stod(argv[6]);
+                params.success_rate_ceiling                    = std::stod(argv[7]);
+                params.available_threads                       = std::stoull(argv[9]);
+                design_gate_params.available_threads           = std::stoull(argv[10]);
 
                 design_gate_params.design_mode = design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::EXHAUSTIVE;
             }

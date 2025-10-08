@@ -66,10 +66,11 @@ struct advanced_circuit_design_params
     std::optional<CellLyt> defect_surface{};
     double                 influence_radius_charged_defects = 15;
 
-    uint64_t num_trials           = 500;
-    double   quantization_factor  = 0.075;
-    double   selectivity          = 0.5;
-    double   success_rate_ceiling = 0.95;
+    uint64_t num_trials            = 500;
+    double   quantization_factor   = 0.075;
+    double   selectivity           = 0.5;
+    double   selectivity_tolerance = 0.5;
+    double   success_rate_ceiling  = 0.95;
 
     uint64_t maximum_repeated_discrimination_attempts = 5;
     uint64_t maximum_discrimination_attempts          = 25;
@@ -749,7 +750,7 @@ class advanced_circuit_design_impl
         const double selectivity, const double quantization_factor, const double success_rate_ceiling,
         std::vector<typename SkeletonGateLibrary::fcn_gate>& remaining_gate_designs,
         std::vector<gate_fitness_assessment>& gate_fitness_assessments, uint64_t& min_bound, uint64_t& max_bound,
-        uint64_t& repeated_attempt_number, uint64_t& attempt_number, bool& big_fixpoint) const noexcept
+        uint64_t& repeated_attempt_number, uint64_t& attempt_number, bool& fixpoint) const noexcept
     {
         std::sort(gate_fitness_assessments.begin(), gate_fitness_assessments.end(),
                   [](const auto& lhs, const auto& rhs) { return lhs.fitness < rhs.fitness; });
@@ -802,9 +803,10 @@ class advanced_circuit_design_impl
                 gate_fitness_assessments.at(gate_index).selected = true;
             }
 
-            if (first_passing_ix != 0)
+            if (static_cast<double>(first_passing_ix) / static_cast<double>(gate_fitness_assessments.size()) >
+                params.selectivity_tolerance * selectivity)
             {
-                big_fixpoint = false;
+                fixpoint = false;
             }
 
             return true;
@@ -910,11 +912,11 @@ class advanced_circuit_design_impl
 
         std::mutex lyt_mutex{};
 
-        bool big_fixpoint = false;
+        bool fixpoint = false;
 
-        while (!big_fixpoint)
+        while (!fixpoint)
         {
-            big_fixpoint = true;
+            fixpoint = true;
 
             stats.gate_layout->foreach_node(
                 [&](const auto& n)
@@ -980,7 +982,7 @@ class advanced_circuit_design_impl
                         if (discriminate_fitness_assessments(selectivity, quantization_factor, success_rate_ceiling,
                                                              gate_designs[n], gate_fitness_assessments[n], min_bound,
                                                              max_bound, repeated_attempt_number, attempt_number,
-                                                             big_fixpoint))
+                                                             fixpoint))
                         {
                             break;
                         }
