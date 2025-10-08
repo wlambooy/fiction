@@ -213,6 +213,16 @@ static const char *__doc_fiction_advanced_circuit_design_params_selectivity = R"
 
 static const char *__doc_fiction_advanced_circuit_design_params_selectivity_tolerance = R"doc()doc";
 
+static const char *__doc_fiction_advanced_circuit_design_params_sub_circuit_creation_mode = R"doc()doc";
+
+static const char *__doc_fiction_advanced_circuit_design_params_sub_circuit_creation_mode_ADJACENT_GATES = R"doc()doc";
+
+static const char *__doc_fiction_advanced_circuit_design_params_sub_circuit_creation_mode_ALL_GATES = R"doc()doc";
+
+static const char *__doc_fiction_advanced_circuit_design_params_sub_circuit_creation_mode_CONNECTED_GATES = R"doc()doc";
+
+static const char *__doc_fiction_advanced_circuit_design_params_sub_circuit_mode = R"doc()doc";
+
 static const char *__doc_fiction_advanced_circuit_design_params_success_rate_ceiling = R"doc()doc";
 
 static const char *__doc_fiction_advanced_circuit_design_stats = R"doc(Statistics for the on-the-fly defect-aware circuit design.)doc";
@@ -5410,11 +5420,11 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl_circuit = R
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_circuit_design_level = R"doc()doc";
 
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_collect_connecting_nodes = R"doc()doc";
-
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_collect_indices_to_trial = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_collect_initial_gate_designs = R"doc()doc";
+
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_collect_nodes = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_design_circuit = R"doc()doc";
 
