@@ -209,6 +209,14 @@ static const char *__doc_fiction_advanced_circuit_design_params_num_trials = R"d
 
 static const char *__doc_fiction_advanced_circuit_design_params_quantization_factor = R"doc()doc";
 
+static const char *__doc_fiction_advanced_circuit_design_params_quantization_mode = R"doc()doc";
+
+static const char *__doc_fiction_advanced_circuit_design_params_quantization_mode_SOFTEN_PRUNING = R"doc()doc";
+
+static const char *__doc_fiction_advanced_circuit_design_params_quantization_mode_VISUALIZATION_ONLY = R"doc()doc";
+
+static const char *__doc_fiction_advanced_circuit_design_params_quantize_mode = R"doc()doc";
+
 static const char *__doc_fiction_advanced_circuit_design_params_selectivity = R"doc()doc";
 
 static const char *__doc_fiction_advanced_circuit_design_params_selectivity_tolerance = R"doc()doc";
