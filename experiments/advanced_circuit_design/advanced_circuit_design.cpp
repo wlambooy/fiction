@@ -4,6 +4,7 @@
 
 #if (FICTION_Z3_SOLVER)
 
+#include "../alice/lib/cli11/CLI11.hpp"
 #include "fiction_experiments.hpp"
 
 #include <fiction/algorithms/network_transformation/technology_mapping.hpp>
@@ -52,6 +53,108 @@
 // #define USE_MINI
 
 namespace fs = std::filesystem;
+
+template <typename lyt_t>
+advanced_circuit_design_params<lyt_t> parse_params(const int argc, char** argv,
+                                                   design_sidb_gates_params<lyt_t>& design_gate_params,
+                                                   const std::optional<lyt_t>&      surface_lattice)
+{
+    advanced_circuit_design_params<lyt_t> params{};
+
+    CLI::App app{"SiDB circuit design parameters"};
+
+    // Gate design parameters
+    app.add_option("--canvas_sidbs", design_gate_params.number_of_canvas_sidbs, "Number of canvas SiDBs");
+    app.add_option("--max_gate_designs", design_gate_params.maximum_number_of_solutions,
+                   "Maximum number of initial gate designs");
+    app.add_option("--design_gate_threads", design_gate_params.available_threads, "Available gate design threads");
+
+    // Circuit design parameters
+    app.add_option("--num_trials", params.num_trials, "Number of trials");
+
+    std::string sub_circuit_mode = "c";
+    app.add_option("--sub_circuit_mode", sub_circuit_mode,
+                   "Sub-circuit mode: c (connected), n (neighboring/adjacent), a (all)");
+
+    app.add_option("--quantization_factor", params.quantization_factor, "Quantization factor");
+
+    std::string quantization_mode = "v";
+    app.add_option("--quantization_mode", quantization_mode, "Quantization mode: v (visual), p (pruning)");
+
+    app.add_option("--selectivity", params.selectivity, "Selectivity");
+    app.add_option("--selectivity_tolerance", params.selectivity_tolerance, "Selectivity tolerance");
+
+    app.add_option("--success_rate_ceiling", params.success_rate_ceiling, "Success rate ceiling");
+
+    app.add_option("--max_discrimination_attempts", params.maximum_discrimination_attempts,
+                   "Maximum number of discrimination attempts");
+    app.add_option("--max_repeated_discrimination_attempts", params.maximum_repeated_discrimination_attempts,
+                   "Maximum number of repeated discrimination attempts");
+
+    std::string gate_design_mode = "r";
+    app.add_option("--gate_design_mode", gate_design_mode, "Gate design mode: r (random), e (exhaustive)");
+
+    app.add_option("--threads", params.available_threads, "Available threads");
+
+    try
+    {
+        app.parse(argc, argv);
+    }
+    catch (const CLI::ParseError& e)
+    {
+        std::exit(app.exit(e));
+    }
+
+    std::transform(sub_circuit_mode.begin(), sub_circuit_mode.end(), sub_circuit_mode.begin(),
+                   [](const unsigned char c) { return std::tolower(c); });
+    std::transform(quantization_mode.begin(), quantization_mode.end(), quantization_mode.begin(),
+                   [](const unsigned char c) { return std::tolower(c); });
+    std::transform(gate_design_mode.begin(), gate_design_mode.end(), gate_design_mode.begin(),
+                   [](const unsigned char c) { return std::tolower(c); });
+
+    if (sub_circuit_mode == "connected" || sub_circuit_mode == "c")
+    {
+        params.sub_circuit_mode = decltype(params)::CONNECTED_GATES;
+    }
+    else if (sub_circuit_mode == "neighboring" || sub_circuit_mode == "adjacent" || sub_circuit_mode == "n")
+    {
+        params.sub_circuit_mode = decltype(params)::ADJACENT_GATES;
+    }
+    else if (sub_circuit_mode == "all" || sub_circuit_mode == "a")
+    {
+        params.sub_circuit_mode = decltype(params)::ALL_GATES;
+    }
+    else
+    {
+        throw std::invalid_argument("Invalid sub_mode: must be c, n, or a");
+    }
+
+    if (quantization_mode == "p" || quantization_mode == "pruning")
+    {
+        params.quantize_mode = advanced_circuit_design_params<lyt_t>::quantization_mode::SOFTEN_PRUNING;
+    }
+
+    if (gate_design_mode == "e" || gate_design_mode == "exhaustive")
+    {
+        design_gate_params.design_mode = design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::EXHAUSTIVE;
+    }
+
+    // Fixed/default parameters
+    params.exact_design_parameters.scheme        = "ROW4";
+    params.exact_design_parameters.crossings     = true;
+    params.exact_design_parameters.border_io     = false;
+    params.exact_design_parameters.desynchronize = true;
+    // params.exact_design_parameters.upper_bound_x = 4;          // 5 x 5 tiles
+    // params.exact_design_parameters.upper_bound_y = 4;          // 5 x 5 tiles
+    params.exact_design_parameters.upper_bound_x = 11;         // 5 x 5 tiles
+    params.exact_design_parameters.upper_bound_y = 30;         // 5 x 5 tiles
+    params.exact_design_parameters.timeout       = 3'600'000;  // 1h in ms
+
+    params.defect_surface     = surface_lattice;
+    params.design_gate_params = design_gate_params;
+
+    return params;
+}
 
 int main(int argc, char* argv[])  // NOLINT
 {
@@ -184,134 +287,8 @@ int main(int argc, char* argv[])  // NOLINT
             // perform technology mapping
             const auto mapped_network = technology_mapping(cut_xag, tech_map_params);
 
-            // write_
-
-            advanced_circuit_design_params<lyt_t> params{};
-
-            // design_gate_params.max_num_solutions = 200;
-            // params.num_trials                   = 100;
-            // params.selectivity                  = 0.93;
-
-            auto set_sub_circuit_design_mode = [](const char* arg)
-            {
-                if (strlen(arg) != 1)
-                {
-                    throw std::invalid_argument("invalid sub_circuit_mode");
-                }
-
-                switch (arg[0])
-                {
-                    case 'c': return advanced_circuit_design_params<lyt_t>::sub_circuit_creation_mode::CONNECTED_GATES;
-                    case 'n': return advanced_circuit_design_params<lyt_t>::sub_circuit_creation_mode::ADJACENT_GATES;
-                    case 'a': return advanced_circuit_design_params<lyt_t>::sub_circuit_creation_mode::ALL_GATES;
-                    default: throw std::invalid_argument("invalid sub_circuit_mode");
-                }
-            };
-
-            if (argc == 3)
-            {
-                design_gate_params.number_of_canvas_sidbs = std::stoull(argv[1]);
-            }
-            else if (argc == 8)
-            {
-                design_gate_params.number_of_canvas_sidbs      = std::stoull(argv[1]);
-                design_gate_params.maximum_number_of_solutions = std::stoull(argv[2]);
-                params.num_trials                              = std::stoull(argv[3]);
-                params.quantization_factor                     = std::stod(argv[4]);
-                params.selectivity                             = std::stod(argv[5]);
-                params.selectivity_tolerance                   = std::stod(argv[6]);
-                params.success_rate_ceiling                    = std::stod(argv[7]);
-            }
-            else if (argc == 9)
-            {
-                design_gate_params.number_of_canvas_sidbs      = std::stoull(argv[1]);
-                design_gate_params.maximum_number_of_solutions = std::stoull(argv[2]);
-                params.num_trials                              = std::stoull(argv[3]);
-                params.quantization_factor                     = std::stod(argv[4]);
-                params.selectivity                             = std::stod(argv[5]);
-                params.selectivity_tolerance                   = std::stod(argv[6]);
-                params.success_rate_ceiling                    = std::stod(argv[7]);
-                params.sub_circuit_mode = set_sub_circuit_design_mode(argv[8]);
-            }
-            else if (argc == 10)
-            {
-                design_gate_params.number_of_canvas_sidbs      = std::stoull(argv[1]);
-                design_gate_params.maximum_number_of_solutions = std::stoull(argv[2]);
-                params.num_trials                              = std::stoull(argv[3]);
-                params.quantization_factor                     = std::stod(argv[4]);
-                params.selectivity                             = std::stod(argv[5]);
-                params.selectivity_tolerance                   = std::stod(argv[6]);
-                params.success_rate_ceiling                    = std::stod(argv[7]);
-                params.sub_circuit_mode = set_sub_circuit_design_mode(argv[8]);
-
-                if (strncmp(argv[9], "e", 1) == 0)
-                {
-                    design_gate_params.design_mode =
-                        design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::EXHAUSTIVE;
-                }
-                else
-                {
-                    params.available_threads = std::stoull(argv[9]);
-                }
-            }
-            else if (argc == 11)
-            {
-                design_gate_params.number_of_canvas_sidbs      = std::stoull(argv[1]);
-                design_gate_params.maximum_number_of_solutions = std::stoull(argv[2]);
-                params.num_trials                              = std::stoull(argv[3]);
-                params.quantization_factor                     = std::stod(argv[4]);
-                params.selectivity                             = std::stod(argv[5]);
-                params.selectivity_tolerance                   = std::stod(argv[6]);
-                params.success_rate_ceiling                    = std::stod(argv[7]);
-                params.sub_circuit_mode = set_sub_circuit_design_mode(argv[8]);
-                if (strncmp(argv[9], "e", 1) == 0)
-                {
-                    design_gate_params.design_mode =
-                        design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::EXHAUSTIVE;
-                    params.available_threads = std::stoull(argv[10]);
-                }
-                else
-                {
-                    params.available_threads             = std::stoull(argv[9]);
-                    design_gate_params.available_threads = std::stoull(argv[10]);
-                }
-            }
-            else if (argc == 12)
-            {
-                design_gate_params.number_of_canvas_sidbs      = std::stoull(argv[1]);
-                design_gate_params.maximum_number_of_solutions = std::stoull(argv[2]);
-                params.num_trials                              = std::stoull(argv[3]);
-                params.quantization_factor                     = std::stod(argv[4]);
-                params.selectivity                             = std::stod(argv[5]);
-                params.selectivity_tolerance                   = std::stod(argv[6]);
-                params.success_rate_ceiling                    = std::stod(argv[7]);
-                params.sub_circuit_mode = set_sub_circuit_design_mode(argv[8]);
-                params.available_threads             = std::stoull(argv[10]);
-                design_gate_params.available_threads = std::stoull(argv[11]);
-
-                design_gate_params.design_mode = design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::EXHAUSTIVE;
-            }
-            else if (argc != 1)
-            {
-                throw std::invalid_argument("invalid sub_circuit_mode");
-            }
-
-            params.exact_design_parameters.scheme        = "ROW4";
-            params.exact_design_parameters.crossings     = true;
-            params.exact_design_parameters.border_io     = false;
-            params.exact_design_parameters.desynchronize = true;
-            // params.exact_design_parameters.upper_bound_x = 4;          // 5 x 5 tiles
-            // params.exact_design_parameters.upper_bound_y = 4;          // 5 x 5 tiles
-            params.exact_design_parameters.upper_bound_x = 11;         // 5 x 5 tiles
-            params.exact_design_parameters.upper_bound_y = 30;         // 5 x 5 tiles
-            params.exact_design_parameters.timeout       = 3'600'000;  // 1h in ms
-
-            params.defect_surface     = surface_lattice;
-            params.design_gate_params = design_gate_params;
-
-            // params.sidb_on_the_fly_gate_library_parameters.design_gate_params_complex_gates =
-            // 6;  //
-            // params.sidb_on_the_fly_gate_library_parameters.design_gate_params.number_of_sidbs;
+            const advanced_circuit_design_params<lyt_t> params =
+                parse_params<lyt_t>(argc, argv, design_gate_params, surface_lattice);
 
             advanced_circuit_design_stats<gate_lyt> st{};
 
@@ -327,26 +304,10 @@ int main(int argc, char* argv[])  // NOLINT
                 continue;
             }
 
-            // params.sidb_on_the_fly_gate_library_parameters.design_gate_params.operational_params.print = true;
-            //
-            // std::cout << "\nassessing operational status for each input combination of the generated circuit..."
-            //           << std::endl;
-            //
-            // if (is_operational(*lyt, params.spec,
-            //                    params.sidb_on_the_fly_gate_library_parameters.design_gate_params.operational_params)
-            //         .status != operational_status::OPERATIONAL)
-            // {
-            //     std::cout << "\n\nCIRCUIT OPERATION VERIFICATION COMPLETED: FAILED" << std::endl;
-            //
-            //     return EXIT_FAILURE;
-            // }
-            //
-            // std::cout << "\n\nCIRCUIT OPERATION VERIFICATION COMPLETED: PASS" << std::endl;
-
             // check equivalence
             const auto miter = mockturtle::miter<mockturtle::klut_network>(mapped_network, st.gate_layout.value());
             // const auto eq    = mockturtle::equivalence_checking(*miter);
-            // assert(eq.has_value());/
+            // assert(eq.has_value());
 
             // determine bounding box and exclude atomic defects
             const auto bb = bounding_box_2d<cell_lyt>(static_cast<cell_lyt>(*lyt));

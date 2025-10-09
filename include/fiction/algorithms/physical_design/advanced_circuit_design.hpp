@@ -57,6 +57,11 @@ struct advanced_circuit_design_params
         ADJACENT_GATES,
         ALL_GATES
     };
+    enum quantization_mode
+    {
+        VISUALIZATION_ONLY,
+        SOFTEN_PRUNING
+    };
     /**
      * Parameters for the *exact* placement and routing algorithm.
      */
@@ -72,14 +77,18 @@ struct advanced_circuit_design_params
     std::optional<CellLyt> defect_surface{};
     double                 influence_radius_charged_defects = 15;
 
-    uint64_t num_trials            = 500;
-    double   quantization_factor   = 0.075;
-    double   selectivity           = 0.5;
-    double   selectivity_tolerance = 0.5;
-    double   success_rate_ceiling  = 0.95;
+    uint64_t num_trials = 500;
+
+    double            quantization_factor = 0.075;
+    quantization_mode quantize_mode       = quantization_mode::SOFTEN_PRUNING;
+
+    double selectivity           = 0.5;
+    double selectivity_tolerance = 0.5;
+
+    double success_rate_ceiling = 0.95;
 
     uint64_t maximum_repeated_discrimination_attempts = 5;
-    uint64_t maximum_discrimination_attempts          = 25;
+    uint64_t maximum_discrimination_attempts          = 15;
 
     sub_circuit_creation_mode sub_circuit_mode = sub_circuit_creation_mode::CONNECTED_GATES;
 
@@ -113,7 +122,7 @@ template <typename Ntk, typename CellLyt, typename GateLyt, typename SkeletonGat
 class advanced_circuit_design_impl
 {
   public:
-    advanced_circuit_design_impl(const Ntk& ntk, advanced_circuit_design_params<CellLyt>& design_params,
+    advanced_circuit_design_impl(const Ntk& ntk, const advanced_circuit_design_params<CellLyt>& design_params,
                                  const GateLyt& tiling, advanced_circuit_design_stats<GateLyt>& st) :
             lattice_tiling{tiling},
             network{ntk},
@@ -142,15 +151,14 @@ class advanced_circuit_design_impl
             prune_gate_designs(
                 circuit_design_level,
                 std::string_view{
-                    std::to_string(circuit_design_level) +
+                    std::to_string(circuit_design_level + 1) +
                     (params.sub_circuit_mode ==
                              advanced_circuit_design_params<CellLyt>::sub_circuit_creation_mode::CONNECTED_GATES ?
                          " CONNECTED GATE" :
                      params.sub_circuit_mode ==
                              advanced_circuit_design_params<CellLyt>::sub_circuit_creation_mode::ADJACENT_GATES ?
                          " ADJACENT GATE" :
-                         "GATE") +
-                    (circuit_design_level > 1 ? "S" : "")});
+                         "GATES")});
         }
 
         // prune at the global level (all gates are considered together)
@@ -226,7 +234,7 @@ class advanced_circuit_design_impl
     /**
      * Parameters for the on-the-fly circuit design.
      */
-    advanced_circuit_design_params<CellLyt> params{};
+    const advanced_circuit_design_params<CellLyt> params{};
     /**
      * Statistics for the on-the-fly circuit design.
      */
@@ -793,10 +801,10 @@ class advanced_circuit_design_impl
     }
 
     [[nodiscard]] bool discriminate_fitness_assessments(
-        const double selectivity, const double quantization_factor, const double success_rate_ceiling,
-        std::vector<typename SkeletonGateLibrary::fcn_gate>& remaining_gate_designs,
+        bool global_pruning, const double selectivity, const double quantization_factor,
+        const double success_rate_ceiling, std::vector<typename SkeletonGateLibrary::fcn_gate>& remaining_gate_designs,
         std::vector<gate_fitness_assessment>& gate_fitness_assessments, uint64_t& min_bound, uint64_t& max_bound,
-        uint64_t& repeated_attempt_number, uint64_t& attempt_number, bool& fixpoint, bool global_pruning) const noexcept
+        uint64_t& repeated_attempt_number, uint64_t& attempt_number, bool& completed_assessment) const noexcept
     {
         std::sort(gate_fitness_assessments.begin(), gate_fitness_assessments.end(),
                   [](const auto& lhs, const auto& rhs) { return lhs.fitness < rhs.fitness; });
@@ -815,6 +823,11 @@ class advanced_circuit_design_impl
             --threshold_ix;
         }
 
+        if (params.quantize_mode == advanced_circuit_design_params<CellLyt>::quantization_mode::SOFTEN_PRUNING)
+        {
+            apply_quantization(gate_fitness_assessments, quantization_factor, success_rate_ceiling);
+        }
+
         const auto lb_ix = static_cast<uint64_t>(std::distance(
             gate_fitness_assessments.cbegin(),
             std::lower_bound(gate_fitness_assessments.cbegin(), gate_fitness_assessments.cend(),
@@ -830,17 +843,19 @@ class advanced_circuit_design_impl
                              { return val + std::numeric_limits<double>::epsilon() < fitness_assessment.fitness; })));
 
         if (ub_ix - lb_ix == 1 || threshold_val_is_above_success_rate_ceiling(0) ||
-            repeated_attempt_number == params.maximum_repeated_discrimination_attempts ||
-            attempt_number == params.maximum_discrimination_attempts)
+            repeated_attempt_number >= params.maximum_repeated_discrimination_attempts ||
+            attempt_number >= params.maximum_discrimination_attempts)
         {
-            // todo put before determining lb_ix/ub_ix?
-            apply_quantization(gate_fitness_assessments, quantization_factor, success_rate_ceiling);
-
             const uint64_t first_passing_ix = ub_ix == gate_fitness_assessments.size() ||
                                                       threshold_val_is_above_success_rate_ceiling(0) ||
                                                       (lb_ix != 0 && ub_ix - threshold_ix >= threshold_ix - lb_ix) ?
                                                   lb_ix :
                                                   ub_ix;
+
+            if (params.quantize_mode == advanced_circuit_design_params<CellLyt>::quantization_mode::VISUALIZATION_ONLY)
+            {
+                apply_quantization(gate_fitness_assessments, quantization_factor, success_rate_ceiling);
+            }
 
             print_success_rate_distribution(gate_fitness_assessments, first_passing_ix);
 
@@ -849,10 +864,12 @@ class advanced_circuit_design_impl
                 gate_fitness_assessments.at(gate_index).selected = true;
             }
 
-            if (static_cast<double>(first_passing_ix) / static_cast<double>(gate_fitness_assessments.size()) >
+            if (static_cast<double>(first_passing_ix) / static_cast<double>(gate_fitness_assessments.size()) <
                 (global_pruning ? 1.0 : params.selectivity_tolerance) * selectivity)
             {
-                fixpoint = false;
+                std::cout << "ASSESSMENT COMPLETED\n" << std::endl;
+
+                completed_assessment = true;
             }
 
             return true;
@@ -897,7 +914,7 @@ class advanced_circuit_design_impl
 
         if (min_bound != lb_ix || max_bound != ub_ix)
         {
-            repeated_attempt_number = 0;
+            repeated_attempt_number = 1;
         }
         else
         {
@@ -945,6 +962,8 @@ class advanced_circuit_design_impl
 
         foreach_node<std::vector<gate_fitness_assessment>> gate_fitness_assessments{};
 
+        foreach_node<bool> completed_assessment{};
+
         stats.gate_layout->foreach_node(
             [&](const auto& n)
             {
@@ -953,21 +972,29 @@ class advanced_circuit_design_impl
                     return;
                 }
 
+                completed_assessment[n] = gate_designs.at(n).size() == 1;
+
                 build_subcircuits_from_root(n, level, gate_lyt_windows);
             });
 
         std::mutex lyt_mutex{};
 
-        bool fixpoint = false;
-
-        while (!fixpoint)
+        while (!std::all_of(completed_assessment.cbegin(), completed_assessment.cend(),
+                            [](const auto& kv) { return kv.second; }))
         {
-            fixpoint = true;
-
             stats.gate_layout->foreach_node(
                 [&](const auto& n)
                 {
-                    if (!skip_physical_design_for_node(*stats.gate_layout, n))
+                    if (skip_physical_design_for_node(*stats.gate_layout, n))
+                    {
+                        return;
+                    }
+
+                    if (completed_assessment.at(n))
+                    {
+                        gate_fitness_assessments[n].clear();
+                    }
+                    else
                     {
                         gate_fitness_assessments[n].resize(gate_designs.at(n).size());
                     }
@@ -978,7 +1005,7 @@ class advanced_circuit_design_impl
             stats.gate_layout->foreach_node(
                 [&](const auto& n)
                 {
-                    if (skip_physical_design_for_node(*stats.gate_layout, n) || gate_designs.at(n).size() == 1)
+                    if (skip_physical_design_for_node(*stats.gate_layout, n) || completed_assessment.at(n))
                     {
                         return;
                     }
@@ -1008,8 +1035,8 @@ class advanced_circuit_design_impl
                     uint64_t min_bound = 0;                          // inclusive
                     uint64_t max_bound = gate_designs.at(n).size();  // exclusive
 
-                    uint64_t repeated_attempt_number = 0;
-                    uint64_t attempt_number          = 0;
+                    uint64_t repeated_attempt_number = 1;
+                    uint64_t attempt_number          = 1;
 
                     while (true)
                     {
@@ -1025,10 +1052,10 @@ class advanced_circuit_design_impl
                             }
                         }
 
-                        if (discriminate_fitness_assessments(selectivity, quantization_factor, success_rate_ceiling,
-                                                             gate_designs[n], gate_fitness_assessments[n], min_bound,
-                                                             max_bound, repeated_attempt_number, attempt_number,
-                                                             fixpoint, global_pruning))
+                        if (discriminate_fitness_assessments(
+                                global_pruning, selectivity, quantization_factor, success_rate_ceiling, gate_designs[n],
+                                gate_fitness_assessments[n], min_bound, max_bound, repeated_attempt_number,
+                                attempt_number, completed_assessment[n]))
                         {
                             break;
                         }
@@ -1048,7 +1075,7 @@ class advanced_circuit_design_impl
             stats.gate_layout->foreach_node(
                 [&](const auto& n)
                 {
-                    if (skip_physical_design_for_node(*stats.gate_layout, n) || gate_designs.at(n).size() == 1)
+                    if (skip_physical_design_for_node(*stats.gate_layout, n) || gate_fitness_assessments.at(n).empty())
                     {
                         return;
                     }
@@ -1152,8 +1179,8 @@ class advanced_circuit_design_impl
  */
 template <typename Ntk, typename CellLyt, typename GateLyt, typename SkeletonGateLibrary>
 [[nodiscard]] std::optional<CellLyt> advanced_circuit_design(const Ntk& ntk, const GateLyt& lattice_tiling,
-                                                             advanced_circuit_design_params<CellLyt>& params = {},
-                                                             advanced_circuit_design_stats<GateLyt>*  stats  = nullptr)
+                                                             const advanced_circuit_design_params<CellLyt>& params = {},
+                                                             advanced_circuit_design_stats<GateLyt>* stats = nullptr)
 {
     static_assert(is_gate_level_layout_v<GateLyt>, "GateLyt is not a gate-level layout");
     static_assert(is_hexagonal_layout_v<GateLyt>, "GateLyt is not a hexagonal");
