@@ -937,12 +937,7 @@ class advanced_circuit_design_impl
     {
         std::cout << "\n\nSTARTING TO PRUNE GATE DESIGNS\tLEVEL: " << level_str << std::endl;
 
-        bool global_pruning = false;
-
-        if (level_str == "GLOBAL")
-        {
-            global_pruning = true;
-        }
+        const bool global_pruning = level_str == "GLOBAL";
 
         std::optional<CellLyt> maybe_lyt{};
 

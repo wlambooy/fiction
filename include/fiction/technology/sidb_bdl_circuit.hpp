@@ -12,9 +12,7 @@
 #include "fiction/technology/charge_distribution_surface.hpp"
 #include "fiction/technology/sidb_charge_state.hpp"
 #include "fiction/traits.hpp"
-#include "kitty/print.hpp"
 
-#include <array>
 #include <set>
 #include <utility>
 #include <vector>
@@ -140,24 +138,6 @@ class sidb_bdl_circuit
         return total;
     }
 
-  private:
-    [[nodiscard]] static std::vector<cell<CellLyt>> get_output_perturbers(const CellLyt& skeleton,
-                                                                          const GateLyt& gate_lyt)
-    {
-        std::vector<cell<CellLyt>> output_perturbers{};
-        output_perturbers.reserve(gate_lyt.num_pos());
-
-        skeleton.foreach_cell(
-            [&](const cell<CellLyt>& c)
-            {
-                if (skeleton.get_cell_type(c) == sidb_technology::cell_type::OUTPUT_PERTURBER)
-                {
-                    output_perturbers.push_back(c);
-                }
-            });
-
-        return output_perturbers;
-    }
     /**
      *
      */
@@ -395,6 +375,25 @@ class sidb_bdl_circuit
 
         return gate_connections;
     }
+
+  private:
+    [[nodiscard]] static std::vector<cell<CellLyt>> get_output_perturbers(const CellLyt& skeleton,
+                                                                          const GateLyt& gate_lyt)
+    {
+        std::vector<cell<CellLyt>> output_perturbers{};
+        output_perturbers.reserve(gate_lyt.num_pos());
+
+        skeleton.foreach_cell(
+            [&](const cell<CellLyt>& c)
+            {
+                if (skeleton.get_cell_type(c) == sidb_technology::cell_type::OUTPUT_PERTURBER)
+                {
+                    output_perturbers.push_back(c);
+                }
+            });
+
+        return output_perturbers;
+    }
 };
 
 template <typename CellLyt, typename GateLyt, typename SkeletonGateLibrary>
@@ -410,7 +409,7 @@ class sidb_bdl_sub_circuit
             num_bdl_pairs{super_circuit.num_bdl_pairs},
             input_bdl_pairs{super_circuit.input_bdl_pairs},
             num_inputs{super_circuit.num_inputs},
-            gate_connections{filter_gate_connections_from_super_circuit(super_circuit, bdl_wires)}
+            gate_connections{super_circuit.gate_connections}
     {}
 
     explicit sidb_bdl_sub_circuit(const sidb_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>& bdl_super_circuit,
@@ -425,7 +424,7 @@ class sidb_bdl_sub_circuit
             input_bdl_pairs{detect_bdl_pairs<CellLyt>(skeleton, sidb_technology::cell_type::INPUT,
                                                       bdl_wire_params.bdl_pairs_params)},
             num_inputs{input_bdl_pairs.size()},
-            gate_connections{filter_gate_connections_from_super_circuit(super_circuit, bdl_wires)},
+            gate_connections{sidb_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>::get_gate_connections(bdl_wires, skeleton, gate_layout)},// filter_gate_connections_from_super_circuit(super_circuit, bdl_wires)},
             gate_tile{this_tile},
             super_circuit_simulated_bdl_wires_per_input{simulate_bdl_wires_of_super_circuit(
                 super_circuit, tiles, input_bdl_pairs, num_inputs,
@@ -603,41 +602,6 @@ class sidb_bdl_sub_circuit
         }
 
         return gate_lyt_window;
-    }
-
-    [[nodiscard]] static std::vector<std::pair<tile<GateLyt>, tile<GateLyt>>>
-    filter_gate_connections_from_super_circuit(
-        const sidb_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>& super_circuit,
-        const std::vector<bdl_wire<CellLyt>>&                          sub_circuit_bdl_wires) noexcept
-    {
-        assert(!sub_circuit_bdl_wires.empty() && "There are no BDL wires in the sub-circuit.");
-
-        std::vector<std::pair<tile<GateLyt>, tile<GateLyt>>> sub_circuit_gate_connections{};
-        sub_circuit_gate_connections.reserve(sub_circuit_bdl_wires.size());
-
-        for (const bdl_wire<CellLyt>& sub_circuit_bdl_wire : sub_circuit_bdl_wires)
-        {
-            uint64_t super_circuit_bdl_wires_ix = 0;
-
-            for (; super_circuit_bdl_wires_ix < super_circuit.bdl_wires.size(); ++super_circuit_bdl_wires_ix)
-            {
-                if (sub_circuit_bdl_wire.pairs.front().upper ==
-                        super_circuit.bdl_wires.at(super_circuit_bdl_wires_ix).pairs.front().upper ||
-                    sub_circuit_bdl_wire.pairs.back().upper ==
-                        super_circuit.bdl_wires.at(super_circuit_bdl_wires_ix).pairs.back().upper)
-                {
-                    sub_circuit_gate_connections.push_back(
-                        super_circuit.gate_connections.at(super_circuit_bdl_wires_ix));
-
-                    break;
-                }
-            }
-
-            assert(super_circuit_bdl_wires_ix < super_circuit.bdl_wires.size() &&
-                   "Sub-circuit BDL wire could not be matched to one of the super circuit.");
-        }
-
-        return sub_circuit_gate_connections;
     }
 
     [[nodiscard]] static std::vector<std::vector<std::optional<charge_distribution_surface<CellLyt>>>>
