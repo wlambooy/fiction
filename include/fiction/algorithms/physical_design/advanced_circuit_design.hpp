@@ -864,7 +864,7 @@ class advanced_circuit_design_impl
                 gate_fitness_assessments.at(gate_index).selected = true;
             }
 
-            if ((global_pruning && first_passing_ix == 0) ||
+            if ((global_pruning && first_passing_ix == gate_fitness_assessments.size() - 1) ||
                 static_cast<double>(first_passing_ix) / static_cast<double>(gate_fitness_assessments.size()) <
                     params.selectivity_tolerance * selectivity)
             {
