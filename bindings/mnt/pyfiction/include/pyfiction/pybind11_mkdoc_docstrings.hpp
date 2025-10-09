@@ -20519,8 +20519,6 @@ static const char *__doc_fiction_sidb_bdl_circuit_gate_layout = R"doc(SiDB gate-
 
 static const char *__doc_fiction_sidb_bdl_circuit_get_number_of_bdl_pairs = R"doc()doc";
 
-static const char *__doc_fiction_sidb_bdl_circuit_get_output_perturbers = R"doc()doc";
-
 static const char *__doc_fiction_sidb_bdl_circuit_input_bdl_pairs = R"doc()doc";
 
 static const char *__doc_fiction_sidb_bdl_circuit_make_skeleton_with_canvasses = R"doc()doc";
