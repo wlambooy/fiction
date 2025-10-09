@@ -159,12 +159,6 @@ class sidb_bdl_circuit
 
             for (const bdl_pair<cell<CellLyt>>& pair : wire.pairs)
             {
-                // std::cout << "\ncell: " << pair.upper.x << " " << pair.upper.y << " at tile "
-                //           << lyt.get_cell_tile(pair.upper).x << ',' << lyt.get_cell_tile(pair.upper).y << ','
-                //           << lyt.get_cell_tile(pair.upper).z << std::endl;
-                // std::cout << "cell: " << pair.lower.x << " " << pair.lower.y << " at tile "
-                //           << lyt.get_cell_tile(pair.lower).x << ',' << lyt.get_cell_tile(pair.lower).y << ','
-                //           << lyt.get_cell_tile(pair.lower).z << std::endl;
                 assert(lyt.get_cell_tile(pair.upper) == lyt.get_cell_tile(pair.lower));
 
                 tiles_in_wire.insert(
@@ -172,8 +166,6 @@ class sidb_bdl_circuit
                     {
                         const tile<GateLyt> t = {this_t.x, this_t.y};
                         auto                z = 0;
-
-                        // std::cout << "current tile: " << t.x << ", " << t.y << std::endl;
 
                         if (const auto at = gate_lyt.above(t); at != t && gate_lyt.is_wire_tile(at))
                         {
@@ -257,8 +249,6 @@ class sidb_bdl_circuit
                             }
                         }
 
-                        // std::cout << "z: " << z << std::endl;
-
                         return tile<GateLyt>{t.x, t.y, z};
                     }(lyt.get_cell_tile(pair.upper)));
             }
@@ -270,13 +260,8 @@ class sidb_bdl_circuit
 
             const auto get_tile_pair = [&]
             {
-                // std::cout << "\ntile in wire: " << tiles_in_wire.cbegin()->x << ',' << tiles_in_wire.cbegin()->y <<
-                // ','
-                // << tiles_in_wire.cbegin()->z << std::endl;
                 if (tiles_in_wire.size() == 2)
                 {
-                    // std::cout << "tile TO wire: " << tiles_in_wire.crbegin()->x << ',' << tiles_in_wire.crbegin()->y
-                    // << ',' << tiles_in_wire.crbegin()->z << std::endl;
                     const tile<GateLyt>& first_tile  = *tiles_in_wire.cbegin();
                     const tile<GateLyt>& second_tile = *tiles_in_wire.crbegin();
 
@@ -305,16 +290,13 @@ class sidb_bdl_circuit
 
                     auto z = 0;
 
-                    const std::vector<tile<GateLyt>>& incoming_tiles = gate_lyt.incoming_data_flow(tile_in_wire);
-
-                    if (incoming_tiles.size() == 1)
+                    if (const std::vector<tile<GateLyt>>& incoming_tiles = gate_lyt.incoming_data_flow(tile_in_wire);
+                        incoming_tiles.size() == 1)
                     {
                         z = incoming_tiles.front().z;
                     }
                     else if (incoming_tiles.size() == 2)
                     {
-                        // assert(incoming_tiles.size() == 2 && "fan in must be either 1 or 2");
-
                         if (right_to_left)
                         {
                             z = incoming_tiles.front().x < incoming_tiles.back().x ? incoming_tiles.back().z :
@@ -327,7 +309,6 @@ class sidb_bdl_circuit
                         }
                     }
 
-                    // std::cout << "tile INP wire: " << upper_tile.x << ',' << upper_tile.y << ',' << z << std::endl;
                     return std::make_pair(tile<GateLyt>{upper_tile.x, upper_tile.y, z}, tile_in_wire);
                 }
 
@@ -344,8 +325,6 @@ class sidb_bdl_circuit
                 }
                 else if (outgoing_tiles.size() == 2)
                 {
-                    // assert(outgoing_tiles.size() == 2 && "fan out must be either 1 or 2");
-
                     if (right_to_left)
                     {
                         z = outgoing_tiles.front().x < outgoing_tiles.back().x ? outgoing_tiles.front().z :
@@ -357,18 +336,11 @@ class sidb_bdl_circuit
                                                                                  outgoing_tiles.front().z;
                     }
                 }
-                // std::cout << "tile OUT wire: " << lower_tile.x << ',' << lower_tile.y << ',' << z << std::endl;
+
                 return std::make_pair(tile_in_wire, tile<GateLyt>{lower_tile.x, lower_tile.y, z});
             };
 
             std::pair<tile<GateLyt>, tile<GateLyt>> tile_pair_at_gate_connection = get_tile_pair();
-            // std::cout << fmt::format("tile pair at gate connection: {},{},{}   {},{},{}",
-            //                          tile_pair_at_gate_connection.first.x, tile_pair_at_gate_connection.first.y,
-            //                          tile_pair_at_gate_connection.first.z, tile_pair_at_gate_connection.second.x,
-            //                          tile_pair_at_gate_connection.second.y, tile_pair_at_gate_connection.second.z)
-            //           << std::endl;
-            // assert(tile_pair_at_gate_connection.first.y == tile_pair_at_gate_connection.second.y - 1 &&
-            //        "tiles are not represent a row clocked gate connection"); todo
 
             gate_connections.push_back(std::move(tile_pair_at_gate_connection));
         }
@@ -424,7 +396,8 @@ class sidb_bdl_sub_circuit
             input_bdl_pairs{detect_bdl_pairs<CellLyt>(skeleton, sidb_technology::cell_type::INPUT,
                                                       bdl_wire_params.bdl_pairs_params)},
             num_inputs{input_bdl_pairs.size()},
-            gate_connections{sidb_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>::get_gate_connections(bdl_wires, skeleton, gate_layout)},// filter_gate_connections_from_super_circuit(super_circuit, bdl_wires)},
+            gate_connections{sidb_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>::get_gate_connections(
+                bdl_wires, skeleton, gate_layout)},
             gate_tile{this_tile},
             super_circuit_simulated_bdl_wires_per_input{simulate_bdl_wires_of_super_circuit(
                 super_circuit, tiles, input_bdl_pairs, num_inputs,
@@ -466,7 +439,8 @@ class sidb_bdl_sub_circuit
             *get_simulated_bdl_wires_for_input_indices(sub_circuit_input_index, super_circuit_input_index).get();
 
         typename charge_distribution_surface<
-            CellLyt, local_external_potential_type::BOUNDED>::local_external_potential_map_t& pot_from_super_circuit = sub_circuit_charge_distribution.get_local_external_potentials_reference();
+            CellLyt, local_external_potential_type::BOUNDED>::local_external_potential_map_t& pot_from_super_circuit =
+            sub_circuit_charge_distribution.get_local_external_potentials_reference();
 
         for (const cell<CellLyt>& c : sub_circuit_charge_distribution.get_sidb_order())
         {
