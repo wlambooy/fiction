@@ -154,10 +154,10 @@ class advanced_circuit_design_impl
                     std::to_string(circuit_design_level + 1) +
                     (params.sub_circuit_mode ==
                              advanced_circuit_design_params<CellLyt>::sub_circuit_creation_mode::CONNECTED_GATES ?
-                         " CONNECTED GATE" :
+                         " CONNECTED GATES" :
                      params.sub_circuit_mode ==
                              advanced_circuit_design_params<CellLyt>::sub_circuit_creation_mode::ADJACENT_GATES ?
-                         " ADJACENT GATE" :
+                         " ADJACENT GATES" :
                          "GATES")});
         }
 
@@ -864,8 +864,9 @@ class advanced_circuit_design_impl
                 gate_fitness_assessments.at(gate_index).selected = true;
             }
 
-            if (static_cast<double>(first_passing_ix) / static_cast<double>(gate_fitness_assessments.size()) <
-                (global_pruning ? 1.0 : params.selectivity_tolerance) * selectivity)
+            if ((global_pruning && first_passing_ix == 0) ||
+                static_cast<double>(first_passing_ix) / static_cast<double>(gate_fitness_assessments.size()) <
+                    params.selectivity_tolerance * selectivity)
             {
                 std::cout << "ASSESSMENT COMPLETED\n" << std::endl;
 
