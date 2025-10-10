@@ -949,10 +949,10 @@ class advanced_circuit_design_impl
         const double   selectivity          = params.selectivity * std::pow(1.2, level - 1);
         const double   success_rate_ceiling = params.success_rate_ceiling + static_cast<double>(level - 1) * 0.01;
 
-        std::cout << "\nNumber of trials: " << num_trials << std::endl;
-        std::cout << "Quantization step: " << fmt::format("{:.3f}", quantization_step) << std::endl;
-        std::cout << "Selectivity: " << fmt::format("{:.2f}", selectivity) << std::endl;
-        std::cout << "Success_rate_ceiling: " << fmt::format("{:.2f}", success_rate_ceiling) << std::endl;
+        std::cout << "\nNumber of trials:     " << num_trials << std::endl;
+        std::cout << "Quantization step:    " << fmt::format("{:.2f}", quantization_step) << std::endl;
+        std::cout << "Selectivity:          " << fmt::format("{:.2f}", selectivity) << std::endl;
+        std::cout << "Success rate ceiling: " << fmt::format("{:.2f}", success_rate_ceiling) << std::endl;
 
         gate_lyt_window_map gate_lyt_windows{};
 
