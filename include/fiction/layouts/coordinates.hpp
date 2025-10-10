@@ -39,7 +39,7 @@ namespace offset
  * Unsigned offset coordinates.
  *
  * This implementation is optimized for memory-efficiency and fits within 64 bits. Coordinates span from \f$(0, 0, 0)\f$
- * to \f$(2^{31} - 1, 2^{31} - 1, 1)\f$. Each coordinate has a dead indicator `d` that can be used to represent
+ * to \f$(2^{30} - 1, 2^{30} - 1, 2^3 - 1)\f$. Each coordinate has a dead indicator `d` that can be used to represent
  * that it is not in use.
  */
 struct ucoord_t
@@ -51,15 +51,15 @@ struct ucoord_t
     /**
      * 1 bit for the z coordinate.
      */
-    uint64_t z : 1;
+    uint64_t z : 3;
     /**
      * 31 bit for the y coordinate.
      */
-    uint64_t y : 31;
+    uint64_t y : 30;
     /**
      * 31 bit for the x coordinate.
      */
-    uint64_t x : 31;
+    uint64_t x : 30;
 
     // NOLINTBEGIN(readability-identifier-naming)
 
@@ -108,17 +108,17 @@ struct ucoord_t
      * Standard constructor. Instantiates a coordinate from an uint64_t, where the positions are encoded in the
      * following four parts of the unsigned 64-bit integer (from MSB to LSB):
      *  - 1 bit for the dead indicator
-     *  - 1 bit for the z position
-     *  - 31 bit for the y position
-     *  - 31 bit for the x position
+     *  - 3 bit for the z position
+     *  - 30 bit for the y position
+     *  - 30 bit for the x position
      *
      * @param t Unsigned 64-bit integer to instantiate the coordinate from.
      */
     constexpr explicit ucoord_t(const uint64_t t) noexcept :
             d{static_cast<decltype(d)>(t >> 63ull)},
-            z{static_cast<decltype(z)>((t << 1ull) >> 63ull)},
-            y{static_cast<decltype(y)>((t << 2ull) >> 33ull)},
-            x{static_cast<decltype(x)>((t << 33ull) >> 33ull)}
+            z{static_cast<decltype(z)>((t << 1ull) >> 61ull)},
+            y{static_cast<decltype(y)>((t << 4ull) >> 34ull)},
+            x{static_cast<decltype(x)>((t << 34ull) >> 34ull)}
     {}
 
     // NOLINTEND(readability-identifier-naming)
@@ -126,13 +126,13 @@ struct ucoord_t
     /**
      * Allows explicit conversion to `uint64_t`. Segments an unsigned 64-bit integer into four parts (from MSB to LSB):
      *  - 1 bit for the dead indicator
-     *  - 1 bit for the z position
-     *  - 31 bit for the y position
-     *  - 31 bit for the x position
+     *  - 3 bit for the z position
+     *  - 30 bit for the y position
+     *  - 30 bit for the x position
      */
     explicit constexpr operator uint64_t() const noexcept
     {
-        return (((((((static_cast<uint64_t>(d)) << 1ull) | z) << 31ull) | y) << 31ull) | x);
+        return (((((((static_cast<uint64_t>(d)) << 3ull) | z) << 30ull) | y) << 30ull) | x);
     }
     /**
      * Returns whether the coordinate is dead.
@@ -172,15 +172,8 @@ struct ucoord_t
 
         if (y > aspect_ratio.y)
         {
-            if (z == 1)
-            {
-                *this = aspect_ratio.get_dead();
-            }
-            else
-            {
-                y = 0;
-                z = 1;
-            }
+            y = 0;
+            ++z;
         }
 
         if (z > aspect_ratio.z)
