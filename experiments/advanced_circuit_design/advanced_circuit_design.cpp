@@ -4,7 +4,6 @@
 
 #if (FICTION_Z3_SOLVER)
 
-#include "../alice/lib/cli11/CLI11.hpp"
 #include "fiction_experiments.hpp"
 
 #include <fiction/algorithms/network_transformation/technology_mapping.hpp>
@@ -44,6 +43,8 @@
 #include <string>
 #include <thread>
 
+#include <CLI/CLI.hpp>
+
 // This script conducts defect-aware placement and routing with defect-aware on-the-fly SiDB gate design. Thereby, SiDB
 // circuits can be designed in the presence of atomic defects.
 
@@ -55,7 +56,7 @@
 
 namespace fs = std::filesystem;
 
-template <typename lyt_t>
+template <typename lyt_t, typename skeleton>
 advanced_circuit_design_params<lyt_t> parse_params(const int argc, char** argv,
                                                    design_sidb_gates_params<lyt_t>& design_gate_params,
                                                    const std::optional<lyt_t>&      surface_lattice)
@@ -65,13 +66,22 @@ advanced_circuit_design_params<lyt_t> parse_params(const int argc, char** argv,
     CLI::App app{"SiDB circuit design parameters"};
 
     // ---- Temporary signed variables for parsing ----
-    int64_t canvas_sidbs_signed;
-    int64_t max_gate_designs_signed;
-    int64_t design_gate_threads_signed;
-    int64_t num_trials_signed;
-    int64_t max_discrimination_attempts_signed;
-    int64_t max_repeated_discrimination_attempts_signed;
-    int64_t threads_signed;
+    int64_t canvas_sidbs_signed                = static_cast<int64_t>(design_gate_params.number_of_canvas_sidbs);
+    int64_t max_gate_designs_signed            = static_cast<int64_t>(design_gate_params.maximum_number_of_solutions);
+    int64_t design_gate_threads_signed         = static_cast<int64_t>(design_gate_params.available_threads);
+    int64_t num_trials_signed                  = static_cast<int64_t>(params.num_trials);
+    int64_t max_discrimination_attempts_signed = static_cast<int64_t>(params.maximum_discrimination_attempts);
+    int64_t max_repeated_discrimination_attempts_signed =
+        static_cast<int64_t>(params.maximum_repeated_discrimination_attempts);
+    int64_t threads_signed = static_cast<int64_t>(params.available_threads);
+
+    std::vector canvas_x{static_cast<int64_t>(params.design_gate_params.canvas.first.x),
+                         static_cast<int64_t>(params.design_gate_params.canvas.second.x)};
+    std::vector canvas_y{static_cast<int64_t>(params.design_gate_params.canvas.first.y),
+                         static_cast<int64_t>(params.design_gate_params.canvas.second.y)};
+
+    app.add_option("--canvas_x", canvas_x, "Canvas X range (xmin,xmax)")->delimiter(',');
+    app.add_option("--canvas_y", canvas_y, "Canvas Y range (ymin,ymax)")->delimiter(',');
 
     // Gate design parameters
     app.add_option("--canvas_sidbs", canvas_sidbs_signed, "Number of canvas SiDBs");
@@ -141,12 +151,12 @@ advanced_circuit_design_params<lyt_t> parse_params(const int argc, char** argv,
     params.available_threads = to_uint64_checked(threads_signed, "threads", true);
 
     // Normalize mode strings
-    std::transform(sub_circuit_mode.begin(), sub_circuit_mode.end(), sub_circuit_mode.begin(),
-                   [](const unsigned char c) { return std::tolower(c); });
-    std::transform(quantization_mode.begin(), quantization_mode.end(), quantization_mode.begin(),
-                   [](const unsigned char c) { return std::tolower(c); });
-    std::transform(gate_design_mode.begin(), gate_design_mode.end(), gate_design_mode.begin(),
-                   [](const unsigned char c) { return std::tolower(c); });
+    auto string_to_lower = [](std::string& s)
+    { std::transform(s.begin(), s.end(), s.begin(), [](const unsigned char c) { return std::tolower(c); }); };
+
+    string_to_lower(sub_circuit_mode);
+    string_to_lower(quantization_mode);
+    string_to_lower(gate_design_mode);
 
     // Map sub_circuit_mode
     if (sub_circuit_mode == "connected" || sub_circuit_mode == "c")
@@ -227,6 +237,31 @@ advanced_circuit_design_params<lyt_t> parse_params(const int argc, char** argv,
     // Threads handling (0 -> all)
     normalize_threads(params.available_threads);
     normalize_threads(design_gate_params.available_threads);
+
+    // --- Canvas validation ---
+    if (canvas_x.size() != 2 || canvas_y.size() != 2)
+    {
+        throw std::invalid_argument("Canvas ranges must have exactly 2 values each (xmin,xmax and ymin,ymax)");
+    }
+
+    const int64_t x_min = canvas_x[0];
+    const int64_t x_max = canvas_x[1];
+    const int64_t y_min = canvas_y[0];
+    const int64_t y_max = canvas_y[1];
+
+    if (x_min < 0 || x_max < x_min || x_max >= static_cast<int64_t>(skeleton::gate_x_size()))
+    {
+        throw std::invalid_argument("Invalid canvas X range: 0 <= xmin <= xmax < skeleton::gate_x_size() = " +
+                                    std::to_string(skeleton::gate_x_size()));
+    }
+    if (y_min < 0 || y_max < y_min || y_max >= static_cast<int64_t>(skeleton::gate_y_size()))
+    {
+        throw std::invalid_argument("Invalid canvas Y range: 0 <= ymin <= ymax < skeleton::gate_y_size() = " +
+                                    std::to_string(skeleton::gate_y_size()));
+    }
+
+    design_gate_params.canvas = {{static_cast<uint64_t>(x_min), static_cast<uint64_t>(y_min)},
+                                 {static_cast<uint64_t>(x_max), static_cast<uint64_t>(y_max)}};
 
     // Fixed/default parameters
     params.exact_design_parameters.scheme        = "ROW4";
@@ -383,7 +418,7 @@ int main(int argc, char* argv[])  // NOLINT
             const auto mapped_network = technology_mapping(cut_xag, tech_map_params);
 
             const advanced_circuit_design_params<lyt_t> params =
-                parse_params<lyt_t>(argc, argv, design_gate_params, surface_lattice);
+                parse_params<lyt_t, skeleton>(argc, argv, design_gate_params, surface_lattice);
 
             advanced_circuit_design_stats<gate_lyt> st{};
 
