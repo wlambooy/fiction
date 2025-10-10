@@ -70,7 +70,7 @@ class sidb_bdl_circuit
             relative_to_absolute_cell_position<SkeletonGateLibrary::gate_x_size(), SkeletonGateLibrary::gate_y_size(),
                                                GateLyt, CellLyt>(gate_lyt, t, rel_pos);
 
-        const bool nw = gate_lyt.has_north_western_incoming_signal(t);
+        const bool nw = gate_lyt.has_north_western_incoming_signal(t);  // todo: avoid repeating these calls
         const bool ne = gate_lyt.has_north_eastern_incoming_signal(t);
 
         if (nw && !ne)
@@ -389,7 +389,7 @@ class sidb_bdl_sub_circuit
                                   const detect_bdl_wires_params&                                 bdl_wire_params,
                                   const std::optional<tile<GateLyt>>& this_tile = std::nullopt) noexcept :
             super_circuit{bdl_super_circuit},
-            gate_layout{create_gate_lyt_window_for_connection_sequence(super_circuit.gate_layout, tiles)},
+            gate_layout{create_gate_lyt_window_for_tiles(super_circuit.gate_layout, tiles)},
             skeleton{apply_gate_library<CellLyt, SkeletonGateLibrary, GateLyt>(gate_layout)},
             bdl_wires{detect_bdl_wires(skeleton, bdl_wire_params)},
             num_bdl_pairs{sidb_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>::get_number_of_bdl_pairs(bdl_wires)},
@@ -477,9 +477,15 @@ class sidb_bdl_sub_circuit
         {
             if (connecting_inputs.count(gate_lyt.below(in_t)) == 0)
             {
-                if (!gate_lyt_window.is_empty_tile(in_t))
+                while (!gate_lyt_window.is_empty_tile(in_t))
                 {
-                    in_t.z = 1 - in_t.z;
+                    if (in_t.z == gate_lyt_window.z())
+                    {
+                        gate_lyt_window.resize(
+                            aspect_ratio<GateLyt>{gate_lyt_window.x(), gate_lyt_window.y(), gate_lyt_window.z() + 1});
+                    }
+
+                    ++in_t.z;
                 }
 
                 gate_lyt_window.create_pi("", in_t);
@@ -496,9 +502,15 @@ class sidb_bdl_sub_circuit
         {
             if (connecting_outputs.count(gate_lyt.below(out_t)) == 0)
             {
-                if (!gate_lyt_window.is_empty_tile(out_t))
+                while (!gate_lyt_window.is_empty_tile(out_t))
                 {
-                    out_t.z = 1 - out_t.z;
+                    if (out_t.z == gate_lyt_window.z())
+                    {
+                        gate_lyt_window.resize(
+                            aspect_ratio<GateLyt>{gate_lyt_window.x(), gate_lyt_window.y(), gate_lyt_window.z() + 1});
+                    }
+
+                    ++out_t.z;
                 }
 
                 gate_lyt_window.create_po(static_cast<mockturtle::signal<GateLyt>>(current_t), "", out_t);
@@ -518,8 +530,8 @@ class sidb_bdl_sub_circuit
         }
     }
 
-    [[nodiscard]] static GateLyt
-    create_gate_lyt_window_for_connection_sequence(const GateLyt& gate_lyt, std::vector<tile<GateLyt>> tiles) noexcept
+    [[nodiscard]] static GateLyt create_gate_lyt_window_for_tiles(const GateLyt&             gate_lyt,
+                                                                  std::vector<tile<GateLyt>> tiles) noexcept
     {
         GateLyt gate_lyt_window{{gate_lyt.x(), gate_lyt.y(), gate_lyt.z()}, row_clocking<GateLyt>()};
 

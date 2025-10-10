@@ -1293,8 +1293,9 @@ class gate_level_layout : public ClockedLayout
         bool incoming_signal   = false;
         auto in_signal_checker = [this, &s, &incoming_signal](const auto& i)
         {
-            if (const auto it = static_cast<tile>(i);
-                i == s || ClockedLayout::above(it) == s || ClockedLayout::below(it) == s)
+            if (const auto it = static_cast<tile>(i); i == s || ClockedLayout::above(it) == s ||
+                                                      ClockedLayout::below(it) == s ||
+                                                      ClockedLayout::below(ClockedLayout::below(it)) == s)  // todo
             {
                 incoming_signal = true;
                 return false;  // abort iteration
@@ -1430,7 +1431,9 @@ class gate_level_layout : public ClockedLayout
         bool outgoing_signal    = false;
         auto out_signal_checker = [this, &s, &outgoing_signal](const auto& o)
         {
-            if (const auto ot = get_tile(o); ot == s || ClockedLayout::above(ot) == s || ClockedLayout::below(ot) == s)
+            if (const auto ot = get_tile(o); ot == s || ClockedLayout::above(ot) == s ||
+                                             ClockedLayout::below(ot) == s ||
+                                             ClockedLayout::below(ClockedLayout::below(ot)) == s)  // todo)
             {
                 outgoing_signal = true;
                 return false;  // abort iteration

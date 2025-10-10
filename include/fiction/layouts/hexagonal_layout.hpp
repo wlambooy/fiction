@@ -611,7 +611,8 @@ class hexagonal_layout
     [[nodiscard]] bool is_adjacent_elevation_of(const OffsetCoordinateType& c1,
                                                 const OffsetCoordinateType& c2) const noexcept
     {
-        return is_adjacent_of(c1, c2) || is_adjacent_of(above(c1), c2) || is_adjacent_of(below(c1), c2);
+        return is_adjacent_of(c1, c2) || is_adjacent_of(above(c1), c2) || is_adjacent_of(above(above(c1)), c2) ||
+               is_adjacent_of(below(c1), c2);  // todo
     }
     /**
      * Returns `true` iff coordinate `c2` is directly above coordinate `c1`.
