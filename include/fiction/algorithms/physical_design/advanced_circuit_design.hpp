@@ -79,7 +79,7 @@ struct advanced_circuit_design_params
 
     uint64_t num_trials = 500;
 
-    double            quantization_factor = 0.075;
+    double            quantization_step = 7.5;
     quantization_mode quantize_mode       = quantization_mode::SOFTEN_PRUNING;
 
     double selectivity           = 0.5;
@@ -710,7 +710,7 @@ class advanced_circuit_design_impl
     }
 
     static void apply_quantization(std::vector<gate_fitness_assessment>& sorted_fitness_assessments,
-                                   const double quantization_factor, const double success_rate_ceiling) noexcept
+                                   const double quantization_step, const double success_rate_ceiling) noexcept
     {
         // apply ceiling
         for (auto& fitness_assessment : sorted_fitness_assessments)
@@ -718,7 +718,7 @@ class advanced_circuit_design_impl
             fitness_assessment.fitness = std::min(success_rate_ceiling, fitness_assessment.fitness);
         }
 
-        if (sorted_fitness_assessments.empty() || quantization_factor <= 0.0)
+        if (sorted_fitness_assessments.empty() || quantization_step <= 0.0)
         {
             return;
         }
@@ -732,7 +732,7 @@ class advanced_circuit_design_impl
             return;
         }
 
-        const double scale = std::floor(1.0 / quantization_factor);
+        const double scale = std::floor(100.0 / quantization_step);
 
         for (auto& fitness_assessment : sorted_fitness_assessments)
         {
@@ -801,7 +801,7 @@ class advanced_circuit_design_impl
     }
 
     [[nodiscard]] bool discriminate_fitness_assessments(
-        bool global_pruning, const double selectivity, const double quantization_factor,
+        bool global_pruning, const double selectivity, const double quantization_step,
         const double success_rate_ceiling, std::vector<typename SkeletonGateLibrary::fcn_gate>& remaining_gate_designs,
         std::vector<gate_fitness_assessment>& gate_fitness_assessments, uint64_t& min_bound, uint64_t& max_bound,
         uint64_t& repeated_attempt_number, uint64_t& attempt_number, bool& completed_assessment) const noexcept
@@ -825,7 +825,7 @@ class advanced_circuit_design_impl
 
         if (params.quantize_mode == advanced_circuit_design_params<CellLyt>::quantization_mode::SOFTEN_PRUNING)
         {
-            apply_quantization(gate_fitness_assessments, quantization_factor, success_rate_ceiling);
+            apply_quantization(gate_fitness_assessments, quantization_step, success_rate_ceiling);
         }
 
         const auto lb_ix = static_cast<uint64_t>(std::distance(
@@ -854,7 +854,7 @@ class advanced_circuit_design_impl
 
             if (params.quantize_mode == advanced_circuit_design_params<CellLyt>::quantization_mode::VISUALIZATION_ONLY)
             {
-                apply_quantization(gate_fitness_assessments, quantization_factor, success_rate_ceiling);
+                apply_quantization(gate_fitness_assessments, quantization_step, success_rate_ceiling);
             }
 
             print_success_rate_distribution(gate_fitness_assessments, first_passing_ix);
@@ -866,7 +866,7 @@ class advanced_circuit_design_impl
 
             if ((global_pruning && first_passing_ix == gate_fitness_assessments.size() - 1) ||
                 static_cast<double>(first_passing_ix) / static_cast<double>(gate_fitness_assessments.size()) <
-                    params.selectivity_tolerance * selectivity)
+                    (1.0 - params.selectivity_tolerance) * selectivity)
             {
                 std::cout << "ASSESSMENT COMPLETED\n" << std::endl;
 
@@ -945,12 +945,12 @@ class advanced_circuit_design_impl
 
         // todo
         const uint64_t num_trials           = std::max(uint64_t{1}, params.num_trials / level);
-        const double   quantization_factor  = params.quantization_factor * std::pow(0.8, level - 1);
+        const double   quantization_step    = params.quantization_step * std::pow(0.8, level - 1);
         const double   selectivity          = params.selectivity * std::pow(1.2, level - 1);
         const double   success_rate_ceiling = params.success_rate_ceiling + static_cast<double>(level - 1) * 0.01;
 
         std::cout << "\nNumber of trials: " << num_trials << std::endl;
-        std::cout << "Quantization factor: " << fmt::format("{:.3f}", quantization_factor) << std::endl;
+        std::cout << "Quantization step: " << fmt::format("{:.3f}", quantization_step) << std::endl;
         std::cout << "Selectivity: " << fmt::format("{:.2f}", selectivity) << std::endl;
         std::cout << "Success_rate_ceiling: " << fmt::format("{:.2f}", success_rate_ceiling) << std::endl;
 
@@ -1049,7 +1049,7 @@ class advanced_circuit_design_impl
                         }
 
                         if (discriminate_fitness_assessments(
-                                global_pruning, selectivity, quantization_factor, success_rate_ceiling, gate_designs[n],
+                                global_pruning, selectivity, quantization_step, success_rate_ceiling, gate_designs[n],
                                 gate_fitness_assessments[n], min_bound, max_bound, repeated_attempt_number,
                                 attempt_number, completed_assessment[n]))
                         {

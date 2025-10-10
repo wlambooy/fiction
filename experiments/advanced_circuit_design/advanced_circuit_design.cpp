@@ -42,6 +42,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <thread>
 
 // This script conducts defect-aware placement and routing with defect-aware on-the-fly SiDB gate design. Thereby, SiDB
 // circuits can be designed in the presence of atomic defects.
@@ -63,39 +64,47 @@ advanced_circuit_design_params<lyt_t> parse_params(const int argc, char** argv,
 
     CLI::App app{"SiDB circuit design parameters"};
 
+    // ---- Temporary signed variables for parsing ----
+    int64_t canvas_sidbs_signed;
+    int64_t max_gate_designs_signed;
+    int64_t design_gate_threads_signed;
+    int64_t num_trials_signed;
+    int64_t max_discrimination_attempts_signed;
+    int64_t max_repeated_discrimination_attempts_signed;
+    int64_t threads_signed;
+
     // Gate design parameters
-    app.add_option("--canvas_sidbs", design_gate_params.number_of_canvas_sidbs, "Number of canvas SiDBs");
-    app.add_option("--max_gate_designs", design_gate_params.maximum_number_of_solutions,
-                   "Maximum number of initial gate designs");
-    app.add_option("--design_gate_threads", design_gate_params.available_threads, "Available gate design threads");
+    app.add_option("--canvas_sidbs", canvas_sidbs_signed, "Number of canvas SiDBs");
+    app.add_option("--max_gate_designs", max_gate_designs_signed, "Maximum number of initial gate designs");
+    app.add_option("--design_gate_threads", design_gate_threads_signed, "Available gate design threads (0 = all)");
 
     // Circuit design parameters
-    app.add_option("--num_trials", params.num_trials, "Number of trials");
+    app.add_option("--num_trials", num_trials_signed, "Number of trials");
 
     std::string sub_circuit_mode = "c";
     app.add_option("--sub_circuit_mode", sub_circuit_mode,
                    "Sub-circuit mode: c (connected), n (neighboring/adjacent), a (all)");
 
-    app.add_option("--quantization_factor", params.quantization_factor, "Quantization factor");
+    app.add_option("--quantization_step", params.quantization_step, "Quantization step");
 
     std::string quantization_mode = "v";
     app.add_option("--quantization_mode", quantization_mode, "Quantization mode: v (visual), p (pruning)");
 
     app.add_option("--selectivity", params.selectivity, "Selectivity");
     app.add_option("--selectivity_tolerance", params.selectivity_tolerance, "Selectivity tolerance");
-
     app.add_option("--success_rate_ceiling", params.success_rate_ceiling, "Success rate ceiling");
 
-    app.add_option("--max_discrimination_attempts", params.maximum_discrimination_attempts,
+    app.add_option("--max_discrimination_attempts", max_discrimination_attempts_signed,
                    "Maximum number of discrimination attempts");
-    app.add_option("--max_repeated_discrimination_attempts", params.maximum_repeated_discrimination_attempts,
+    app.add_option("--max_repeated_discrimination_attempts", max_repeated_discrimination_attempts_signed,
                    "Maximum number of repeated discrimination attempts");
 
     std::string gate_design_mode = "r";
     app.add_option("--gate_design_mode", gate_design_mode, "Gate design mode: r (random), e (exhaustive)");
 
-    app.add_option("--threads", params.available_threads, "Available threads");
+    app.add_option("--threads", threads_signed, "Available threads (0 = all)");
 
+    // Parse CLI args
     try
     {
         app.parse(argc, argv);
@@ -105,6 +114,33 @@ advanced_circuit_design_params<lyt_t> parse_params(const int argc, char** argv,
         std::exit(app.exit(e));
     }
 
+    // ---- Convert to unsigned after validation ----
+    auto to_uint64_checked = [](const int64_t value, const std::string& name, const bool allow_zero = false) -> uint64_t
+    {
+        if (value < 0)
+        {
+            throw std::invalid_argument(name + " cannot be negative");
+        }
+
+        if (!allow_zero && value == 0)
+        {
+            throw std::invalid_argument(name + " must be > 0");
+        }
+
+        return static_cast<uint64_t>(value);
+    };
+
+    design_gate_params.number_of_canvas_sidbs      = to_uint64_checked(canvas_sidbs_signed, "canvas_sidbs");
+    design_gate_params.maximum_number_of_solutions = to_uint64_checked(max_gate_designs_signed, "max_gate_designs");
+    design_gate_params.available_threads = to_uint64_checked(design_gate_threads_signed, "design_gate_threads", true);
+    params.num_trials                    = to_uint64_checked(num_trials_signed, "num_trials");
+    params.maximum_discrimination_attempts =
+        to_uint64_checked(max_discrimination_attempts_signed, "max_discrimination_attempts");
+    params.maximum_repeated_discrimination_attempts =
+        to_uint64_checked(max_repeated_discrimination_attempts_signed, "max_repeated_discrimination_attempts");
+    params.available_threads = to_uint64_checked(threads_signed, "threads", true);
+
+    // Normalize mode strings
     std::transform(sub_circuit_mode.begin(), sub_circuit_mode.end(), sub_circuit_mode.begin(),
                    [](const unsigned char c) { return std::tolower(c); });
     std::transform(quantization_mode.begin(), quantization_mode.end(), quantization_mode.begin(),
@@ -112,6 +148,7 @@ advanced_circuit_design_params<lyt_t> parse_params(const int argc, char** argv,
     std::transform(gate_design_mode.begin(), gate_design_mode.end(), gate_design_mode.begin(),
                    [](const unsigned char c) { return std::tolower(c); });
 
+    // Map sub_circuit_mode
     if (sub_circuit_mode == "connected" || sub_circuit_mode == "c")
     {
         params.sub_circuit_mode = decltype(params)::CONNECTED_GATES;
@@ -129,14 +166,63 @@ advanced_circuit_design_params<lyt_t> parse_params(const int argc, char** argv,
         throw std::invalid_argument("Invalid sub_mode: must be c, n, or a");
     }
 
+    // Quantization mode
     if (quantization_mode == "p" || quantization_mode == "pruning")
     {
         params.quantize_mode = advanced_circuit_design_params<lyt_t>::quantization_mode::SOFTEN_PRUNING;
     }
 
+    // Gate design mode
     if (gate_design_mode == "e" || gate_design_mode == "exhaustive")
     {
         design_gate_params.design_mode = design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::EXHAUSTIVE;
+    }
+
+    // Argument validation
+    auto check_positive = [](auto value, const std::string& name)
+    {
+        if (value <= 0)
+        {
+            throw std::invalid_argument(name + " must be > 0");
+        }
+    };
+
+    check_positive(design_gate_params.number_of_canvas_sidbs, "canvas_sidbs");
+    check_positive(design_gate_params.maximum_number_of_solutions, "max_gate_designs");
+    if (design_gate_params.available_threads < 0)
+    {
+        throw std::invalid_argument("design_gate_threads must be >= 0");
+    }
+    check_positive(params.num_trials, "num_trials");
+
+    if (params.quantization_step < 0.0 || params.quantization_step > 10.0)
+    {
+        throw std::invalid_argument("quantization_step must be in [0, 10]");
+    }
+    if (params.selectivity <= 0.0 || params.selectivity >= 1.0)
+    {
+        throw std::invalid_argument("selectivity must be in (0, 1)");
+    }
+    if (params.selectivity_tolerance < 0.0 || params.selectivity_tolerance > 1.0)
+    {
+        throw std::invalid_argument("selectivity_tolerance must be in [0, 1]");
+    }
+    if (params.success_rate_ceiling <= 0.5 || params.success_rate_ceiling > 1.0)
+    {
+        throw std::invalid_argument("success_rate_ceiling must be in (0.5, 1]");
+    }
+
+    check_positive(params.maximum_discrimination_attempts, "max_discrimination_attempts");
+    check_positive(params.maximum_repeated_discrimination_attempts, "max_repeated_discrimination_attempts");
+    check_positive(params.available_threads, "threads");
+
+    // Threads handling (0 -> all)
+    for (uint64_t& p : {params.available_threads, design_gate_params.available_threads})
+    {
+        if (p == 0)
+        {
+            p = std::thread::hardware_concurrency();
+        }
     }
 
     // Fixed/default parameters
@@ -158,6 +244,12 @@ advanced_circuit_design_params<lyt_t> parse_params(const int argc, char** argv,
 
 int main(int argc, char* argv[])  // NOLINT
 {
+    for (int i = 0; i < argc; ++i)
+    {
+        std::cout << argv[i] << ' ';
+    }
+    std::cout << '\n' << std::endl;
+
     using gate_lyt = hex_even_row_gate_clk_lyt;
     using cell_lyt = sidb_cell_clk_lyt_cube;
     using lyt_t    = sidb_defect_surface<cell_lyt>;
