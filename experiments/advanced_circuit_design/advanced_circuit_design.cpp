@@ -216,14 +216,17 @@ advanced_circuit_design_params<lyt_t> parse_params(const int argc, char** argv,
     check_positive(params.maximum_repeated_discrimination_attempts, "max_repeated_discrimination_attempts");
     check_positive(params.available_threads, "threads");
 
-    // Threads handling (0 -> all)
-    for (uint64_t& p : {params.available_threads, design_gate_params.available_threads})
+    auto normalize_threads = [](uint64_t& threads)
     {
-        if (p == 0)
+        if (threads == 0)
         {
-            p = std::thread::hardware_concurrency();
+            threads = std::thread::hardware_concurrency();
         }
-    }
+    };
+
+    // Threads handling (0 -> all)
+    normalize_threads(params.available_threads);
+    normalize_threads(design_gate_params.available_threads);
 
     // Fixed/default parameters
     params.exact_design_parameters.scheme        = "ROW4";
