@@ -3,6 +3,10 @@ include(${PROJECT_SOURCE_DIR}/cmake/CheckSubmodules.cmake)
 # Include pybind11
 add_subdirectory(pybind11)
 
+# Include CLI11
+add_subdirectory(CLI11)
+target_link_system_libraries(libfiction INTERFACE CLI11)
+
 # Include alice
 set(ALICE_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(ALICE_TEST OFF CACHE BOOL "" FORCE)

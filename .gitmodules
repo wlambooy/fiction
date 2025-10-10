@@ -23,3 +23,6 @@
 [submodule "libs/alglib-cmake"]
 	path = libs/alglib-cmake
 	url = https://github.com/wlambooy/alglib-cmake.git
+[submodule "libs/CLI11"]
+	path = libs/CLI11
+	url = https://github.com/CLIUtils/CLI11.git
