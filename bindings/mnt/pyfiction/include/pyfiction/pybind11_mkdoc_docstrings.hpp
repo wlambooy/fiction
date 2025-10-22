@@ -17643,9 +17643,9 @@ static const char *__doc_fiction_offset_ucoord_t =
 R"doc(Unsigned offset coordinates.
 
 This implementation is optimized for memory-efficiency and fits within
-64 bits. Coordinates span from :math:`(0, 0, 0)` to :math:`(2^{31} -
-1, 2^{31} - 1, 1)`. Each coordinate has a dead indicator `d` that can
-be used to represent that it is not in use.)doc";
+64 bits. Coordinates span from :math:`(0, 0, 0)` to :math:`(2^{30} -
+1, 2^{30} - 1, 2^3 - 1)`. Each coordinate has a dead indicator `d`
+that can be used to represent that it is not in use.)doc";
 
 static const char *__doc_fiction_offset_ucoord_t_d = R"doc(MSB acts as dead indicator.)doc";
 
@@ -17738,7 +17738,7 @@ Returns:
 static const char *__doc_fiction_offset_ucoord_t_operator_unsigned_long =
 R"doc(Allows explicit conversion to `uint64_t`. Segments an unsigned 64-bit
 integer into four parts (from MSB to LSB): - 1 bit for the dead
-indicator - 1 bit for the z position - 31 bit for the y position - 31
+indicator - 3 bit for the z position - 30 bit for the y position - 30
 bit for the x position)doc";
 
 static const char *__doc_fiction_offset_ucoord_t_str =
@@ -17790,7 +17790,7 @@ static const char *__doc_fiction_offset_ucoord_t_ucoord_t_4 =
 R"doc(Standard constructor. Instantiates a coordinate from an uint64_t,
 where the positions are encoded in the following four parts of the
 unsigned 64-bit integer (from MSB to LSB): - 1 bit for the dead
-indicator - 1 bit for the z position - 31 bit for the y position - 31
+indicator - 3 bit for the z position - 30 bit for the y position - 30
 bit for the x position
 
 Parameter ``t``:
@@ -20535,7 +20535,11 @@ static const char *__doc_fiction_sidb_bdl_circuit_sidb_bdl_circuit = R"doc()doc"
 
 static const char *__doc_fiction_sidb_bdl_circuit_sim_params = R"doc()doc";
 
+static const char *__doc_fiction_sidb_bdl_circuit_simulate_bdl_wires_for_each_input = R"doc()doc";
+
 static const char *__doc_fiction_sidb_bdl_circuit_skeleton = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_circuit_skeleton_with_canvasses = R"doc()doc";
 
 static const char *__doc_fiction_sidb_bdl_sub_circuit = R"doc()doc";
 
@@ -20543,17 +20547,27 @@ static const char *__doc_fiction_sidb_bdl_sub_circuit_augment_gate_lyt_window = 
 
 static const char *__doc_fiction_sidb_bdl_sub_circuit_bdl_wires = R"doc()doc";
 
-static const char *__doc_fiction_sidb_bdl_sub_circuit_create_gate_lyt_window_for_connection_sequence = R"doc()doc";
+static const char *__doc_fiction_sidb_bdl_sub_circuit_collect_consistent_super_circuit_input_indices = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_sub_circuit_collect_influence_bounds = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_sub_circuit_consistent_super_circuit_input_indices_per_input = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_sub_circuit_create_gate_lyt_window_for_tiles = R"doc()doc";
 
 static const char *__doc_fiction_sidb_bdl_sub_circuit_gate_layout = R"doc(SiDB gate-level layout.)doc";
 
 static const char *__doc_fiction_sidb_bdl_sub_circuit_gate_tile = R"doc()doc";
 
+static const char *__doc_fiction_sidb_bdl_sub_circuit_get_all_tiles = R"doc()doc";
+
 static const char *__doc_fiction_sidb_bdl_sub_circuit_get_energy_of_expected_charge_distribution_with_sub_circuit_charge_distribution = R"doc()doc";
 
-static const char *__doc_fiction_sidb_bdl_sub_circuit_get_simulated_bdl_wires_for_input_indices = R"doc()doc";
-
 static const char *__doc_fiction_sidb_bdl_sub_circuit_input_bdl_pairs = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_sub_circuit_input_index_possible_in_super_circuit = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_sub_circuit_is_not_internal_output_perturber = R"doc()doc";
 
 static const char *__doc_fiction_sidb_bdl_sub_circuit_num_bdl_pairs = R"doc()doc";
 
@@ -20566,6 +20580,8 @@ static const char *__doc_fiction_sidb_bdl_sub_circuit_sidb_bdl_sub_circuit_2 = R
 static const char *__doc_fiction_sidb_bdl_sub_circuit_skeleton = R"doc()doc";
 
 static const char *__doc_fiction_sidb_bdl_sub_circuit_super_circuit = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_sub_circuit_tiles = R"doc()doc";
 
 static const char *__doc_fiction_sidb_bestagon_library =
 R"doc(A gate library for the SiDB technology that is based on Y-shaped gates
@@ -24312,9 +24328,9 @@ static const char *__doc_fmt_formatter_parse = R"doc()doc";
 
 static const char *__doc_fmt_formatter_parse_2 = R"doc()doc";
 
-static const char *__doc_fmt_unnamed_struct_at_home_runner_work_fiction_fiction_include_fiction_layouts_coordinates_hpp_1090_8 = R"doc()doc";
+static const char *__doc_fmt_unnamed_struct_at_home_runner_work_fiction_fiction_include_fiction_layouts_coordinates_hpp_1083_8 = R"doc()doc";
 
-static const char *__doc_fmt_unnamed_struct_at_home_runner_work_fiction_fiction_include_fiction_layouts_coordinates_hpp_1106_8 = R"doc()doc";
+static const char *__doc_fmt_unnamed_struct_at_home_runner_work_fiction_fiction_include_fiction_layouts_coordinates_hpp_1099_8 = R"doc()doc";
 
 static const char *__doc_fmt_unnamed_struct_at_home_runner_work_fiction_fiction_include_fiction_technology_cell_ports_hpp_291_8 = R"doc()doc";
 
