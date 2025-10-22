@@ -365,8 +365,6 @@ int main(int argc, char* argv[])  // NOLINT
     const auto bb_defect_surface = bounding_box_2d{surface_lattice};
     surface_lattice.resize(bb_defect_surface.get_max());
 
-    const auto lattice_tiling = gate_lyt{{11, 30}};  // todo
-
     experiments::experiment<std::string, double, uint64_t, bool> sidb_circuits_with_defects{
         "sidb_circuits_with_defects", "benchmark", "runtime", "number of aspect ratios", "success"};
 
@@ -423,8 +421,8 @@ int main(int argc, char* argv[])  // NOLINT
             advanced_circuit_design_stats<gate_lyt> st{};
 
             const std::optional<lyt_t>& lyt =
-                advanced_circuit_design<decltype(mapped_network), lyt_t, gate_lyt, skeleton>(
-                    mapped_network, lattice_tiling, params, &st);
+                advanced_circuit_design<decltype(mapped_network), lyt_t, gate_lyt, skeleton>(mapped_network, params,
+                                                                                             &st);
 
             if (!lyt.has_value())
             {
@@ -440,7 +438,7 @@ int main(int argc, char* argv[])  // NOLINT
             // assert(eq.has_value());
 
             // determine bounding box and exclude atomic defects
-            const auto bb = bounding_box_2d<cell_lyt>(static_cast<cell_lyt>(*lyt));
+            const auto bb = bounding_box_2d(static_cast<cell_lyt>(*lyt));
 
             // write a SiQAD simulation file
             write_sqd_layout(*lyt, layout_path.c_str());
