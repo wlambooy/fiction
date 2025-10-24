@@ -5418,6 +5418,8 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl_VectorHash_
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_advanced_circuit_design_impl = R"doc()doc";
 
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_advanced_circuit_design_impl_2 = R"doc()doc";
+
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_apply_quantization = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_build_subcircuits = R"doc()doc";
@@ -5442,8 +5444,6 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl_discriminat
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_exhaustively_enumerate_gate_design_combinations = R"doc(todo)doc";
 
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_gate_designs = R"doc()doc";
-
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_gate_fitness_assessment = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_gate_fitness_assessment_fitness = R"doc()doc";
@@ -5456,7 +5456,7 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl_gate_fitnes
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_gate_fitness_assessment_selected = R"doc()doc";
 
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_lattice_tiling = R"doc(Gate-level layout.)doc";
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_gate_layout = R"doc(Gate-level layout.)doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_make_trial_based_fitness_assessments = R"doc()doc";
 
@@ -9261,6 +9261,8 @@ Returns:
     (either `OPERATIONAL` or `NON_OPERATIONAL`) and the second element
     indicating the reason if it is non-operational.)doc";
 
+static const char *__doc_fiction_detail_is_circuit_operational_impl_determine_status_and_logic_match = R"doc()doc";
+
 static const char *__doc_fiction_detail_is_circuit_operational_impl_encodes_bit_one =
 R"doc(This function returns `true` if `1` is encoded in the charge state of
 the given BDL pair. `false` otherwise. Assumes row clocking.
@@ -9287,6 +9289,10 @@ Parameter ``bdl``:
 Returns:
     `true` if `0` is encoded, `false` otherwise.)doc";
 
+static const char *__doc_fiction_detail_is_circuit_operational_impl_get_energy_bounds_per_super_circuit_input = R"doc()doc";
+
+static const char *__doc_fiction_detail_is_circuit_operational_impl_get_possible_ground_state_indices_per_super_circuit_input = R"doc()doc";
+
 static const char *__doc_fiction_detail_is_circuit_operational_impl_implemented_circuit = R"doc()doc";
 
 static const char *__doc_fiction_detail_is_circuit_operational_impl_is_circuit_operational_impl =
@@ -9308,12 +9314,10 @@ static const char *__doc_fiction_detail_is_circuit_operational_impl_physical_sim
 R"doc(This function conducts physical simulation of the given SiDB layout.
 The simulation results are stored in the `sim_result` variable.
 
-Parameter ``bdl_iterator``:
-    BDL input iterator representing the SiDB layout with a given input
-    combination.
+Parameter ``todo``:
+    $Returns:
 
-Returns:
-    Simulation results.)doc";
+Simulation results.)doc";
 
 static const char *__doc_fiction_detail_is_circuit_operational_impl_run =
 R"doc(Run the `is_operational` algorithm.
@@ -20561,7 +20565,9 @@ static const char *__doc_fiction_sidb_bdl_sub_circuit_gate_tile = R"doc()doc";
 
 static const char *__doc_fiction_sidb_bdl_sub_circuit_get_all_tiles = R"doc()doc";
 
-static const char *__doc_fiction_sidb_bdl_sub_circuit_get_energy_of_expected_charge_distribution_with_sub_circuit_charge_distribution = R"doc()doc";
+static const char *__doc_fiction_sidb_bdl_sub_circuit_get_consistent_super_circuit_input_indices = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_sub_circuit_get_skeleton_influence = R"doc()doc";
 
 static const char *__doc_fiction_sidb_bdl_sub_circuit_input_bdl_pairs = R"doc()doc";
 
