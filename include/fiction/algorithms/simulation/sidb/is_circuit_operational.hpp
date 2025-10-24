@@ -277,8 +277,6 @@ class is_circuit_operational_impl
             operational_assessment_for_input assessment_results_for_this_input_combination{
                 operational_status::OPERATIONAL};
 
-            ++operational_assessment_results.simulator_invocations;
-
             // performs physical simulation of a given SiDB layout at a given input combination
             auto maybe_results = physical_simulation_of_layout(*bii, bii.get_current_input_index());
 
@@ -286,6 +284,8 @@ class is_circuit_operational_impl
             {
                 continue;
             }
+
+            ++operational_assessment_results.simulator_invocations;
 
             auto& [simulation_results, skeleton_influence_bounds] = *maybe_results;
 
@@ -555,7 +555,8 @@ class is_circuit_operational_impl
         return std::make_optional(std::move(energy_bounds_per_super_circuit_input));
     }
 
-    [[nodiscard]] std::vector<std::vector<uint64_t>> get_possible_ground_state_indices_per_super_circuit_input(
+    [[nodiscard]] std::optional<std::vector<std::vector<uint64_t>>>
+    get_possible_ground_state_indices_per_super_circuit_input(
         const uint64_t                                                   sub_circuit_input_index,
         const std::vector<charge_distribution_surface<Lyt, ExtPotType>>& simulated_charge_distributions,
         std::vector<std::optional<std::vector<std::array<double, 2>>>>&& energy_bounds) noexcept
@@ -566,8 +567,12 @@ class is_circuit_operational_impl
                 .get()
                 .size());
 
-        for (const uint64_t super_circuit_input_index :
-             implemented_circuit.circuit.get_consistent_super_circuit_input_indices(sub_circuit_input_index).get())
+        for (uint64_t super_circuit_input_index_ix = 0;
+             super_circuit_input_index_ix <
+             implemented_circuit.circuit.get_consistent_super_circuit_input_indices(sub_circuit_input_index)
+                 .get()
+                 .size();
+             ++super_circuit_input_index_ix)
         {
             std::vector<uint64_t> sorted_indices{};
             sorted_indices.reserve(simulated_charge_distributions.size());
@@ -580,14 +585,17 @@ class is_circuit_operational_impl
                 }
             }
 
-            assert(!sorted_indices.empty() && "All charge distributions are not physically valid... TODO");
+            if (sorted_indices.empty())
+            {
+                return std::nullopt;
+            }
 
             // Sort by energy[0] ascending, then energy[1] descending
             std::sort(sorted_indices.begin(), sorted_indices.end(),
                       [&](const auto& a, const auto& b)
                       {
-                          const std::array<double, 2>& e1 = energy_bounds.at(a)->at(super_circuit_input_index);
-                          const std::array<double, 2>& e2 = energy_bounds.at(b)->at(super_circuit_input_index);
+                          const std::array<double, 2>& e1 = energy_bounds.at(a)->at(super_circuit_input_index_ix);
+                          const std::array<double, 2>& e2 = energy_bounds.at(b)->at(super_circuit_input_index_ix);
 
                           if (std::abs(e1[0] - e2[0]) < constants::ERROR_MARGIN)
                           {
@@ -600,12 +608,12 @@ class is_circuit_operational_impl
             std::vector possible_ground_state_indices{sorted_indices.front()};
             possible_ground_state_indices.reserve(sorted_indices.size());
 
-            double max_energy = energy_bounds.at(sorted_indices.front())->at(super_circuit_input_index)[1];
+            double max_energy = energy_bounds.at(sorted_indices.front())->at(super_circuit_input_index_ix)[1];
 
             for (uint64_t ix = 1; ix < sorted_indices.size(); ++ix)
             {
                 const std::array<double, 2>& bounded_energy =
-                    energy_bounds.at(sorted_indices.at(ix))->at(super_circuit_input_index);
+                    energy_bounds.at(sorted_indices.at(ix))->at(super_circuit_input_index_ix);
 
                 if (bounded_energy[0] > max_energy - constants::ERROR_MARGIN)
                 {
@@ -623,6 +631,35 @@ class is_circuit_operational_impl
         return possible_ground_state_indices_per_super_circuit_input;
     }
     /**
+     * This function returns `true` if `0` is encoded in the charge state of the given BDL pair. `false` otherwise.
+     * Assumes row clocking.
+     *
+     * @param ground_state The ground state charge distribution surface.
+     * @param bdl BDL pair to be evaluated.
+     * @return `true` if `0` is encoded, `false` otherwise.
+     */
+    [[nodiscard]] bool encodes_bit_zero(const charge_distribution_surface<Lyt, ExtPotType>& ground_state,
+                                        const bdl_pair<cell<Lyt>>&                          bdl) const noexcept
+    {
+        return static_cast<bool>((ground_state.get_charge_state(bdl.upper) == sidb_charge_state::NEGATIVE) &&
+                                 (ground_state.get_charge_state(bdl.lower) == sidb_charge_state::NEUTRAL));
+    }
+
+    /**
+     * This function returns `true` if `1` is encoded in the charge state of the given BDL pair. `false` otherwise.
+     * Assumes row clocking.
+     *
+     * @param ground_state The ground state charge distribution surface.
+     * @param bdl BDL pair to be evaluated.
+     * @return `true` if `1` is encoded, `false` otherwise.
+     */
+    [[nodiscard]] bool encodes_bit_one(const charge_distribution_surface<Lyt, ExtPotType>& ground_state,
+                                       const bdl_pair<cell<Lyt>>&                          bdl) const noexcept
+    {
+        return static_cast<bool>((ground_state.get_charge_state(bdl.upper) == sidb_charge_state::NEUTRAL) &&
+                                 (ground_state.get_charge_state(bdl.lower) == sidb_charge_state::NEGATIVE));
+    }
+    /**
     * todo
 
     * @param given_cds The charge distribution surface to be checked for operation.
@@ -634,8 +671,8 @@ class is_circuit_operational_impl
     assess_logic_match_of_charge_distribution(const charge_distribution_surface<Lyt, ExtPotType>& given_cds,
                                               const uint64_t input_pattern) noexcept
     {
-        const bool print_it = true;  // parameters.print;  // std::round(static_cast<double>(std::rand()) / (RAND_MAX
-                                     // + 1.0) * 10000) == 5000;
+        const bool print_it = parameters.print;  // std::round(static_cast<double>(std::rand()) / (RAND_MAX
+                                                 // + 1.0) * 10000) == 5000;
         if (print_it)
         {
             std::cout << std::endl;
@@ -841,9 +878,18 @@ class is_circuit_operational_impl
                 energy_bounds.push_back(get_energy_bounds_per_super_circuit_input(i, skeleton_influence_bounds, cds));
             }
 
-            for (const std::vector<uint64_t>& possible_ground_state_indices :
-                 get_possible_ground_state_indices_per_super_circuit_input(i, simulation_results.charge_distributions,
-                                                                           std::move(energy_bounds)))
+            const std::optional<std::vector<std::vector<uint64_t>>>& maybe_possible_ground_state_indices =
+                get_possible_ground_state_indices_per_super_circuit_input(i, simulation_results.charge_distributions,
+                                                                          std::move(energy_bounds));
+
+            if (!maybe_possible_ground_state_indices.has_value())
+            {
+                op_ass.status = operational_status::NON_OPERATIONAL;
+
+                return op_ass;
+            }
+
+            for (const std::vector<uint64_t>& possible_ground_state_indices : *maybe_possible_ground_state_indices)
             {
                 bool at_least_one_operational = false;
 
@@ -891,35 +937,6 @@ class is_circuit_operational_impl
         }
 
         return op_ass;
-    }
-    /**
-     * This function returns `true` if `0` is encoded in the charge state of the given BDL pair. `false` otherwise.
-     * Assumes row clocking.
-     *
-     * @param ground_state The ground state charge distribution surface.
-     * @param bdl BDL pair to be evaluated.
-     * @return `true` if `0` is encoded, `false` otherwise.
-     */
-    [[nodiscard]] bool encodes_bit_zero(const charge_distribution_surface<Lyt, ExtPotType>& ground_state,
-                                        const bdl_pair<cell<Lyt>>&                          bdl) const noexcept
-    {
-        return static_cast<bool>((ground_state.get_charge_state(bdl.upper) == sidb_charge_state::NEGATIVE) &&
-                                 (ground_state.get_charge_state(bdl.lower) == sidb_charge_state::NEUTRAL));
-    }
-
-    /**
-     * This function returns `true` if `1` is encoded in the charge state of the given BDL pair. `false` otherwise.
-     * Assumes row clocking.
-     *
-     * @param ground_state The ground state charge distribution surface.
-     * @param bdl BDL pair to be evaluated.
-     * @return `true` if `1` is encoded, `false` otherwise.
-     */
-    [[nodiscard]] bool encodes_bit_one(const charge_distribution_surface<Lyt, ExtPotType>& ground_state,
-                                       const bdl_pair<cell<Lyt>>&                          bdl) const noexcept
-    {
-        return static_cast<bool>((ground_state.get_charge_state(bdl.upper) == sidb_charge_state::NEUTRAL) &&
-                                 (ground_state.get_charge_state(bdl.lower) == sidb_charge_state::NEGATIVE));
     }
 };
 

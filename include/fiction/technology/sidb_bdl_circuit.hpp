@@ -381,7 +381,8 @@ class sidb_bdl_circuit
         return std::cref(gate_design_influence_bounds_per_input.at(input_index).at(n).at(c).at(other_n));
     }
 
-    void recompute_gate_design_influence_bounds()
+    void recompute_gate_design_influence_bounds(
+        const uint64_t available_threads = std::thread::hardware_concurrency()) noexcept
     {
         std::cout << '\n';
 
@@ -475,103 +476,156 @@ class sidb_bdl_circuit
                             return;
                         }
 
-                        for (const cell<CellLyt>& c : all_cells_at_node_per_input.at(input_index).at(n))
+                        std::unordered_map<mockturtle::node<GateLyt>, std::set<uint64_t>> gate_nums_to_prune{};
+                        std::mutex mutex_to_protect_gate_nums_to_prune{};
+
+                        const uint64_t num_cells = all_cells_at_node_per_input.at(input_index).at(n).size();
+
+                        const uint64_t num_threads = std::min(available_threads, num_cells);
+
+                        const uint64_t chunk_size = (num_cells + num_threads - 1) / num_threads;  // Ceiling division
+
+                        std::vector<std::thread> threads{};
+                        threads.reserve(num_threads);
+
+                        for (uint64_t i = 0; i < num_threads; ++i)
                         {
-                            gate_layout.foreach_node(
-                                [&](const auto& other_n)
+                            threads.emplace_back(
+                                [&]
                                 {
-                                    if (skip_physical_design_for_node(gate_layout, other_n))
+                                    const uint64_t start_index = i * chunk_size;
+                                    const uint64_t end_index   = std::min(start_index + chunk_size, num_cells);
+
+                                    for (uint64_t j = start_index; j < end_index; ++j)
                                     {
-                                        return;
-                                    }
+                                        const cell<CellLyt>& c =
+                                            all_cells_at_node_per_input.at(input_index).at(n).at(j);
 
-                                    const tile<GateLyt>& other_t = gate_layout.get_tile(other_n);
-
-                                    std::array<double, 2> bounds{std::numeric_limits<double>::infinity(),
-                                                                 -std::numeric_limits<double>::infinity()};
-
-                                    std::vector<uint64_t> gate_nums_to_prune{};  // todo reserve?
-
-                                    uint64_t gate_num = 0;
-                                    for (const typename SkeletonGateLibrary::fcn_gate& gate : gate_designs.at(other_n))
-                                    {
-                                        CellLyt canvas_of_other_n{};
-
-                                        assign_gate<CellLyt, SkeletonGateLibrary, GateLyt>(
-                                            canvas_of_other_n, gate, gate_layout, other_t,
-                                            sidb_technology::cell_type::LOGIC);
-
-                                        canvas_of_other_n.assign_cell_type(c, sidb_technology::cell_type::EMPTY);
-
-                                        charge_distribution_surface<CellLyt> canvas_cds{
-                                            canvas_of_other_n, sim_params, sidb_charge_state::NEGATIVE,
-                                            cds_configuration::CHARGE_LOCATION_ONLY};
-                                        canvas_cds.initialize_matrices_for_electrostatic_calculation();
-
-                                        canvas_cds.add_sidb_defect_to_potential_landscape(
-                                            c, sidb_defect{sidb_defect_type::DB, 0, sim_params.epsilon_r,
-                                                           sim_params.lambda_tf});
-
-                                        const auto max_index = canvas_cds.get_max_charge_index();
-
-                                        bool at_least_one_charge_index_valid = false;
-
-                                        for (uint64_t charge_index = 0; charge_index <= max_index; charge_index++)
-                                        {
-                                            canvas_cds.assign_charge_index(
-                                                charge_index, charge_distribution_mode::UPDATE_CHARGE_DISTRIBUTION);
-
-                                            if (!can_canvas_charge_distribution_be_physically_valid(
-                                                    input_index, *bii, other_n, canvas_cds))
+                                        gate_layout.foreach_node(
+                                            [&](const auto& other_n)
                                             {
-                                                continue;
-                                            }
+                                                if (skip_physical_design_for_node(gate_layout, other_n))
+                                                {
+                                                    return;
+                                                }
 
-                                            at_least_one_charge_index_valid = true;
+                                                const tile<GateLyt>& other_t = gate_layout.get_tile(other_n);
 
-                                            canvas_cds.update_local_defect_potential();
+                                                std::array<double, 2> bounds{std::numeric_limits<double>::infinity(),
+                                                                             -std::numeric_limits<double>::infinity()};
 
-                                            const double pot_at_c = *canvas_cds.get_local_defect_potential(c);
+                                                uint64_t gate_num = 0;
+                                                for (const typename SkeletonGateLibrary::fcn_gate& gate :
+                                                     gate_designs.at(other_n))
+                                                {
+                                                    CellLyt canvas_of_other_n{};
 
-                                            bounds[0] = std::min(bounds[0], pot_at_c);
-                                            bounds[1] = std::max(bounds[1], pot_at_c);
-                                        }
+                                                    assign_gate<CellLyt, SkeletonGateLibrary, GateLyt>(
+                                                        canvas_of_other_n, gate, gate_layout, other_t,
+                                                        sidb_technology::cell_type::LOGIC);
 
-                                        if (!at_least_one_charge_index_valid)
-                                        {
-                                            gate_nums_to_prune.push_back(gate_num);
-                                        }
+                                                    canvas_of_other_n.assign_cell_type(
+                                                        c, sidb_technology::cell_type::EMPTY);
 
-                                        ++gate_num;
+                                                    charge_distribution_surface<CellLyt> canvas_cds{
+                                                        canvas_of_other_n, sim_params, sidb_charge_state::NEGATIVE,
+                                                        cds_configuration::CHARGE_LOCATION_ONLY};
+                                                    canvas_cds.initialize_matrices_for_electrostatic_calculation();
+
+                                                    canvas_cds.add_sidb_defect_to_potential_landscape(
+                                                        c, sidb_defect{sidb_defect_type::DB, 0, sim_params.epsilon_r,
+                                                                       sim_params.lambda_tf});
+
+                                                    const auto max_index = canvas_cds.get_max_charge_index();
+
+                                                    bool at_least_one_charge_index_valid = false;
+
+                                                    for (uint64_t charge_index = 0; charge_index <= max_index;
+                                                         charge_index++)
+                                                    {
+                                                        canvas_cds.assign_charge_index(
+                                                            charge_index,
+                                                            charge_distribution_mode::UPDATE_CHARGE_DISTRIBUTION);
+
+                                                        if (!can_canvas_charge_distribution_be_physically_valid(
+                                                                input_index, *bii, other_n, canvas_cds))
+                                                        {
+                                                            continue;
+                                                        }
+
+                                                        at_least_one_charge_index_valid = true;
+
+                                                        canvas_cds.update_local_defect_potential();
+
+                                                        const double pot_at_c =
+                                                            *canvas_cds.get_local_defect_potential(c);
+
+                                                        bounds[0] = std::min(bounds[0], pot_at_c);
+                                                        bounds[1] = std::max(bounds[1], pot_at_c);
+                                                    }
+
+                                                    if (!at_least_one_charge_index_valid)
+                                                    {
+                                                        const std::lock_guard guard{
+                                                            mutex_to_protect_gate_nums_to_prune};
+
+                                                        gate_nums_to_prune[other_n].emplace(gate_num);
+                                                    }
+
+                                                    ++gate_num;
+                                                }
+
+                                                update_bounds(
+                                                    gate_design_influence_bounds_per_input[input_index][n][c][other_n],
+                                                    bounds);
+                                            });
                                     }
-
-                                    update_bounds(gate_design_influence_bounds_per_input[input_index][n][c][other_n],
-                                                  bounds);
-
-                                    if (gate_nums_to_prune.empty())
-                                    {
-                                        return;
-                                    }
-
-                                    if (gate_designs.at(other_n).size() == gate_nums_to_prune.size())
-                                    {
-                                        throw std::runtime_error{
-                                            fmt::format("All gate designs pruned for tile {}", other_t)};
-                                    }
-
-                                    for (auto it = gate_nums_to_prune.rbegin(); it != gate_nums_to_prune.rend(); ++it)
-                                    {
-                                        std::swap(gate_designs[other_n][*it], gate_designs[other_n].back());
-
-                                        gate_designs[other_n].pop_back();
-                                    }
-
-                                    std::cout << "pruned " << gate_nums_to_prune.size() << " from tile " << other_t
-                                              << " (remaining: " << gate_designs.at(other_n).size() << ")" << std::endl;
-
-                                    fixpoint = false;
                                 });
                         }
+
+                        for (auto& thread : threads)
+                        {
+                            if (thread.joinable())
+                            {
+                                thread.join();
+                            }
+                        }
+
+                        gate_layout.foreach_node(
+                            [&](const auto& other_n)
+                            {
+                                if (skip_physical_design_for_node(gate_layout, other_n))
+                                {
+                                    return;
+                                }
+
+                                if (gate_nums_to_prune.count(other_n) == 0)
+                                {
+                                    return;
+                                }
+
+                                const tile<GateLyt>& other_t = gate_layout.get_tile(other_n);
+
+                                if (gate_designs.at(other_n).size() == gate_nums_to_prune.at(other_n).size())
+                                {
+                                    throw std::runtime_error{
+                                        fmt::format("All gate designs pruned for tile {}", other_t)};
+                                }
+
+                                for (auto it = gate_nums_to_prune.at(other_n).rbegin();
+                                     it != gate_nums_to_prune.at(other_n).rend(); ++it)
+                                {
+                                    std::swap(gate_designs[other_n][*it], gate_designs[other_n].back());
+
+                                    gate_designs[other_n].pop_back();
+                                }
+
+                                std::cout << "pruned " << gate_nums_to_prune.at(other_n).size() << " from tile "
+                                          << other_t << " (remaining: " << gate_designs.at(other_n).size() << ")"
+                                          << std::endl;
+
+                                fixpoint = false;
+                            });
                     });
             }
         }
@@ -1052,7 +1106,7 @@ class sidb_bdl_sub_circuit
 
     [[nodiscard]] bool input_index_possible_in_super_circuit(const uint64_t input_index) const noexcept
     {
-        return !super_circuit_simulated_bdl_wires_per_input.at(input_index).empty();
+        return !consistent_super_circuit_input_indices_per_input.at(input_index).empty();
     }
     [[nodiscard]] std::reference_wrapper<const std::vector<uint64_t>>
     get_consistent_super_circuit_input_indices(const uint64_t input_index) const noexcept
@@ -1074,6 +1128,9 @@ class sidb_bdl_sub_circuit
                              typename charge_distribution_surface<CellLyt, local_external_potential_type::BOUNDED>::
                                  local_external_potential_map_t& influence_bounds) const noexcept
     {
+        const std::vector<uint64_t>& consistent_super_circuit_input_indices =
+            consistent_super_circuit_input_indices_per_input.at(input_index);
+
         influence_bounds.reserve(lyt.num_cells());
 
         typename charge_distribution_surface<CellLyt,
@@ -1098,11 +1155,13 @@ class sidb_bdl_sub_circuit
                 std::array<double, 2> skeleton_bounds{std::numeric_limits<double>::infinity(),
                                                       -std::numeric_limits<double>::infinity()};
 
-                for (const uint64_t super_circuit_input_index :
-                     consistent_super_circuit_input_indices_per_input.at(input_index))
+                for (uint64_t super_circuit_input_index_ix = 0;
+                     super_circuit_input_index_ix < consistent_super_circuit_input_indices.size();
+                     ++super_circuit_input_index_ix)
                 {
                     const charge_distribution_surface<CellLyt>& simulated_bdl_wires =
-                        *super_circuit_simulated_bdl_wires_per_input.at(input_index).at(super_circuit_input_index);
+                        *super_circuit_simulated_bdl_wires_per_input.at(input_index)
+                             .at(consistent_super_circuit_input_indices.at(super_circuit_input_index_ix));
 
                     assert(simulated_bdl_wires.get_local_internal_potential(c).has_value() &&
                            "c is not part of the layout");
@@ -1121,17 +1180,10 @@ class sidb_bdl_sub_circuit
                                 return;
                             }
 
-                            std::cout
-                                << "demanding: "
-                                << fmt::format(
-                                       "iix: {}, n: {} (t: {}), c: {}, n': {} (t': {})", super_circuit_input_index, n,
-                                       super_circuit.skeleton_with_canvasses.template get_cell_tile<tile<GateLyt>>(c),
-                                       c, super_circuit_n, super_circuit.gate_layout.get_tile(super_circuit_n))
-                                << std::endl;
-
                             const std::array<double, 2>& influence_bounds_from_super_circuit_n =
-                                super_circuit.get_gate_design_influence_bounds(super_circuit_input_index, n, c,
-                                                                               super_circuit_n);
+                                super_circuit.get_gate_design_influence_bounds(
+                                    consistent_super_circuit_input_indices.at(super_circuit_input_index_ix), n, c,
+                                    super_circuit_n);
 
                             gate_design_influence_bound_sum[0] += influence_bounds_from_super_circuit_n[0];
                             gate_design_influence_bound_sum[1] += influence_bounds_from_super_circuit_n[1];
@@ -1361,16 +1413,11 @@ class sidb_bdl_sub_circuit
              ++sub_circuit_input_index)
         {
             std::vector<std::optional<charge_distribution_surface<CellLyt>>> super_circuit_simulated_bdl_wires{};
+            super_circuit_simulated_bdl_wires.resize(1 << super_circuit.num_inputs);
 
-            uint64_t super_circuit_input_index = 0;
             for (const uint64_t consistent_super_circuit_iix :
                  consistent_super_circuit_input_indices_per_input.at(sub_circuit_input_index))
             {
-                while (super_circuit_input_index++ <= consistent_super_circuit_iix)
-                {
-                    super_circuit_simulated_bdl_wires.emplace_back();
-                }
-
                 charge_distribution_surface<CellLyt> simulated_bdl_wires_copy{
                     super_circuit.get_simulated_bdl_wires_for_input_index(consistent_super_circuit_iix)};
 
@@ -1421,7 +1468,8 @@ class sidb_bdl_sub_circuit
                 //                                  cd.second); });
                 // }
 
-                super_circuit_simulated_bdl_wires.back().emplace(std::move(simulated_bdl_wires_copy));
+                super_circuit_simulated_bdl_wires[consistent_super_circuit_iix].emplace(
+                    std::move(simulated_bdl_wires_copy));
             }
 
             super_circuit_simulated_bdl_wires_per_sub_circuit_input.push_back(

@@ -167,7 +167,7 @@ class advanced_circuit_design_impl
                      params.sub_circuit_mode ==
                              advanced_circuit_design_params<CellLyt>::sub_circuit_creation_mode::ADJACENT_GATES ?
                          " ADJACENT GATES" :
-                         "GATES")});
+                         " GATES")});
         }
 
         // prune at the global level (all gates are considered together)
@@ -541,7 +541,8 @@ class advanced_circuit_design_impl
                                      CellLyt&                                     cell_lyt_clone,
                                      const std::unique_ptr<thread_count_manager>& tcm) const noexcept
     {
-        std::cout << "PERFORMING TRIAL | number = " << trial_number << std::endl;
+        // std::cout << "PERFORMING TRIAL | number = " << trial_number << " | ";
+        std::flush(std::cout);
 
         // assign random gate design to other gates
         for (const mockturtle::node<GateLyt>& node : node_vec)
@@ -569,6 +570,9 @@ class advanced_circuit_design_impl
 
         logic_match_average_over_inputs +=
             op_assessment.status == operational_status::OPERATIONAL ? 1.0 : 0.0;  // todo not needed
+
+        // std::cout << (op_assessment.status == operational_status::OPERATIONAL ? "" : "NON-") << "OPERATIONAL"
+        //           << std::endl;
 
         return op_assessment.status == operational_status::OPERATIONAL;
 
@@ -669,6 +673,13 @@ class advanced_circuit_design_impl
                                 continue;
                             }
 
+                            // std::cout << "Assessing sub-circuit with tiles: ";
+                            // for (const auto& nn : node_vec)
+                            // {
+                            //     std::cout << stats.gate_layout->get_tile(nn) << ' ';
+                            // }
+                            // std::cout << std::endl;
+
                             uint64_t actual_num_trials = num_trials;
 
                             collect_indices_to_trial(n, node_vec, actual_num_trials, sampled_indices);
@@ -702,8 +713,6 @@ class advanced_circuit_design_impl
                                     continue;
                                 }
 
-                                // todo return right away -- cannot prune
-
                                 if (global_pruning)
                                 {
                                     // all input combinations are operational: operational circuit found
@@ -717,6 +726,15 @@ class advanced_circuit_design_impl
 
                                     return;
                                 }
+
+                                // return right away -- cannot prune
+
+                                break;
+                            }
+
+                            if (successful_trials == 0)
+                            {
+                                break;
                             }
                         }
 
@@ -997,8 +1015,6 @@ class advanced_circuit_design_impl
 
         foreach_node<std::vector<gate_fitness_assessment>> gate_fitness_assessments{};
 
-        foreach_node<bool> completed_assessment{};
-
         stats.gate_layout->foreach_node(
             [&](const auto& n)
             {
@@ -1007,15 +1023,14 @@ class advanced_circuit_design_impl
                     return;
                 }
 
-                completed_assessment[n] = circuit->gate_designs.at(n).size() == 1;
-
                 build_subcircuits_from_root(n, level, gate_lyt_windows);
             });
 
         std::mutex lyt_mutex{};
 
-        while (!std::all_of(completed_assessment.cbegin(), completed_assessment.cend(),
-                            [](const auto& kv) { return kv.second; }))
+        bool fixpoint = false;
+
+        while (!fixpoint)
         {
             stats.gate_layout->foreach_node(
                 [&](const auto& n)
@@ -1025,22 +1040,17 @@ class advanced_circuit_design_impl
                         return;
                     }
 
-                    if (completed_assessment.at(n))
-                    {
-                        gate_fitness_assessments[n].clear();
-                    }
-                    else
-                    {
-                        gate_fitness_assessments[n].resize(circuit->gate_designs.at(n).size());
-                    }
+                    gate_fitness_assessments[n].resize(circuit->gate_designs.at(n).size());
                 });
+
+            std::unordered_map<mockturtle::node<GateLyt>, uint64_t> num_gate_designs_pruned{};
 
             std::cout << "\nStarting main fixpoint iteration\n" << std::endl;
 
             stats.gate_layout->foreach_node(
                 [&](const auto& n)
                 {
-                    if (skip_physical_design_for_node(*stats.gate_layout, n) || completed_assessment.at(n))
+                    if (skip_physical_design_for_node(*stats.gate_layout, n))
                     {
                         return;
                     }
@@ -1093,7 +1103,13 @@ class advanced_circuit_design_impl
                         {
                             gate_fitness_assessments[n][gate_index].selected = true;
                         }
+                        else
+                        {
+                            ++num_gate_designs_pruned[n];
+                        }
                     }
+
+                    std::cout << "PRUNED " << num_gate_designs_pruned[n] << " out of " << gate_fitness_assessments.at(n).size() << std::endl;
 
                     //
                     //     if (discriminate_fitness_assessments(
@@ -1114,6 +1130,21 @@ class advanced_circuit_design_impl
                 {
                     return maybe_lyt.value();  // return the operational circuit
                 }
+            }
+
+            uint64_t pruned_total = 0;
+            std::cout << "\n=================\n" << "  TILE  | #PRUNED" << std::endl;
+            for (const auto& [n, num_pruned] : num_gate_designs_pruned)
+            {
+                std::cout << stats.gate_layout->get_tile(n) << " |    " << num_pruned << std::endl;
+
+                pruned_total += num_pruned;
+            }
+            std::cout << "----------------- +\n" << "             " << pruned_total << std::endl;
+
+            if (pruned_total == 0)
+            {
+                fixpoint = true;
             }
 
             stats.gate_layout->foreach_node(
