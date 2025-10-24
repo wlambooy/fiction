@@ -233,9 +233,22 @@ class design_sidb_gates_impl
             return std::vector<Lyt>{};
         }
 
-        std::vector<canvas_combination> all_combinations =
-            determine_all_combinations_of_distributing_k_entities_on_n_positions(
-                params.number_of_canvas_sidbs, static_cast<std::size_t>(all_sidbs_in_canvas.size()));
+        std::vector<canvas_combination> all_combinations;
+
+        const auto total_positions = static_cast<std::size_t>(all_sidbs_in_canvas.size());
+        const auto max_sidbs       = params.number_of_canvas_sidbs;
+
+        // // Reserve an estimated capacity if possible (optional optimization) todo
+        // all_combinations.reserve(estimate_total_combinations(max_sidbs, total_positions));
+
+        for (std::size_t num_sidbs = 1; num_sidbs <= max_sidbs; ++num_sidbs)
+        {
+            auto combinations =
+                determine_all_combinations_of_distributing_k_entities_on_n_positions(num_sidbs, total_positions);
+            std::move(combinations.begin(), combinations.end(), std::back_inserter(all_combinations));
+        }
+
+        std::cout << "NUM COMBINATIONS: " << all_combinations.size() << std::endl;
 
         std::shuffle(all_combinations.begin(), all_combinations.end(), std::mt19937(std::random_device()()));
 
@@ -507,6 +520,12 @@ class design_sidb_gates_impl
 
         designed_sidb_gates<Lyt, ExtPotType> designed_gate_layouts{};
 
+        for (const auto& candidate_combination : candidate_combinations)
+        {
+            designed_gate_layouts.gate_layouts.emplace_back(skeleton_layout_with_canvas_sidbs(candidate_combination));
+        }
+        return designed_gate_layouts.gate_layouts;
+
         if (!params.post_design_process.empty())
         {
             designed_gate_layouts.simulation_results = std::make_optional<
@@ -548,26 +567,28 @@ class design_sidb_gates_impl
             // canvas SiDBs are added to the skeleton
             const auto layout_with_added_cells = skeleton_layout_with_canvas_sidbs(combination);
 
-            if (!circuit.has_value())
-            {
-                if (is_operational<Lyt, TT, ExtPotType>(layout_with_added_cells, truth_table, params.operational_params,
-                                                        input_bdl_wires, output_bdl_wires)
-                        .status != operational_status::OPERATIONAL)
-                {
-                    return;
-                }
-            }
-            else
-            {
-                if (is_circuit_operational<Lyt, GateLyt, ExtPotType, SkeletonGateLibrary>(
-                        sidb_cell_level_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>{layout_with_added_cells,
-                                                                                       std::cref(*circuit)},
-                        *circuit_operational_params)
-                        .status != operational_status::OPERATIONAL)
-                {
-                    return;
-                }
-            }
+            // todo
+            // if (!circuit.has_value())
+            // {
+            //     if (is_operational<Lyt, TT, ExtPotType>(layout_with_added_cells, truth_table,
+            //     params.operational_params,
+            //                                             input_bdl_wires, output_bdl_wires)
+            //             .status != operational_status::OPERATIONAL)
+            //     {
+            //         return;
+            //     }
+            // }
+            // else
+            // {
+            //     if (is_circuit_operational<Lyt, GateLyt, ExtPotType, SkeletonGateLibrary>(
+            //             sidb_cell_level_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>{layout_with_added_cells,
+            //                                                                            std::cref(*circuit)},
+            //             *circuit_operational_params)
+            //             .status != operational_status::OPERATIONAL)
+            //     {
+            //         return;
+            //     }
+            // }
 
             const std::lock_guard lock_vector{mutex_to_protect_designed_gate_layouts};
 

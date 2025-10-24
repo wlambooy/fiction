@@ -302,7 +302,7 @@ class advanced_circuit_design_impl
 
         circuit->gate_designs = std::move(gate_designs);
 
-        circuit->recompute_gate_design_influence_bounds();
+        circuit->tighten_gate_influence_bounds_until_fixpoint();
     }
 
     void collect_nodes(const tile<GateLyt>&                           t,
@@ -1109,7 +1109,8 @@ class advanced_circuit_design_impl
                         }
                     }
 
-                    std::cout << "PRUNED " << num_gate_designs_pruned[n] << " out of " << gate_fitness_assessments.at(n).size() << std::endl;
+                    std::cout << "PRUNED " << num_gate_designs_pruned[n] << " out of "
+                              << gate_fitness_assessments.at(n).size() << std::endl;
 
                     //
                     //     if (discriminate_fitness_assessments(
@@ -1169,7 +1170,7 @@ class advanced_circuit_design_impl
                     circuit->gate_designs[n] = std::move(selected_gate_implementations);
                 });
 
-            circuit->recompute_gate_design_influence_bounds();
+            circuit->tighten_gate_influence_bounds_until_fixpoint();
         }
 
         return std::nullopt;
