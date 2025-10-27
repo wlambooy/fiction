@@ -92,12 +92,12 @@ class sidb_bdl_circuit
 
         if (nw && !ne)
         {
-            absolute_c.x -= SkeletonGateLibrary::gate_x_size() / 8;
+            absolute_c.x -= 2;// SkeletonGateLibrary::gate_x_size() / 8;
         }
 
         if (!nw && ne)
         {
-            absolute_c.x += SkeletonGateLibrary::gate_x_size() / 8;
+            absolute_c.x += 2;// SkeletonGateLibrary::gate_x_size() / 8;
         }
 
         return absolute_c;
@@ -778,7 +778,7 @@ class sidb_bdl_circuit
         };
 
         charge_distribution_surface<CellLyt, local_external_potential_type::BOUNDED> simulated_bdl_wires{
-            simulated_bdl_wires_per_input.at(input_index)};
+            simulated_bdl_wires_per_input.at(input_index)}; // todo test whether .clone() matters here
 
         gate_layout.foreach_node(
             [&](const auto& other_n)
@@ -1396,7 +1396,7 @@ class sidb_bdl_sub_circuit
 
                 // cds_with_simulated_bdl_wires->assign_local_external_potential_map(
                 //     pot_from_sub_circuit_skeleton_to_super_circuit);
-                simulated_bdl_wires_copy.update_local_internal_potential();
+                simulated_bdl_wires_copy.template update_local_internal_potential<true>();
 
                 // todo: defect influence
                 // if constexpr (is_sidb_defect_surface_v<CellLyt>)

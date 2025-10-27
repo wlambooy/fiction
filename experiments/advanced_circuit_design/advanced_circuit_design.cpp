@@ -292,7 +292,7 @@ int main(int argc, char* argv[])  // NOLINT
     using cell_lyt = sidb_cell_clk_lyt_cube;
     using lyt_t    = sidb_defect_surface<cell_lyt>;
 
-    using skeleton = sidb_bdl_skeleton_1;
+    using skeleton = sidb_bdl_skeleton_original_bestagon;  // sidb_bdl_skeleton_1;
 
     /// DESIGN GATE PARAMS
 
@@ -420,9 +420,19 @@ int main(int argc, char* argv[])  // NOLINT
 
             advanced_circuit_design_stats<gate_lyt> st{};
 
+            gate_lyt   g{{2, 4}, row_clocking<gate_lyt>()};
+            const auto i1 = g.create_pi("1", {0, 0});
+            const auto i2 = g.create_pi("2", {2, 0});
+            const auto b1 = g.create_buf(i1, {1, 1});
+            const auto b2 = g.create_buf(i2, {2, 1});
+            const auto a  = g.create_and(b1, b2, {1, 2});
+            const auto b3 = g.create_buf(a, {1, 3});
+            g.create_po(b3, "o", {0, 4});
+
             const std::optional<lyt_t>& lyt =
-                advanced_circuit_design<decltype(mapped_network), lyt_t, gate_lyt, skeleton>(mapped_network, params,
-                                                                                             &st);
+                advanced_circuit_design<decltype(mapped_network), lyt_t, gate_lyt, skeleton>(g  // mapped_network
+                                                                                             ,
+                                                                                             params, &st);
 
             if (!lyt.has_value())
             {

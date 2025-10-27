@@ -270,6 +270,10 @@ class advanced_circuit_design_impl
     using gate_designs_per_node = foreach_node<std::vector<typename SkeletonGateLibrary::fcn_gate>>;
 
     uint64_t circuit_design_level = 0;
+    /**
+     * A canvas combination is a combination of canvas positions as a vector of canvas position indices.
+     */
+    using canvas_combination = std::vector<std::size_t>;
 
     void collect_initial_gate_designs()
     {
@@ -1146,6 +1150,8 @@ class advanced_circuit_design_impl
             if (pruned_total == 0)
             {
                 fixpoint = true;
+
+                continue;
             }
 
             stats.gate_layout->foreach_node(
