@@ -8,7 +8,7 @@
 
 #include <fiction/algorithms/network_transformation/technology_mapping.hpp>
 #include <fiction/algorithms/physical_design/advanced_circuit_design.hpp>
-#include <fiction/algorithms/physical_design/design_sidb_gates.hpp>
+// #include <fiction/algorithms/physical_design/design_sidb_gates.hpp>
 #include <fiction/algorithms/simulation/sidb/sidb_simulation_engine.hpp>
 #include <fiction/io/print_layout.hpp>
 #include <fiction/io/read_sidb_surface_defects.hpp>
@@ -19,7 +19,7 @@
 #include <fiction/technology/sidb_bdl_skeletons.hpp>
 #include <fiction/technology/sidb_defect_surface.hpp>
 #include <fiction/technology/sidb_defects.hpp>
-#include <fiction/technology/sidb_on_the_fly_gate_library.hpp>
+// #include <fiction/technology/sidb_on_the_fly_gate_library.hpp>
 #include <fiction/traits.hpp>
 #include <fiction/types.hpp>
 
@@ -58,7 +58,7 @@ namespace fs = std::filesystem;
 
 template <typename lyt_t, typename skeleton>
 advanced_circuit_design_params<lyt_t> parse_params(const int argc, char** argv,
-                                                   design_sidb_gates_params<lyt_t>& design_gate_params,
+                                                   // design_sidb_gates_params<lyt_t>& design_gate_params,
                                                    const std::optional<lyt_t>&      surface_lattice)
 {
     advanced_circuit_design_params<lyt_t> params{};
@@ -66,27 +66,27 @@ advanced_circuit_design_params<lyt_t> parse_params(const int argc, char** argv,
     CLI::App app{"SiDB circuit design parameters"};
 
     // ---- Temporary signed variables for parsing ----
-    int64_t canvas_sidbs_signed                = static_cast<int64_t>(design_gate_params.number_of_canvas_sidbs);
-    int64_t max_gate_designs_signed            = static_cast<int64_t>(design_gate_params.maximum_number_of_solutions);
-    int64_t design_gate_threads_signed         = static_cast<int64_t>(design_gate_params.available_threads);
+    int64_t canvas_sidbs_signed                = static_cast<int64_t>(params.maximum_number_of_canvas_sidbs);
+    // int64_t max_gate_designs_signed            = static_cast<int64_t>(params.maximum_number_of_solutions);
+    // int64_t design_gate_threads_signed         = static_cast<int64_t>(design_gate_params.available_threads);
     int64_t num_trials_signed                  = static_cast<int64_t>(params.num_trials);
     int64_t max_discrimination_attempts_signed = static_cast<int64_t>(params.maximum_discrimination_attempts);
     int64_t max_repeated_discrimination_attempts_signed =
         static_cast<int64_t>(params.maximum_repeated_discrimination_attempts);
     int64_t threads_signed = static_cast<int64_t>(params.available_threads);
 
-    std::vector canvas_x{static_cast<int64_t>(params.design_gate_params.canvas.first.x),
-                         static_cast<int64_t>(params.design_gate_params.canvas.second.x)};
-    std::vector canvas_y{static_cast<int64_t>(params.design_gate_params.canvas.first.y),
-                         static_cast<int64_t>(params.design_gate_params.canvas.second.y)};
+    std::vector canvas_x{static_cast<int64_t>(params.canvas.first.x),
+                         static_cast<int64_t>(params.canvas.second.x)};
+    std::vector canvas_y{static_cast<int64_t>(params.canvas.first.y),
+                         static_cast<int64_t>(params.canvas.second.y)};
 
     app.add_option("--canvas_x", canvas_x, "Canvas X range (xmin,xmax)")->delimiter(',');
     app.add_option("--canvas_y", canvas_y, "Canvas Y range (ymin,ymax)")->delimiter(',');
 
     // Gate design parameters
     app.add_option("--canvas_sidbs", canvas_sidbs_signed, "Number of canvas SiDBs");
-    app.add_option("--max_gate_designs", max_gate_designs_signed, "Maximum number of initial gate designs");
-    app.add_option("--design_gate_threads", design_gate_threads_signed, "Available gate design threads (0 = all)");
+    // app.add_option("--max_gate_designs", max_gate_designs_signed, "Maximum number of initial gate designs");
+    // app.add_option("--design_gate_threads", design_gate_threads_signed, "Available gate design threads (0 = all)");
 
     // Circuit design parameters
     app.add_option("--num_trials", num_trials_signed, "Number of trials");
@@ -140,9 +140,9 @@ advanced_circuit_design_params<lyt_t> parse_params(const int argc, char** argv,
         return static_cast<uint64_t>(value);
     };
 
-    design_gate_params.number_of_canvas_sidbs      = to_uint64_checked(canvas_sidbs_signed, "canvas_sidbs");
-    design_gate_params.maximum_number_of_solutions = to_uint64_checked(max_gate_designs_signed, "max_gate_designs");
-    design_gate_params.available_threads = to_uint64_checked(design_gate_threads_signed, "design_gate_threads", true);
+    params.maximum_number_of_canvas_sidbs      = to_uint64_checked(canvas_sidbs_signed, "canvas_sidbs");
+    // design_gate_params.maximum_number_of_solutions = to_uint64_checked(max_gate_designs_signed, "max_gate_designs");
+    // design_gate_params.available_threads = to_uint64_checked(design_gate_threads_signed, "design_gate_threads", true);
     params.num_trials                    = to_uint64_checked(num_trials_signed, "num_trials");
     params.maximum_discrimination_attempts =
         to_uint64_checked(max_discrimination_attempts_signed, "max_discrimination_attempts");
@@ -182,11 +182,11 @@ advanced_circuit_design_params<lyt_t> parse_params(const int argc, char** argv,
         params.quantize_mode = advanced_circuit_design_params<lyt_t>::quantization_mode::SOFTEN_PRUNING;
     }
 
-    // Gate design mode
-    if (gate_design_mode == "e" || gate_design_mode == "exhaustive")
-    {
-        design_gate_params.design_mode = design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::EXHAUSTIVE;
-    }
+    // // Gate design mode
+    // if (gate_design_mode == "e" || gate_design_mode == "exhaustive")
+    // {
+    //     design_gate_params.design_mode = design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::EXHAUSTIVE;
+    // }
 
     // Argument validation
     auto check_positive = [](auto value, const std::string& name)
@@ -197,12 +197,12 @@ advanced_circuit_design_params<lyt_t> parse_params(const int argc, char** argv,
         }
     };
 
-    check_positive(design_gate_params.number_of_canvas_sidbs, "canvas_sidbs");
-    check_positive(design_gate_params.maximum_number_of_solutions, "max_gate_designs");
-    if (design_gate_params.available_threads < 0)
-    {
-        throw std::invalid_argument("design_gate_threads must be >= 0");
-    }
+    check_positive(params.maximum_number_of_canvas_sidbs, "canvas_sidbs");
+    // check_positive(design_gate_params.maximum_number_of_solutions, "max_gate_designs");
+    // if (design_gate_params.available_threads < 0)
+    // {
+    //     throw std::invalid_argument("design_gate_threads must be >= 0");
+    // }
     check_positive(params.num_trials, "num_trials");
 
     if (params.quantization_step < 0.0 || params.quantization_step > 10.0)
@@ -236,7 +236,7 @@ advanced_circuit_design_params<lyt_t> parse_params(const int argc, char** argv,
 
     // Threads handling (0 -> all)
     normalize_threads(params.available_threads);
-    normalize_threads(design_gate_params.available_threads);
+    // normalize_threads(design_gate_params.available_threads);
 
     // --- Canvas validation ---
     if (canvas_x.size() != 2 || canvas_y.size() != 2)
@@ -260,7 +260,7 @@ advanced_circuit_design_params<lyt_t> parse_params(const int argc, char** argv,
                                     std::to_string(skeleton::gate_y_size()));
     }
 
-    design_gate_params.canvas = {{static_cast<uint64_t>(x_min), static_cast<uint64_t>(y_min)},
+    params.canvas = {{static_cast<uint64_t>(x_min), static_cast<uint64_t>(y_min)},
                                  {static_cast<uint64_t>(x_max), static_cast<uint64_t>(y_max)}};
 
     // Fixed/default parameters
@@ -275,7 +275,7 @@ advanced_circuit_design_params<lyt_t> parse_params(const int argc, char** argv,
     params.exact_design_parameters.timeout       = 3'600'000;  // 1h in ms
 
     params.defect_surface     = surface_lattice;
-    params.design_gate_params = design_gate_params;
+    // params.design_gate_params = design_gate_params;
 
     return params;
 }
@@ -292,40 +292,41 @@ int main(int argc, char* argv[])  // NOLINT
     using cell_lyt = sidb_cell_clk_lyt_cube;
     using lyt_t    = sidb_defect_surface<cell_lyt>;
 
-    using skeleton = sidb_bdl_skeleton_original_bestagon;  // sidb_bdl_skeleton_1;
-
-    /// DESIGN GATE PARAMS
-
-    design_sidb_gates_params<lyt_t> design_gate_params{};
-
-    design_gate_params.operational_params.simulation_parameters = sidb_simulation_parameters{3, -0.32};
-    // design_gate_params.operational_params.simulation_parameters = sidb_simulation_parameters{3, -0.26};
-    // design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params.threshold_bdl_interdistance = 3;
-    // design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params.bdl_pairs_params.minimum_distance
-    // = 0.5;
-    // design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params.bdl_pairs_params.maximum_distance
-    // = 1.7;
-    // =; sidb_simulation_parameters{2, -0.32};
-    design_gate_params.operational_params.op_condition_positive_charges =
-        is_operational_params<cell<lyt_t>>::operational_condition_positive_charges::TOLERATE_POSITIVE_CHARGES;
-    design_gate_params.operational_params.op_condition_kinks =
-        is_operational_params<cell<lyt_t>>::operational_condition_kinks::REJECT_KINKS;
-    design_gate_params.design_mode = design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::RANDOM;
-
-    // design_gate_params.post_design_process = {
-    //     std::make_unique<compare_by_minimum_ground_state_isolation<lyt_t>>(),
-    //     std::make_unique<compare_by_average_ground_state_isolation<lyt_t>>()};
-
-    // needs to be changed if a different skeleton is used.
-    // design_gate_params.canvas = {{10, 8}, {31, 19}}; // new_mini_bestagon_august.sqd
-    // design_gate_params.canvas = {{23, 12}, {37, 25}};  // original_bestagon.sqd
-    design_gate_params.canvas = {{8, 11}, {18, 20}};  // new_mini_bestagon.sqd
-    // design_gate_params.canvas = {{5, 8}, {21, 21}};  // new_mini_bestagon.sqd
-
-    design_gate_params.number_of_canvas_sidbs        = 4;
-    design_gate_params.operational_params.sim_engine = sidb_simulation_engine::CLUSTERCOMPLETE;
-    design_gate_params.termination_cond = design_sidb_gates_params<lyt_t>::termination_condition::OBTAINED_N_SOLUTIONS;
-    design_gate_params.maximum_number_of_solutions = 200;
+    // using skeleton = sidb_bdl_skeleton_original_bestagon;  // sidb_bdl_skeleton_1;
+    using skeleton = sidb_bdl_skeleton_1;
+    //
+    // /// DESIGN GATE PARAMS
+    //
+    // design_sidb_gates_params<lyt_t> design_gate_params{};
+    //
+    // design_gate_params.operational_params.simulation_parameters = sidb_simulation_parameters{3, -0.32};
+    // // design_gate_params.operational_params.simulation_parameters = sidb_simulation_parameters{3, -0.26};
+    // // design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params.threshold_bdl_interdistance = 3;
+    // // design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params.bdl_pairs_params.minimum_distance
+    // // = 0.5;
+    // // design_gate_params.operational_params.input_bdl_iterator_params.bdl_wire_params.bdl_pairs_params.maximum_distance
+    // // = 1.7;
+    // // =; sidb_simulation_parameters{2, -0.32};
+    // design_gate_params.operational_params.op_condition_positive_charges =
+    //     is_operational_params<cell<lyt_t>>::operational_condition_positive_charges::TOLERATE_POSITIVE_CHARGES;
+    // design_gate_params.operational_params.op_condition_kinks =
+    //     is_operational_params<cell<lyt_t>>::operational_condition_kinks::REJECT_KINKS;
+    // design_gate_params.design_mode = design_sidb_gates_params<lyt_t>::design_sidb_gates_mode::RANDOM;
+    //
+    // // design_gate_params.post_design_process = {
+    // //     std::make_unique<compare_by_minimum_ground_state_isolation<lyt_t>>(),
+    // //     std::make_unique<compare_by_average_ground_state_isolation<lyt_t>>()};
+    //
+    // // needs to be changed if a different skeleton is used.
+    // // design_gate_params.canvas = {{10, 8}, {31, 19}}; // new_mini_bestagon_august.sqd
+    // // design_gate_params.canvas = {{23, 12}, {37, 25}};  // original_bestagon.sqd
+    // design_gate_params.canvas = {{8, 11}, {18, 20}};  // new_mini_bestagon.sqd
+    // // design_gate_params.canvas = {{5, 8}, {21, 21}};  // new_mini_bestagon.sqd
+    //
+    // design_gate_params.number_of_canvas_sidbs        = 4;
+    // design_gate_params.operational_params.sim_engine = sidb_simulation_engine::CLUSTERCOMPLETE;
+    // design_gate_params.termination_cond = design_sidb_gates_params<lyt_t>::termination_condition::OBTAINED_N_SOLUTIONS;
+    // design_gate_params.maximum_number_of_solutions = 200;
 
     // // save atomic defects which their respective physical parameters as experimentally determined by T. R. Huff, T.
     // // Dienel, M. Rashidi, R. Achal, L. Livadaru, J. Croshaw, and R. A. Wolkow, "Electrostatic landscape of a
@@ -416,7 +417,7 @@ int main(int argc, char* argv[])  // NOLINT
             const auto mapped_network = technology_mapping(cut_xag, tech_map_params);
 
             const advanced_circuit_design_params<lyt_t> params =
-                parse_params<lyt_t, skeleton>(argc, argv, design_gate_params, surface_lattice);
+                parse_params<lyt_t, skeleton>(argc, argv, surface_lattice);
 
             advanced_circuit_design_stats<gate_lyt> st{};
 
@@ -426,6 +427,7 @@ int main(int argc, char* argv[])  // NOLINT
             const auto b1 = g.create_buf(i1, {1, 1});
             const auto b2 = g.create_buf(i2, {2, 1});
             const auto a  = g.create_and(b1, b2, {1, 2});
+            // const auto a  = g.create_xor(b1, b2, {1, 2});
             const auto b3 = g.create_buf(a, {1, 3});
             g.create_po(b3, "o", {0, 4});
 

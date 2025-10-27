@@ -36,8 +36,8 @@ class sidb_bdl_circuit
   public:
     explicit sidb_bdl_circuit(const GateLyt& gate_lyt, const sidb_simulation_parameters& simulation_parameters,
                               const std::pair<cell<CellLyt>, cell<CellLyt>>& rel_canvas,
-                              const detect_bdl_wires_params& bdl_wire_params, const bool print_skeleton = true) noexcept
-            :
+                              const detect_bdl_wires_params&                 bdl_wire_params = {},
+                              const bool                                     print_skeleton  = true) noexcept :
             gate_layout{gate_lyt.clone()},
             sim_params{simulation_parameters},
             canvas{rel_canvas},
@@ -77,7 +77,13 @@ class sidb_bdl_circuit
     const uint64_t                                             num_inputs{};
     const std::vector<std::pair<tile<GateLyt>, tile<GateLyt>>> gate_connections{};
 
-    std::unordered_map<mockturtle::node<GateLyt>, std::vector<typename SkeletonGateLibrary::fcn_gate>> gate_designs{};
+    /**
+     * A canvas combination is a combination of canvas positions as a vector of canvas position indices.
+     */
+    using canvas_combination = std::vector<std::size_t>;
+
+    std::unordered_map<mockturtle::node<GateLyt>, std::vector<cell<CellLyt>>>      all_canvas_positions{};
+    std::unordered_map<mockturtle::node<GateLyt>, std::vector<canvas_combination>> gate_designs{};
 
     [[nodiscard]] static cell<CellLyt> relative_to_absolute_canvas_position(const GateLyt&       gate_lyt,
                                                                             const cell<CellLyt>& rel_pos,
@@ -92,12 +98,12 @@ class sidb_bdl_circuit
 
         if (nw && !ne)
         {
-            absolute_c.x -= 2;// SkeletonGateLibrary::gate_x_size() / 8;
+            absolute_c.x -= 2;  // SkeletonGateLibrary::gate_x_size() / 8;
         }
 
         if (!nw && ne)
         {
-            absolute_c.x += 2;// SkeletonGateLibrary::gate_x_size() / 8;
+            absolute_c.x += 2;  // SkeletonGateLibrary::gate_x_size() / 8;
         }
 
         return absolute_c;
@@ -778,7 +784,7 @@ class sidb_bdl_circuit
         };
 
         charge_distribution_surface<CellLyt, local_external_potential_type::BOUNDED> simulated_bdl_wires{
-            simulated_bdl_wires_per_input.at(input_index)}; // todo test whether .clone() matters here
+            simulated_bdl_wires_per_input.at(input_index)};  // todo test whether .clone() matters here
 
         gate_layout.foreach_node(
             [&](const auto& other_n)
@@ -825,8 +831,6 @@ class sidb_bdl_circuit
                 simulated_bdl_wires.update_local_external_potential();
                 simulated_bdl_wires.determine_effective_charge_transition_thresholds();
 
-                const tile<GateLyt>& other_t = gate_layout.get_tile(other_n);
-
                 for (uint64_t j = cell_start_index; j < cell_end_index; ++j)
                 {
                     const cell<CellLyt>& c = all_cells_at_node_per_input.at(input_index).at(n).at(j);
@@ -835,14 +839,19 @@ class sidb_bdl_circuit
                                                  -std::numeric_limits<double>::infinity()};
 
                     uint64_t gate_num = 0;
-                    for (const typename SkeletonGateLibrary::fcn_gate& gate : gate_designs.at(other_n))
+                    for (const canvas_combination& gate : gate_designs.at(other_n))
                     {
                         CellLyt canvas_of_other_n{};
 
-                        assign_gate<CellLyt, SkeletonGateLibrary, GateLyt>(canvas_of_other_n, gate, gate_layout,
-                                                                           other_t, sidb_technology::cell_type::LOGIC);
-
-                        canvas_of_other_n.assign_cell_type(c, sidb_technology::cell_type::EMPTY);
+                        for (const uint64_t gate_design_cell_index : gate)
+                        {
+                            if (const cell<CellLyt>& canvas_c =
+                                    all_canvas_positions.at(other_n).at(gate_design_cell_index);
+                                canvas_c != c)
+                            {
+                                canvas_of_other_n.assign_cell_type(canvas_c, sidb_technology::cell_type::LOGIC);
+                            }
+                        }
 
                         charge_distribution_surface<CellLyt> canvas_cds{canvas_of_other_n, sim_params,
                                                                         sidb_charge_state::NEGATIVE,
@@ -985,7 +994,7 @@ class sidb_bdl_sub_circuit
 
     explicit sidb_bdl_sub_circuit(const sidb_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>& bdl_super_circuit,
                                   const std::vector<tile<GateLyt>>&                              sub_circuit_tiles,
-                                  const detect_bdl_wires_params& bdl_wire_params) noexcept :
+                                  const detect_bdl_wires_params& bdl_wire_params = {}) noexcept :
             super_circuit{bdl_super_circuit},
             gate_layout{create_gate_lyt_window_for_tiles(super_circuit.gate_layout, sub_circuit_tiles)},
             skeleton{apply_gate_library<CellLyt, SkeletonGateLibrary, GateLyt>(gate_layout)},
@@ -994,10 +1003,7 @@ class sidb_bdl_sub_circuit
             input_bdl_pairs{detect_bdl_pairs<CellLyt>(skeleton, sidb_technology::cell_type::INPUT,
                                                       bdl_wire_params.bdl_pairs_params)},
             num_inputs{input_bdl_pairs.size()},
-            gate_connections{sidb_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>::get_gate_connections(
-                bdl_wires, skeleton, gate_layout)},
             tiles{sub_circuit_tiles},
-            gate_tile{sub_circuit_tiles.size() == 1 ? std::make_optional(sub_circuit_tiles.front()) : std::nullopt},
             consistent_super_circuit_input_indices_per_input{
                 collect_consistent_super_circuit_input_indices(super_circuit, input_bdl_pairs)},
             super_circuit_simulated_bdl_wires_per_input{simulate_bdl_wires_of_super_circuit(
@@ -1022,7 +1028,6 @@ class sidb_bdl_sub_circuit
     const std::vector<std::pair<tile<GateLyt>, tile<GateLyt>>> gate_connections{};
 
     const std::vector<tile<GateLyt>>   tiles{};
-    const std::optional<tile<GateLyt>> gate_tile{};
 
     [[nodiscard]] std::optional<sidb_technology::cell_type>
     is_not_internal_output_perturber(const CellLyt& lyt, const cell<CellLyt>& c) const noexcept

@@ -671,193 +671,30 @@ class is_circuit_operational_impl
     assess_logic_match_of_charge_distribution(const charge_distribution_surface<Lyt, ExtPotType>& given_cds,
                                               const uint64_t input_pattern) noexcept
     {
-        const bool print_it = parameters.print;  // std::round(static_cast<double>(std::rand()) / (RAND_MAX
-                                                 // + 1.0) * 10000) == 5000;
-        if (print_it)
+        const charge_distribution_surface<Lyt, local_external_potential_type::BOUNDED>& simulated_bdl_wires =
+            implemented_circuit.circuit.super_circuit
+                .get_simulated_bdl_wires_for_input_index(
+                    implemented_circuit.circuit.get_consistent_super_circuit_input_indices(input_pattern).get().front())
+                .get();
+
+        for (const bdl_wire<Lyt>& wire : implemented_circuit.circuit.bdl_wires)
         {
-            std::cout << std::endl;
-            print_layout(given_cds);
-            std::cout << "input_pattern: " << input_pattern << std::endl;
-        }
-        operational_assessment_for_input op_assessment{operational_status::NON_OPERATIONAL};
-
-        uint64_t successful_bdl_pairs_count = 0;
-
-        const auto count_logic_matching_bdl_pairs_in_wire_range =
-            [&](const typename std::vector<bdl_pair<cell<Lyt>>>::const_iterator begin,
-                const typename std::vector<bdl_pair<cell<Lyt>>>::const_iterator end, const bool signal) noexcept
-        {
-            for (auto it = begin; it != end; ++it)
-
+            for (const bdl_pair<cell<Lyt>>& pair : wire.pairs)
             {
-                assert(it->type != sidb_technology::cell_type::INPUT && "input BDL pairs are handled separately");
+                // if (pair.type == sidb_technology::cell_type::INPUT)
+                // {
+                //     continue;
+                // }
 
-                successful_bdl_pairs_count += static_cast<uint64_t>((signal && encodes_bit_one(given_cds, *it)) ||
-                                                                    (!signal && encodes_bit_zero(given_cds, *it)));
-
-                if (print_it)
+                if (given_cds.get_charge_state(pair.upper) != simulated_bdl_wires.get_charge_state(pair.upper) ||
+                    given_cds.get_charge_state(pair.lower) != simulated_bdl_wires.get_charge_state(pair.lower))
                 {
-                    std::cout << "bdl pair with " << it->upper.x << ',' << it->upper.y << " and " << it->lower.x << ','
-                              << it->lower.y << ": "
-                              << static_cast<uint64_t>((signal && encodes_bit_one(given_cds, *it)) ||
-                                                       (!signal && encodes_bit_zero(given_cds, *it)))
-                              << std::endl;
+                    return operational_assessment_for_input{operational_status::NON_OPERATIONAL};
                 }
             }
-        };
-
-        std::unordered_map<tile<GateLyt>, std::unordered_map<tile<GateLyt>, bool>> expected_signal_at_gate_connection{};
-
-        uint64_t current_input_number = 0;
-
-        for (uint64_t wire_ix = 0; wire_ix < implemented_circuit.circuit.bdl_wires.size(); ++wire_ix)
-        {
-            const bdl_wire<Lyt>& wire = implemented_circuit.circuit.bdl_wires.at(wire_ix);
-
-            assert((wire.port.dir == port_direction::SOUTH || wire.port.dir == port_direction::EAST ||
-                    wire.port.dir == port_direction::NONE) &&
-                   "Wrong port direction; only row clocking is supported");
-
-            const auto& [upper_tile, lower_tile] = implemented_circuit.circuit.gate_connections.at(wire_ix);
-
-            typename std::vector<bdl_pair<cell<Lyt>>>::const_iterator successful_bdl_pairs_counting_start_it =
-                wire.pairs.cbegin();
-
-            if (implemented_circuit.circuit.gate_layout.is_pi_tile(upper_tile))
-            {
-                assert((expected_signal_at_gate_connection.count(lower_tile) == 0 ||
-                        expected_signal_at_gate_connection.at(lower_tile).count(upper_tile) == 0) &&
-                       "PI is visited twice");
-
-                const bool current_bit_set =
-                    (input_pattern &
-                     (uint64_t{1ull} << (implemented_circuit.circuit.num_inputs - 1 - current_input_number++))) != 0ull;
-
-                expected_signal_at_gate_connection[lower_tile].insert({upper_tile, current_bit_set});
-
-                const bdl_pair<cell<Lyt>>& input_pair = wire.pairs.front();
-
-                assert(input_pair.type == sidb_technology::cell_type::INPUT &&
-                       "BDL wire connecting to a PI does not start with an input BDL pair");
-
-                // successful_bdl_pairs_count += static_cast<uint64_t>(
-                //     (current_bit_set && given_cds.get_charge_state(input_pair.lower) == sidb_charge_state::NEGATIVE)
-                //     ||
-                //     (!current_bit_set && given_cds.get_charge_state(input_pair.upper) ==
-                //     sidb_charge_state::NEGATIVE));
-
-                if (print_it)
-                {
-                    std::cout << "input: " << current_input_number - 1 << ": "
-                              << static_cast<uint64_t>(
-                                     (current_bit_set &&
-                                      given_cds.get_charge_state(input_pair.lower) == sidb_charge_state::NEGATIVE) ||
-                                     (!current_bit_set &&
-                                      given_cds.get_charge_state(input_pair.upper) == sidb_charge_state::NEGATIVE))
-                              << std::endl;
-                }
-
-                successful_bdl_pairs_counting_start_it = std::next(wire.pairs.cbegin(), 1);
-            }
-
-            assert(expected_signal_at_gate_connection.count(lower_tile) != 0 &&
-                   expected_signal_at_gate_connection.at(lower_tile).count(upper_tile) != 0 &&
-                   "Tile is visited before the incoming tile that connects it");
-
-            const bool expected_signal_for_wire = expected_signal_at_gate_connection.at(lower_tile).at(upper_tile);
-
-            count_logic_matching_bdl_pairs_in_wire_range(successful_bdl_pairs_counting_start_it, wire.pairs.cend(),
-                                                         expected_signal_for_wire);
-
-            const uint32_t num_inputs = implemented_circuit.circuit.gate_layout
-                                            .node_function(implemented_circuit.circuit.gate_layout.get_node(lower_tile))
-                                            .num_vars();
-
-            assert(expected_signal_at_gate_connection.at(lower_tile).size() <= num_inputs &&
-                   "Number of tiles visited connecting to the current tile exceeds the number of inputs to the node "
-                   "function");
-
-            if (implemented_circuit.circuit.gate_layout.is_po_tile(lower_tile) ||
-                expected_signal_at_gate_connection.at(lower_tile).size() < num_inputs)
-            {
-                continue;
-            }
-
-            const std::vector<tile<GateLyt>>& outgoing_tiles =
-                implemented_circuit.circuit.gate_layout.outgoing_data_flow(lower_tile);
-
-            assert(!outgoing_tiles.empty() && "Non-PO tile does not have outgoing data flow");
-
-            if constexpr (has_is_fanout_v<GateLyt>)
-            {
-                if (implemented_circuit.circuit.gate_layout.is_fanout(
-                        implemented_circuit.circuit.gate_layout.get_node(lower_tile)))
-                {
-                    for (const tile<GateLyt>& lower_lower_t : outgoing_tiles)
-                    {
-                        expected_signal_at_gate_connection[lower_lower_t].insert(
-                            {lower_tile, expected_signal_for_wire});
-                    }
-
-                    continue;
-                }
-            }
-
-            assert(outgoing_tiles.size() == 1 && "Tile with single-output gate has more than one outgoing tile.");
-
-            const tile<GateLyt>& first_input_tile = expected_signal_at_gate_connection.at(lower_tile).cbegin()->first;
-
-            assert((num_inputs == 1 ||
-                    (expected_signal_at_gate_connection.at(lower_tile).size() == 2 &&
-                     first_input_tile.y ==
-                         std::next(expected_signal_at_gate_connection.at(lower_tile).cbegin(), 1)->first.y &&
-                     first_input_tile.x !=
-                         std::next(expected_signal_at_gate_connection.at(lower_tile).cbegin(), 1)->first.x)) &&
-                   "Only row clocking is supported; inputs to a tile must be on the same y with differing x");
-
-            auto tt_inp = static_cast<uint8_t>(expected_signal_at_gate_connection.at(lower_tile).at(first_input_tile));
-
-            if (num_inputs == 2)
-            {
-                const tile<GateLyt>& second_input_tile =
-                    std::next(expected_signal_at_gate_connection.at(lower_tile).cbegin(), 1)->first;
-                const auto tt_inp_second =
-                    static_cast<uint8_t>(expected_signal_at_gate_connection.at(lower_tile).at(second_input_tile));
-
-                // tt_inp <- 2 * L_in + R_in
-                if (first_input_tile.x < second_input_tile.x)
-                {
-                    tt_inp = 2 * tt_inp + tt_inp_second;
-                }
-                else
-                {
-                    tt_inp += 2 * tt_inp_second;
-                }
-            }
-
-            expected_signal_at_gate_connection[outgoing_tiles.front()].insert(
-                {lower_tile, kitty::get_bit(implemented_circuit.circuit.gate_layout.node_function(
-                                                implemented_circuit.circuit.gate_layout.get_node(lower_tile)),
-                                            tt_inp)});
         }
 
-        op_assessment.logic_match =
-            static_cast<double>(successful_bdl_pairs_count) /
-            static_cast<double>(implemented_circuit.circuit.num_bdl_pairs - implemented_circuit.circuit.num_inputs);
-
-        if (successful_bdl_pairs_count ==
-            implemented_circuit.circuit.num_bdl_pairs - implemented_circuit.circuit.num_inputs)
-        {
-            op_assessment.status = operational_status::OPERATIONAL;
-        }
-
-        if (print_it)
-        {
-            std::cout << "successful bdl pairs:" << successful_bdl_pairs_count << std::endl;
-            std::cout << "total number of bdl pairs: " << implemented_circuit.circuit.num_bdl_pairs << std::endl;
-            std::cout << fmt::format("logic match: {:.3f}\n", op_assessment.logic_match) << std::endl;
-        }
-        return op_assessment;
+        return operational_assessment_for_input{operational_status::OPERATIONAL};
     }
 
     [[nodiscard]] operational_assessment_for_input determine_status_and_logic_match(
