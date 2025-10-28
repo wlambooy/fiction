@@ -190,18 +190,15 @@ Template parameter ``CellLyt``:
 
 static const char *__doc_fiction_advanced_circuit_design_params_available_threads = R"doc()doc";
 
-static const char *__doc_fiction_advanced_circuit_design_params_defect_surface =
-R"doc(This variable specifies the radius in nanometers around the center of
-the hexagon where atomic defects are incorporated into the gate
-design. (unit: nm))doc";
-
-static const char *__doc_fiction_advanced_circuit_design_params_design_gate_params = R"doc(This struct holds parameters to design SiDB gates.)doc";
+static const char *__doc_fiction_advanced_circuit_design_params_defect_surface = R"doc()doc";
 
 static const char *__doc_fiction_advanced_circuit_design_params_exact_design_parameters = R"doc(Parameters for the *exact* placement and routing algorithm.)doc";
 
 static const char *__doc_fiction_advanced_circuit_design_params_influence_radius_charged_defects = R"doc()doc";
 
 static const char *__doc_fiction_advanced_circuit_design_params_maximum_discrimination_attempts = R"doc()doc";
+
+static const char *__doc_fiction_advanced_circuit_design_params_maximum_number_of_canvas_sidbs = R"doc()doc";
 
 static const char *__doc_fiction_advanced_circuit_design_params_maximum_repeated_discrimination_attempts = R"doc()doc";
 
@@ -220,6 +217,11 @@ static const char *__doc_fiction_advanced_circuit_design_params_quantize_mode = 
 static const char *__doc_fiction_advanced_circuit_design_params_selectivity = R"doc()doc";
 
 static const char *__doc_fiction_advanced_circuit_design_params_selectivity_tolerance = R"doc()doc";
+
+static const char *__doc_fiction_advanced_circuit_design_params_sim_params =
+R"doc(This variable specifies the radius in nanometers around the center of
+the hexagon where atomic defects are incorporated into the gate
+design. (unit: nm))doc";
 
 static const char *__doc_fiction_advanced_circuit_design_params_sub_circuit_creation_mode = R"doc()doc";
 
@@ -5408,9 +5410,13 @@ Parameter ``signals``:
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl = R"doc()doc";
 
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_DoubleComparator = R"doc()doc";
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_SetHash = R"doc()doc";
 
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_DoubleComparator_operator_call = R"doc()doc";
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_SetHash_operator_call = R"doc()doc";
+
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_SetSetHash = R"doc()doc";
+
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_SetSetHash_operator_call = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_VectorHash = R"doc()doc";
 
@@ -5419,8 +5425,6 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl_VectorHash_
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_advanced_circuit_design_impl = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_advanced_circuit_design_impl_2 = R"doc()doc";
-
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_apply_quantization = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_build_subcircuits = R"doc()doc";
 
@@ -5440,9 +5444,7 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl_design_circ
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_design_sidb_layout = R"doc()doc";
 
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_discriminate_fitness_assessments = R"doc()doc";
-
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_exhaustively_enumerate_gate_design_combinations = R"doc(todo)doc";
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_excluded_combinations_mutex = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_gate_fitness_assessment = R"doc()doc";
 
@@ -5467,8 +5469,6 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl_operational
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_params = R"doc(Parameters for the on-the-fly circuit design.)doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_perform_trial = R"doc()doc";
-
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_print_success_rate_distribution = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_prune_gate_designs = R"doc(todo)doc";
 
@@ -20561,8 +20561,6 @@ static const char *__doc_fiction_sidb_bdl_sub_circuit_create_gate_lyt_window_for
 
 static const char *__doc_fiction_sidb_bdl_sub_circuit_gate_layout = R"doc(SiDB gate-level layout.)doc";
 
-static const char *__doc_fiction_sidb_bdl_sub_circuit_gate_tile = R"doc()doc";
-
 static const char *__doc_fiction_sidb_bdl_sub_circuit_get_all_tiles = R"doc()doc";
 
 static const char *__doc_fiction_sidb_bdl_sub_circuit_get_consistent_super_circuit_input_indices = R"doc()doc";
@@ -24381,6 +24379,10 @@ static const char *__doc_sidb_bdl_skeleton_august_sidb_bdl_skeleton_august = R"d
 static const char *__doc_sidb_bdl_skeleton_original_bestagon = R"doc()doc";
 
 static const char *__doc_sidb_bdl_skeleton_original_bestagon_sidb_bdl_skeleton_original_bestagon = R"doc()doc";
+
+static const char *__doc_sidb_bdl_skeleton_september = R"doc()doc";
+
+static const char *__doc_sidb_bdl_skeleton_september_sidb_bdl_skeleton_september = R"doc()doc";
 
 static const char *__doc_std_hash = R"doc()doc";
 
