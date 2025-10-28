@@ -681,15 +681,23 @@ class is_circuit_operational_impl
         {
             for (const bdl_pair<cell<Lyt>>& pair : wire.pairs)
             {
-                // if (pair.type == sidb_technology::cell_type::INPUT)
-                // {
-                //     continue;
-                // }
+                const sidb_charge_state upper_cs = given_cds.get_charge_state(pair.upper);
+                const sidb_charge_state lower_cs = given_cds.get_charge_state(pair.lower);
 
-                if (given_cds.get_charge_state(pair.upper) != simulated_bdl_wires.get_charge_state(pair.upper) ||
-                    given_cds.get_charge_state(pair.lower) != simulated_bdl_wires.get_charge_state(pair.lower))
+                if (upper_cs != sidb_charge_state::NONE)
                 {
-                    return operational_assessment_for_input{operational_status::NON_OPERATIONAL};
+                    if (upper_cs != simulated_bdl_wires.get_charge_state(pair.upper))
+                    {
+                        return operational_assessment_for_input{operational_status::NON_OPERATIONAL};
+                    }
+                }
+
+                if (lower_cs != sidb_charge_state::NONE)
+                {
+                    if (lower_cs != simulated_bdl_wires.get_charge_state(pair.lower))
+                    {
+                        return operational_assessment_for_input{operational_status::NON_OPERATIONAL};
+                    }
                 }
             }
         }

@@ -515,18 +515,28 @@ class sidb_bdl_circuit
 
         uint64_t pruned_total = 0;
 
-        std::cout << "\n=================\n" << "  TILE  | #PRUNED" << std::endl;
+        std::cout << "\n==================================\n";
+        std::cout << std::left << std::setw(10) << "TILE"
+                  << " | " << std::right << std::setw(8) << "#PRUNED"
+                  << " | " << std::right << std::setw(10) << "#REMAINING"
+                  << "\n";
+        std::cout << "----------------------------------\n";
 
         for (const auto& [n, designs] : gate_designs)
         {
-            const uint64_t pruned = gate_design_counts.at(n) - designs.size();
+            const uint64_t total     = gate_design_counts.at(n);
+            const uint64_t pruned    = total - designs.size();
+            const uint64_t remaining = designs.size();
 
-            std::cout << gate_layout.get_tile(n) << " |    " << pruned << std::endl;
+            std::cout << std::left << std::setw(10) << gate_layout.get_tile(n) << " | " << std::right << std::setw(8)
+                      << pruned << " | " << std::right << std::setw(10) << remaining << "\n";
 
             pruned_total += pruned;
         }
 
-        std::cout << "----------------- +\n" << "             " << pruned_total << std::endl;
+        std::cout << "----------------------+-----------\n";
+        std::cout << std::right << std::setw(21) << pruned_total << "\n";
+        std::cout << "==================================\n";
     }
 
   private:
@@ -1027,7 +1037,7 @@ class sidb_bdl_sub_circuit
     const uint64_t                                             num_inputs{};
     const std::vector<std::pair<tile<GateLyt>, tile<GateLyt>>> gate_connections{};
 
-    const std::vector<tile<GateLyt>>   tiles{};
+    const std::vector<tile<GateLyt>> tiles{};
 
     [[nodiscard]] std::optional<sidb_technology::cell_type>
     is_not_internal_output_perturber(const CellLyt& lyt, const cell<CellLyt>& c) const noexcept
@@ -1368,11 +1378,6 @@ class sidb_bdl_sub_circuit
 
                 simulated_bdl_wires_copy.initialize_matrices_for_electrostatic_calculation();
 
-                // typename charge_distribution_surface<CellLyt>::local_external_potential_map_t
-                //     pot_from_sub_circuit_skeleton_to_super_circuit{};
-                // pot_from_sub_circuit_skeleton_to_super_circuit.reserve(cds_with_simulated_bdl_wires.num_cells() -
-                //                                                        sub_circuit_skeleton_with_canvasses.num_cells());
-
                 sub_circuit_skeleton_with_canvasses.foreach_cell(
                     [&](const auto& c)
                     {
@@ -1384,32 +1389,11 @@ class sidb_bdl_sub_circuit
                             return;
                         }
 
-                        // for (const cell<CellLyt>& other_c : cds_with_simulated_bdl_wires->get_sidb_order())
-                        // {
-                        //     if (other_c == c)
-                        //     {
-                        //         return;
-                        //     }
-                        //
-                        //     pot_from_sub_circuit_skeleton_to_super_circuit[other_c] +=
-                        //         cds_with_simulated_bdl_wires->get_potential_between_sidbs(other_c, c);
-                        // }
-
                         simulated_bdl_wires_copy.assign_charge_state(c, sidb_charge_state::NEUTRAL,
                                                                      charge_index_mode::KEEP_CHARGE_INDEX);
                     });
 
-                // cds_with_simulated_bdl_wires->assign_local_external_potential_map(
-                //     pot_from_sub_circuit_skeleton_to_super_circuit);
                 simulated_bdl_wires_copy.template update_local_internal_potential<true>();
-
-                // todo: defect influence
-                // if constexpr (is_sidb_defect_surface_v<CellLyt>)
-                // {
-                //     CellLyt::foreach_sidb_defect([&current_cds](const auto cd)
-                //                                  { current_cds.add_sidb_defect_to_potential_landscape(cd.first,
-                //                                  cd.second); });
-                // }
 
                 super_circuit_simulated_bdl_wires[consistent_super_circuit_iix].emplace(
                     std::move(simulated_bdl_wires_copy));
