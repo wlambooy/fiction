@@ -59,7 +59,7 @@ namespace fs = std::filesystem;
 template <typename lyt_t, typename skeleton>
 advanced_circuit_design_params<lyt_t> parse_params(const int argc, char** argv,
                                                    // design_sidb_gates_params<lyt_t>& design_gate_params,
-                                                   const std::optional<lyt_t>&      surface_lattice)
+                                                   const std::optional<lyt_t>& surface_lattice)
 {
     advanced_circuit_design_params<lyt_t> params{};
 
@@ -138,7 +138,7 @@ advanced_circuit_design_params<lyt_t> parse_params(const int argc, char** argv,
         return static_cast<uint64_t>(value);
     };
 
-    params.maximum_number_of_canvas_sidbs      = to_uint64_checked(canvas_sidbs_signed, "canvas_sidbs");
+    params.maximum_number_of_canvas_sidbs = to_uint64_checked(canvas_sidbs_signed, "canvas_sidbs");
     // design_gate_params.maximum_number_of_solutions = to_uint64_checked(max_gate_designs_signed, "max_gate_designs");
     // design_gate_params.available_threads = to_uint64_checked(design_gate_threads_signed, "design_gate_threads",
     // true);
@@ -273,7 +273,7 @@ advanced_circuit_design_params<lyt_t> parse_params(const int argc, char** argv,
     params.exact_design_parameters.upper_bound_y = 30;         // 5 x 5 tiles
     params.exact_design_parameters.timeout       = 3'600'000;  // 1h in ms
 
-    params.defect_surface     = surface_lattice;
+    params.defect_surface = surface_lattice;
     // params.design_gate_params = design_gate_params;
 
     return params;
@@ -434,32 +434,29 @@ int main(int argc, char* argv[])  // NOLINT
             const auto b3 = g.create_buf(a, {1, 3});
             g.create_po(b3, "o", {0, 4});
 
-            const std::optional<lyt_t>& lyt =
+            const std::vector<lyt_t>& lyts =
                 advanced_circuit_design<decltype(mapped_network), lyt_t, gate_lyt, skeleton>(g  // mapped_network
                                                                                              ,
                                                                                              params, &st);
-
-            if (!lyt.has_value())
-            {
-                sidb_circuits_with_defects(benchmark, 0, st.exact_stats.num_aspect_ratios, false);
-                sidb_circuits_with_defects.save();
-                sidb_circuits_with_defects.table();
-                continue;
-            }
 
             // check equivalence
             const auto miter = mockturtle::miter<mockturtle::klut_network>(mapped_network, st.gate_layout.value());
             // const auto eq    = mockturtle::equivalence_checking(*miter);
             // assert(eq.has_value());
 
-            // determine bounding box and exclude atomic defects
-            const auto bb = bounding_box_2d(static_cast<cell_lyt>(*lyt));
-
             // write a SiQAD simulation file
-            write_sqd_layout(*lyt, layout_path.c_str());
+            // write_sqd_layout(*lyt, layout_path.c_str());
+            uint64_t ix = 0;
+            for (const auto& lyt : lyts)
+            {
+                std::cout << "want to write to: "
+                          << (b_dir / "exact_benchmarks_runtime" / "AND" / std::to_string(ix) / ".sqd").c_str();
+                write_sqd_layout(lyt,
+                                 (b_dir / "exact_benchmarks_runtime" / "AND" / std::to_string(ix++) / ".sqd").c_str());
+            }
 
             // write runtime to file
-            const auto    runtime_path = b_dir / "benchmarks_runtime" / num_in_dir / (name.string() + ".txt");
+            const auto    runtime_path = b_dir / "exact_benchmarks_runtime" / num_in_dir / (name.string() + ".txt");
             std::ofstream os{runtime_path, std::ofstream::out};
             if (!os.is_open())
             {
@@ -468,13 +465,8 @@ int main(int argc, char* argv[])  // NOLINT
             const auto runtime_string = fmt::format("{:.2f}", mockturtle::to_seconds(st.time_total));
             os.write(runtime_string.c_str(), static_cast<uint32_t>(runtime_string.size()));
 
-            // compute area
-            area_stats                   area_stats{};
-            area_params<sidb_technology> area_ps{};
-            area(bb, area_ps, &area_stats);
-
             sidb_circuits_with_defects(benchmark, mockturtle::to_seconds(st.time_total),
-                                       st.exact_stats.num_aspect_ratios, lyt.has_value());
+                                       st.exact_stats.num_aspect_ratios, !lyts.empty());
             sidb_circuits_with_defects.save();
             sidb_circuits_with_defects.table();
         }
