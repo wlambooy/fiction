@@ -855,12 +855,9 @@ class sidb_bdl_circuit
 
                         for (const uint64_t gate_design_cell_index : gate)
                         {
-                            if (const cell<CellLyt>& canvas_c =
-                                    all_canvas_positions.at(other_n).at(gate_design_cell_index);
-                                canvas_c != c)
-                            {
-                                canvas_of_other_n.assign_cell_type(canvas_c, sidb_technology::cell_type::LOGIC);
-                            }
+                            canvas_of_other_n.assign_cell_type(
+                                all_canvas_positions.at(other_n).at(gate_design_cell_index),
+                                sidb_technology::cell_type::LOGIC);
                         }
 
                         charge_distribution_surface<CellLyt> canvas_cds{canvas_of_other_n, sim_params,
@@ -870,6 +867,8 @@ class sidb_bdl_circuit
 
                         canvas_cds.add_sidb_defect_to_potential_landscape(
                             c, sidb_defect{sidb_defect_type::DB, 0, sim_params.epsilon_r, sim_params.lambda_tf});
+
+                        bool c_is_part_of_gate = canvas_cds.get_defects().empty();
 
                         const auto max_index = canvas_cds.get_max_charge_index();
 
@@ -898,9 +897,30 @@ class sidb_bdl_circuit
 
                             at_least_one_charge_index_valid = true;
 
-                            canvas_cds.update_local_defect_potential();
+                            const auto get_pot_at_c = [&]
+                            {
+                                if (!c_is_part_of_gate)
+                                {
+                                    canvas_cds.update_local_defect_potential();
 
-                            const double pot_at_c = *canvas_cds.get_local_defect_potential(c);
+                                    return *canvas_cds.get_local_defect_potential(c);
+                                }
+
+                                double pot_sum = 0;
+
+                                canvas_cds.foreach_cell(
+                                    [&](const cell<CellLyt>& canvas_c)
+                                    {
+                                        if (canvas_c != c)
+                                        {
+                                            pot_sum += canvas_cds.get_potential_between_sidbs(c, canvas_c);
+                                        }
+                                    });
+
+                                return pot_sum;
+                            };
+
+                            const double pot_at_c = get_pot_at_c();
 
                             bounds[0] = std::min(bounds[0], pot_at_c);
                             bounds[1] = std::max(bounds[1], pot_at_c);
