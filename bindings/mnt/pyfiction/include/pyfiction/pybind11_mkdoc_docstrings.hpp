@@ -5442,9 +5442,11 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl_collect_nod
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_design_circuit = R"doc()doc";
 
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_design_sidb_layout = R"doc()doc";
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_design_sidb_layouts = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_excluded_combinations_mutex = R"doc()doc";
+
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_exhaustively_enumerate_gate_design_combinations = R"doc(todo)doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_gate_fitness_assessment = R"doc()doc";
 
@@ -5460,7 +5462,7 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl_gate_fitnes
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_gate_layout = R"doc(Gate-level layout.)doc";
 
-static const char *__doc_fiction_detail_advanced_circuit_design_impl_make_trial_based_fitness_assessments = R"doc()doc";
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_make_pruning_assessments = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_network = R"doc(Network.)doc";
 
