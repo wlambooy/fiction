@@ -292,7 +292,8 @@ int main(int argc, char* argv[])  // NOLINT
     using lyt_t    = sidb_defect_surface<cell_lyt>;
 
     // using skeleton = sidb_bdl_skeleton_original_bestagon;  // sidb_bdl_skeleton_1;
-    using skeleton = sidb_bdl_skeleton_1;
+    // using skeleton = sidb_bdl_skeleton_1;
+    using skeleton = sidb_bdl_skeleton_hexamini;
     //
     // /// DESIGN GATE PARAMS
     //

@@ -98,12 +98,12 @@ class sidb_bdl_circuit
 
         if (nw && !ne)
         {
-            absolute_c.x -= 2;  // SkeletonGateLibrary::gate_x_size() / 8;
+            absolute_c.x -= 3;  // SkeletonGateLibrary::gate_x_size() / 8;
         }
 
         if (!nw && ne)
         {
-            absolute_c.x += 2;  // SkeletonGateLibrary::gate_x_size() / 8;
+            absolute_c.x += 3;  // SkeletonGateLibrary::gate_x_size() / 8;
         }
 
         return absolute_c;
@@ -1070,6 +1070,7 @@ class sidb_bdl_sub_circuit
                     ->get_local_internal_potential(c);
     }
 
+    template <bool consider_internal_skeleton = false>
     typename charge_distribution_surface<CellLyt,
                                          local_external_potential_type::BOUNDED>::local_external_potential_map_t
     collect_influence_bounds(const CellLyt& lyt, const uint64_t input_index,
@@ -1105,17 +1106,34 @@ class sidb_bdl_sub_circuit
 
                 for (uint64_t super_circuit_input_index_ix = 0;
                      super_circuit_input_index_ix < consistent_super_circuit_input_indices.size();
-                     ++super_circuit_input_index_ix)
+                     ++super_circuit_input_index_ix)  // todo: ix_ix really necessary?
                 {
-                    const charge_distribution_surface<CellLyt, local_external_potential_type::BOUNDED>&
-                        simulated_bdl_wires =
-                            *super_circuit_simulated_bdl_wires_per_input.at(input_index)
-                                 .at(consistent_super_circuit_input_indices.at(super_circuit_input_index_ix));
+                    const auto collect_skeleton_influence = [&]
+                    {
+                        if (consider_internal_skeleton)
+                        {
+                            const charge_distribution_surface<CellLyt, local_external_potential_type::BOUNDED>&
+                                simulated_bdl_wires = super_circuit.get_simulated_bdl_wires_for_input_index(
+                                    consistent_super_circuit_input_indices.at(super_circuit_input_index_ix));
 
-                    assert(simulated_bdl_wires.get_local_internal_potential(c).has_value() &&
-                           "c is not part of the layout");
+                            assert(simulated_bdl_wires.get_local_internal_potential(c).has_value() &&
+                                   "c is not part of the layout");
 
-                    const double skeleton_influence = *simulated_bdl_wires.get_local_internal_potential(c);
+                            return *simulated_bdl_wires.get_local_internal_potential(c);
+                        }
+
+                        const charge_distribution_surface<CellLyt, local_external_potential_type::BOUNDED>&
+                            simulated_bdl_wires =
+                                *super_circuit_simulated_bdl_wires_per_input.at(input_index)
+                                     .at(consistent_super_circuit_input_indices.at(super_circuit_input_index_ix));
+
+                        assert(simulated_bdl_wires.get_local_internal_potential(c).has_value() &&
+                               "c is not part of the layout");
+
+                        return *simulated_bdl_wires.get_local_internal_potential(c);
+                    };
+
+                    const double skeleton_influence = collect_skeleton_influence();
 
                     std::array<double, 2> gate_design_influence_bound_sum = {0, 0};
 
@@ -1376,7 +1394,8 @@ class sidb_bdl_sub_circuit
 
                 // neutralise sub-circuit and store charge information in external potential
 
-                simulated_bdl_wires_copy.initialize_matrices_for_electrostatic_calculation();
+                simulated_bdl_wires_copy
+                    .initialize_matrices_for_electrostatic_calculation();  // todo: necessary? don't think so
 
                 sub_circuit_skeleton_with_canvasses.foreach_cell(
                     [&](const auto& c)

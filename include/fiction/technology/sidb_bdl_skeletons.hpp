@@ -14,13 +14,21 @@
 
 using namespace fiction;
 
-class sidb_bdl_skeleton_1 : public sidb_skeleton_gate_library<30, 19>  // width and height of a hexagon
+class sidb_bdl_skeleton_1 : public sidb_skeleton_gate_library<26, 19>  // width and height of a hexagon
 {
 public:
     sidb_bdl_skeleton_1() noexcept :
+          sidb_skeleton_gate_library{read_sqd_layout<sidb_skeleton_t>(
+              "/home/willem/fiction/include/fiction/technology/sidb_skeletons/new_small_mini_bestagon.sqd", "skeleton")}
+  {}
+};
+
+class sidb_bdl_skeleton_hexamini : public sidb_skeleton_gate_library<27, 22>  // width and height of a hexagon
+{
+  public:
+    sidb_bdl_skeleton_hexamini() noexcept :
             sidb_skeleton_gate_library{read_sqd_layout<sidb_skeleton_t>(
-                "/home/willem/fiction/include/fiction/technology/sidb_skeletons/new_small_mini_bestagon.sqd",
-                "skeleton")}
+                "/home/willem/fiction/include/fiction/technology/sidb_skeletons/hexamini.sqd", "skeleton")}
     {}
 };
 
@@ -29,7 +37,8 @@ class sidb_bdl_skeleton_september : public sidb_skeleton_gate_library<27, 30>  /
   public:
     sidb_bdl_skeleton_september() noexcept :
             sidb_skeleton_gate_library{read_sqd_layout<sidb_skeleton_t>(
-                "/home/willem/fiction/include/fiction/technology/sidb_skeletons/new_mini_bestagon.sqd", "skeleton")}
+                "/home/willem/fiction/include/fiction/technology/sidb_skeletons/new_mini_bestagon_september.sqd",
+                "skeleton")}
     {}
 };
 

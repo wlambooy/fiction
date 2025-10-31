@@ -665,13 +665,16 @@ class advanced_circuit_design_impl
             }
         }
 
-        ++total_number_of_simulator_calls;
-
         // sub-circuit logic match assessment
         const circuit_operational_assessment<CellLyt, local_external_potential_type::BOUNDED>& op_assessment =
             is_circuit_operational<CellLyt, GateLyt, local_external_potential_type::BOUNDED, SkeletonGateLibrary>(
                 sidb_cell_level_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>{cell_lyt_clone, sub_circuit},
                 operational_params);
+
+        if (op_assessment.simulator_invocations > 0)
+        {
+            ++total_number_of_simulator_calls;
+        }
 
         if (op_assessment.status == operational_status::OPERATIONAL)
         {
