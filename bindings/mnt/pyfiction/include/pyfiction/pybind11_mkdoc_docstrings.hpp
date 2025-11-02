@@ -9265,32 +9265,6 @@ Returns:
 
 static const char *__doc_fiction_detail_is_circuit_operational_impl_determine_status_and_logic_match = R"doc()doc";
 
-static const char *__doc_fiction_detail_is_circuit_operational_impl_encodes_bit_one =
-R"doc(This function returns `true` if `1` is encoded in the charge state of
-the given BDL pair. `false` otherwise. Assumes row clocking.
-
-Parameter ``ground_state``:
-    The ground state charge distribution surface.
-
-Parameter ``bdl``:
-    BDL pair to be evaluated.
-
-Returns:
-    `true` if `1` is encoded, `false` otherwise.)doc";
-
-static const char *__doc_fiction_detail_is_circuit_operational_impl_encodes_bit_zero =
-R"doc(This function returns `true` if `0` is encoded in the charge state of
-the given BDL pair. `false` otherwise. Assumes row clocking.
-
-Parameter ``ground_state``:
-    The ground state charge distribution surface.
-
-Parameter ``bdl``:
-    BDL pair to be evaluated.
-
-Returns:
-    `true` if `0` is encoded, `false` otherwise.)doc";
-
 static const char *__doc_fiction_detail_is_circuit_operational_impl_get_energy_bounds_per_super_circuit_input = R"doc()doc";
 
 static const char *__doc_fiction_detail_is_circuit_operational_impl_get_possible_ground_state_indices_per_super_circuit_input = R"doc()doc";
@@ -20560,6 +20534,8 @@ static const char *__doc_fiction_sidb_bdl_sub_circuit_input_bdl_pairs = R"doc()d
 static const char *__doc_fiction_sidb_bdl_sub_circuit_input_index_possible_in_super_circuit = R"doc()doc";
 
 static const char *__doc_fiction_sidb_bdl_sub_circuit_is_not_internal_output_perturber = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_sub_circuit_make_super_circuit_input_identity = R"doc()doc";
 
 static const char *__doc_fiction_sidb_bdl_sub_circuit_num_bdl_pairs = R"doc()doc";
 
