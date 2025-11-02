@@ -33,7 +33,7 @@ namespace fiction
 template <typename CellLyt, typename GateLyt, typename SkeletonGateLibrary>
 class sidb_bdl_circuit
 {
-  public:
+  public:  // todo fix ALL GATES
     explicit sidb_bdl_circuit(const GateLyt& gate_lyt, const sidb_simulation_parameters& simulation_parameters,
                               const std::pair<cell<CellLyt>, cell<CellLyt>>& rel_canvas,
                               const detect_bdl_wires_params&                 bdl_wire_params = {},
@@ -391,7 +391,7 @@ class sidb_bdl_circuit
     void tighten_gate_influence_bounds_until_fixpoint(
         const uint64_t available_threads = std::thread::hardware_concurrency()) noexcept
     {
-        std::cout << '\n';
+        // std::cout << '\n';
 
         std::unordered_map<mockturtle::node<GateLyt>, uint64_t> gate_design_counts{};
         gate_design_counts.reserve(gate_designs.size());
@@ -487,6 +487,16 @@ class sidb_bdl_circuit
 
                                     const tile<GateLyt>& other_t = gate_layout.get_tile(other_n);
 
+                                    // // if (other_t == tile<GateLyt>{1, 2})
+                                    // {
+                                    //     std::cout << "\n\nremoving the gate nums below" << std::endl;
+                                    //     for (const uint64_t gate_num : gate_nums_to_prune.at(other_n))
+                                    //     {
+                                    //         std::cout << gate_num << std::endl;
+                                    //     }
+                                    //     std::cout << "END\n\n" << std::endl;
+                                    // }
+
                                     if (gate_designs.at(other_n).size() == gate_nums_to_prune.at(other_n).size())
                                     {
                                         throw std::runtime_error{
@@ -524,12 +534,30 @@ class sidb_bdl_circuit
 
         for (const auto& [n, designs] : gate_designs)
         {
+            // bool print = false;
+            // for (const canvas_combination& gate : designs)
+            // {
+            //     print |=
+            //         gate.size() == 2 &&
+            //         ((all_canvas_positions.at(n).at(gate.at(0)) == cell<CellLyt>{53, 42} &&
+            //           all_canvas_positions.at(n).at(gate.at(1)) == cell<CellLyt>{54, 44}) ||
+            //          (all_canvas_positions.at(n).at(gate.at(0)) == cell<CellLyt>{36, 26} &&
+            //           all_canvas_positions.at(n).at(gate.at(1)) == cell<CellLyt>{38, 29}) ||
+            //          (all_canvas_positions.at(n).at(gate.at(0)) == cell<CellLyt>{70, 26} &&
+            //          all_canvas_positions.at(n).at(gate.at(1)) == cell<CellLyt>{68, 29}) ||
+            //         (all_canvas_positions.at(n).at(gate.at(0)) == cell<CellLyt>{44, 58} &&
+            //          all_canvas_positions.at(n).at(gate.at(1)) == cell<CellLyt>{42, 61}));
+            // }
             const uint64_t total     = gate_design_counts.at(n);
             const uint64_t pruned    = total - designs.size();
             const uint64_t remaining = designs.size();
 
             std::cout << std::left << std::setw(10) << gate_layout.get_tile(n) << " | " << std::right << std::setw(8)
                       << pruned << " | " << std::right << std::setw(10) << remaining << "\n";
+            // if (print)
+            // {
+            //     std::cout << "OK" << std::endl;
+            // }
 
             pruned_total += pruned;
         }
@@ -782,6 +810,7 @@ class sidb_bdl_circuit
             {
                 fixpoint = false;
 
+                // std::cout << "new LB: " << new_bounds[0] << std::endl;
                 current_bounds[0] = new_bounds[0];
             }
 
@@ -789,6 +818,7 @@ class sidb_bdl_circuit
             {
                 fixpoint = false;
 
+                // std::cout << "new UB: " << new_bounds[1] << std::endl;
                 current_bounds[1] = new_bounds[1];
             }
         };
@@ -853,12 +883,30 @@ class sidb_bdl_circuit
                     {
                         CellLyt canvas_of_other_n{};
 
+                        // const bool print =
+                        //     gate.size() == 2 &&
+                        //     ((all_canvas_positions.at(other_n).at(gate.at(0)) == cell<CellLyt>{53, 42} &&
+                        //       all_canvas_positions.at(other_n).at(gate.at(1)) == cell<CellLyt>{54, 44}) ||
+                        //      (all_canvas_positions.at(other_n).at(gate.at(0)) == cell<CellLyt>{36, 26} &&
+                        //       all_canvas_positions.at(other_n).at(gate.at(1)) == cell<CellLyt>{38, 29}) ||
+                        //      (all_canvas_positions.at(other_n).at(gate.at(0)) == cell<CellLyt>{70, 26} &&
+                        //      all_canvas_positions.at(other_n).at(gate.at(1)) == cell<CellLyt>{68, 29}) ||
+                        //     (all_canvas_positions.at(other_n).at(gate.at(0)) == cell<CellLyt>{44, 58} &&
+                        //      all_canvas_positions.at(other_n).at(gate.at(1)) == cell<CellLyt>{42, 61}));
+
                         for (const uint64_t gate_design_cell_index : gate)
                         {
                             canvas_of_other_n.assign_cell_type(
                                 all_canvas_positions.at(other_n).at(gate_design_cell_index),
                                 sidb_technology::cell_type::LOGIC);
                         }
+
+                        // if (print)
+                        // {
+                        //     std::cout << "\n\nGATE DESIGN " << gate_num << " FOR " << gate_layout.get_tile(other_n)
+                        //               << " BEING CHECKED OUT BY " << c.x << ',' << c.y << " at "
+                        //               << gate_layout.get_tile(n) << std::endl;
+                        // }
 
                         charge_distribution_surface<CellLyt> canvas_cds{canvas_of_other_n, sim_params,
                                                                         sidb_charge_state::NEGATIVE,
@@ -869,6 +917,11 @@ class sidb_bdl_circuit
                             c, sidb_defect{sidb_defect_type::DB, 0, sim_params.epsilon_r, sim_params.lambda_tf});
 
                         bool c_is_part_of_gate = canvas_cds.get_defects().empty();
+
+                        // if (print)
+                        // {
+                        //     std::cout << "c is part of gate: " << c_is_part_of_gate << std::endl;
+                        // }
 
                         const auto max_index = canvas_cds.get_max_charge_index();
 
@@ -922,6 +975,13 @@ class sidb_bdl_circuit
 
                             const double pot_at_c = get_pot_at_c();
 
+                            // if (print)
+                            // {
+                            //     std::cout << '\n' << "charge_index: " << charge_index << std::endl;
+                            //     // print_layout(canvas_cds);
+                            //     std::cout << pot_at_c << std::endl;
+                            // }
+
                             bounds[0] = std::min(bounds[0], pot_at_c);
                             bounds[1] = std::max(bounds[1], pot_at_c);
                         }
@@ -938,6 +998,34 @@ class sidb_bdl_circuit
                             const std::lock_guard guard{mutex_to_protect_gate_nums_to_prune};
 
                             gate_nums_to_prune[other_n].emplace(gate_num);
+
+                            // if (print)
+                            // {
+                            //     std::cout << "REMOVED" << std::endl;
+                            //
+                            //     canvas_cds.assign_charge_index(1,
+                            //                               charge_distribution_mode::UPDATE_CHARGE_DISTRIBUTION);
+                            //
+                            //
+                            //     canvas_cds.foreach_cell(
+                            //         [&](const cell<CellLyt>& canvas_c)
+                            //         {
+                            //             simulated_bdl_wires.assign_charge_state(canvas_c,
+                            //                                                     canvas_cds.get_charge_state(canvas_c),
+                            //                                                     charge_index_mode::KEEP_CHARGE_INDEX);
+                            //         });
+                            //
+                            //     print_layout(simulated_bdl_wires);
+                            //     simulated_bdl_wires.template update_after_charge_change<true, true>(
+                            //         dependent_cell_mode::FIXED, energy_calculation::KEEP_OLD_ENERGY_VALUE);
+                            //
+                            //     canvas_cds.foreach_cell(
+                            //         [&](const cell<CellLyt>& canvas_c)
+                            //         {
+                            //             simulated_bdl_wires.assign_charge_state(canvas_c, sidb_charge_state::NONE,
+                            //                                                     charge_index_mode::KEEP_CHARGE_INDEX);
+                            //         });
+                            // }
                         }
 
                         ++gate_num;
@@ -1019,7 +1107,8 @@ class sidb_bdl_sub_circuit
             input_bdl_pairs{super_circuit.input_bdl_pairs},
             num_inputs{super_circuit.num_inputs},
             gate_connections{super_circuit.gate_connections},
-            tiles{get_all_tiles(gate_layout)}
+            tiles{get_all_tiles(gate_layout)},
+            consistent_super_circuit_input_indices_per_input{make_super_circuit_input_identity(num_inputs)}
     {}
 
     explicit sidb_bdl_sub_circuit(const sidb_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>& bdl_super_circuit,
@@ -1208,6 +1297,20 @@ class sidb_bdl_sub_circuit
                     tiles.push_back(gate_lyt.get_tile(n));
                 }
             });
+
+        return tiles;
+    }
+
+    [[nodiscard]] static std::vector<std::vector<uint64_t>>
+    make_super_circuit_input_identity(const uint64_t num_inputs) noexcept
+    {
+        std::vector<std::vector<uint64_t>> tiles{};
+        tiles.reserve(num_inputs);
+
+        for (uint64_t i = 0; i < 1 << num_inputs; ++i)
+        {
+            tiles.push_back({i});
+        }
 
         return tiles;
     }

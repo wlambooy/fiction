@@ -1092,7 +1092,7 @@ class advanced_circuit_design_impl
 
         while (true)
         {
-            CellLyt operational_circuit_candidate{};
+            CellLyt operational_circuit_candidate{circuit->skeleton.clone()};
             for (uint64_t i = 0; i < circuit->gate_designs.size(); i++)
             {
                 const auto& [n, op_gate_designs_for_gate] =
@@ -1121,10 +1121,10 @@ class advanced_circuit_design_impl
                     operational_params)
                     .status == operational_status::OPERATIONAL)
             {
-                std::cout << "\n\nGENERATED CIRCUIT:" << std::endl;
-                print_layout(operational_circuit_candidate);
+                // std::cout << "\n\nGENERATED CIRCUIT:" << std::endl;
+                // print_layout(operational_circuit_candidate);
 
-                result.push_back(std::move(operational_circuit_candidate));
+                result.push_back(operational_circuit_candidate);
             }
 
             // Increment indices like an odometer

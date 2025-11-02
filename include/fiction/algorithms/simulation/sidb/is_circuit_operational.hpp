@@ -21,6 +21,8 @@
 #include <kitty/bit_operations.hpp>
 // #include <kitty/print.hpp>
 
+#include <fiction/io/print_layout.hpp>
+
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
@@ -237,189 +239,193 @@ class is_circuit_operational_impl
         {
             sim_res_per_input.reserve(1 << implemented_circuit.circuit.num_inputs);
         }
-
-        // perform quickcell pruning
-        Lyt only_canvasses{};
-        implemented_circuit.cell_layout.foreach_cell(
-            [&](const cell<Lyt>& c)
-            {
-                if (implemented_circuit.cell_layout.get_cell_type(c) == sidb_technology::cell_type::LOGIC)
-                {
-                    only_canvasses.assign_cell_type(c, sidb_technology::cell_type::LOGIC);
-                }
-            });
-
-        std::set<uint64_t> consistent_super_circuit_input_indices_set{};
-        for (auto i = 0u; i < 1 << implemented_circuit.circuit.num_inputs; ++i)
-        {
-            if (implemented_circuit.circuit.input_index_possible_in_super_circuit(i))
-            {
-                const std::vector<uint64_t>& consistent_super_circuit_input_indices_for_input =
-                    implemented_circuit.circuit.get_consistent_super_circuit_input_indices(i);
-
-                consistent_super_circuit_input_indices_set.insert(
-                    consistent_super_circuit_input_indices_for_input.cbegin(),
-                    consistent_super_circuit_input_indices_for_input.cend());
-            }
-        }
-
-        const std::vector<uint64_t> consistent_super_circuit_input_indices{
-            consistent_super_circuit_input_indices_set.cbegin(), consistent_super_circuit_input_indices_set.cend()};
-
-        for (uint64_t super_circuit_input_index_ix = 0;
-             super_circuit_input_index_ix < consistent_super_circuit_input_indices.size();
-             ++super_circuit_input_index_ix)
-        {
-            clustercomplete_params<cell<Lyt>, local_external_potential_type::BOUNDED> cc_params{
-                parameters.simulation_parameters};
-            cc_params.available_threads = 1;
-
-            const auto collect_gate_influence_bounds = [&](const cell<Lyt>& c)
-            {
-                const mockturtle::node<GateLyt>& n = implemented_circuit.circuit.super_circuit.gate_layout.get_node(
-                    implemented_circuit.circuit.super_circuit.skeleton_with_canvasses
-                        .template get_cell_tile<tile<GateLyt>>(c));
-
-                std::array<double, 2> gate_design_influence_bound_sum = {0, 0};
-
-                implemented_circuit.circuit.super_circuit.gate_layout.foreach_node(
-                    [&](const auto& super_circuit_n)
+        /*
+                // perform quickcell pruning
+                Lyt only_canvasses{};
+                implemented_circuit.cell_layout.foreach_cell(
+                    [&](const cell<Lyt>& c)
                     {
-                        if (skip_physical_design_for_node(implemented_circuit.circuit.super_circuit.gate_layout,
-                                                          super_circuit_n) ||
-                            std::find(
-                                implemented_circuit.circuit.tiles.cbegin(), implemented_circuit.circuit.tiles.cend(),
-                                implemented_circuit.circuit.super_circuit.gate_layout.get_tile(super_circuit_n)) !=
-                                implemented_circuit.circuit.tiles.cend())
+                        if (implemented_circuit.cell_layout.get_cell_type(c) == sidb_technology::cell_type::LOGIC)
                         {
-                            return;
+                            only_canvasses.assign_cell_type(c, sidb_technology::cell_type::LOGIC);
                         }
-
-                        const std::array<double, 2>& influence_bounds_from_super_circuit_n =
-                            implemented_circuit.circuit.super_circuit.get_gate_design_influence_bounds(
-                                consistent_super_circuit_input_indices.at(super_circuit_input_index_ix), n, c,
-                                super_circuit_n);
-
-                        gate_design_influence_bound_sum[0] += influence_bounds_from_super_circuit_n[0];
-                        gate_design_influence_bound_sum[1] += influence_bounds_from_super_circuit_n[1];
                     });
 
-                return gate_design_influence_bound_sum;
-            };
-
-            only_canvasses.foreach_cell(
-                [&](const auto& c)
+                std::set<uint64_t> consistent_super_circuit_input_indices_set{};
+                for (auto i = 0u; i < 1 << implemented_circuit.circuit.num_inputs; ++i)
                 {
-                    cc_params.local_external_potential[c] = collect_gate_influence_bounds(c);
-
-                    const double skeleton_influence =
-                        *implemented_circuit.circuit.super_circuit
-                             .get_simulated_bdl_wires_for_input_index(
-                                 consistent_super_circuit_input_indices.at(super_circuit_input_index_ix))
-                             .get()
-                             .get_local_internal_potential(c);
-
-                    cc_params.local_external_potential[c][0] += skeleton_influence;
-                    cc_params.local_external_potential[c][1] += skeleton_influence;
-                });
-
-            const auto sim_res =
-                clustercomplete<Lyt, local_external_potential_type::BOUNDED>(only_canvasses, cc_params);
-
-            if (sim_res.charge_distributions.empty())
-            {
-                // first pruning: physical infeasibility of canvas layouts
-
-                operational_assessment_results.status = operational_status::NON_OPERATIONAL;
-
-                return operational_assessment_results;
-            }
-
-            // second pruning: physical infeasibility of skeleton
-            // NOTE: instead of the implementation below it might be better to only check the sub-circuit skeleton
-            bdl_input_iterator<Lyt> bii{implemented_circuit.circuit.super_circuit.skeleton,
-                                        parameters.input_bdl_iterator_params};
-            bii = consistent_super_circuit_input_indices.at(super_circuit_input_index_ix);
-
-            charge_distribution_surface<Lyt, local_external_potential_type::BOUNDED> simulated_bdl_wires{
-                implemented_circuit.circuit.super_circuit
-                    .get_simulated_bdl_wires_for_input_index(
-                        consistent_super_circuit_input_indices.at(super_circuit_input_index_ix))
-                    .get()};  // todo: check clone behavior
-
-            simulated_bdl_wires.template update_local_internal_potential<true>();  // todo do this earlier
-
-            typename charge_distribution_surface<Lyt, local_external_potential_type::BOUNDED>::
-                local_external_potential_map_t& bounded_influence_from_canvasses =
-                    simulated_bdl_wires.get_local_external_potentials_reference();
-
-            // first collect bounded influence from other canvasses
-            (*bii).foreach_cell([&](const auto& c)
-                                { bounded_influence_from_canvasses[c] = collect_gate_influence_bounds(c); });
-
-            bool at_least_one_physically_valid = false;
-
-            // then collect influence for each simulated charge distribution of the sub-circuit canvasses
-            for (uint64_t cds_ix = 0; cds_ix < sim_res.charge_distributions.size(); ++cds_ix)
-            {
-                const charge_distribution_surface<Lyt, local_external_potential_type::BOUNDED>& cds =
-                    sim_res.charge_distributions.at(cds_ix);
-
-                std::unordered_map<cell<Lyt>, double> sub_circuit_canvas_influences{};
-                sub_circuit_canvas_influences.reserve((*bii).num_cells());
-
-                (*bii).foreach_cell(
-                    [&](const auto& c)
+                    if (implemented_circuit.circuit.input_index_possible_in_super_circuit(i))
                     {
-                        double sub_circuit_canvas_influence_sum = 0.0;
+                        const std::vector<uint64_t>& consistent_super_circuit_input_indices_for_input =
+                            implemented_circuit.circuit.get_consistent_super_circuit_input_indices(i);
 
-                        cds.foreach_cell(
-                            [&](const cell<Lyt>& canvas_c)
+                        consistent_super_circuit_input_indices_set.insert(
+                            consistent_super_circuit_input_indices_for_input.cbegin(),
+                            consistent_super_circuit_input_indices_for_input.cend());
+                    }
+                }
+
+                const std::vector<uint64_t> consistent_super_circuit_input_indices{
+                    consistent_super_circuit_input_indices_set.cbegin(),
+           consistent_super_circuit_input_indices_set.cend()};
+
+                for (uint64_t super_circuit_input_index_ix = 0;
+                     super_circuit_input_index_ix < consistent_super_circuit_input_indices.size();
+                     ++super_circuit_input_index_ix)
+                {
+                    clustercomplete_params<cell<Lyt>, local_external_potential_type::BOUNDED> cc_params{
+                        parameters.simulation_parameters};
+                    cc_params.available_threads = 1;
+
+                    const auto collect_gate_influence_bounds = [&](const cell<Lyt>& c)
+                    {
+                        const mockturtle::node<GateLyt>& n =
+           implemented_circuit.circuit.super_circuit.gate_layout.get_node(
+                            implemented_circuit.circuit.super_circuit.skeleton_with_canvasses
+                                .template get_cell_tile<tile<GateLyt>>(c));
+
+                        std::array<double, 2> gate_design_influence_bound_sum = {0, 0};
+
+                        implemented_circuit.circuit.super_circuit.gate_layout.foreach_node(
+                            [&](const auto& super_circuit_n)
                             {
-                                sub_circuit_canvas_influence_sum +=
-                                    simulated_bdl_wires.get_chargeless_potential_between_sidbs(c, canvas_c) *
-                                    charge_state_to_sign(cds.get_charge_state(canvas_c));
+                                if (skip_physical_design_for_node(implemented_circuit.circuit.super_circuit.gate_layout,
+                                                                  super_circuit_n) ||
+                                    std::find(
+                                        implemented_circuit.circuit.tiles.cbegin(),
+           implemented_circuit.circuit.tiles.cend(),
+                                        implemented_circuit.circuit.super_circuit.gate_layout.get_tile(super_circuit_n))
+           != implemented_circuit.circuit.tiles.cend())
+                                {
+                                    return;
+                                }
+
+                                const std::array<double, 2>& influence_bounds_from_super_circuit_n =
+                                    implemented_circuit.circuit.super_circuit.get_gate_design_influence_bounds(
+                                        consistent_super_circuit_input_indices.at(super_circuit_input_index_ix), n, c,
+                                        super_circuit_n);
+
+                                gate_design_influence_bound_sum[0] += influence_bounds_from_super_circuit_n[0];
+                                gate_design_influence_bound_sum[1] += influence_bounds_from_super_circuit_n[1];
                             });
 
-                        bounded_influence_from_canvasses[c][0] += sub_circuit_canvas_influence_sum;
-                        bounded_influence_from_canvasses[c][1] += sub_circuit_canvas_influence_sum;
+                        return gate_design_influence_bound_sum;
+                    };
 
-                        sub_circuit_canvas_influences[c] = sub_circuit_canvas_influence_sum;
-                    });
-
-                simulated_bdl_wires.update_local_external_potential();
-                simulated_bdl_wires.determine_effective_charge_transition_thresholds();
-
-                simulated_bdl_wires.template validity_check<true>();
-
-                if (simulated_bdl_wires.is_physically_valid())
-                {
-                    // second pruning: the skeleton is not physically valid under any of the simulated sub-circuit
-                    // canvas charge distributions
-
-                    at_least_one_physically_valid = true;
-
-                    break;
-                }
-
-                if (cds_ix < sim_res.charge_distributions.size() - 1)
-                {
-                    (*bii).foreach_cell(
+                    only_canvasses.foreach_cell(
                         [&](const auto& c)
                         {
-                            bounded_influence_from_canvasses[c][0] -= sub_circuit_canvas_influences[c];
-                            bounded_influence_from_canvasses[c][1] -= sub_circuit_canvas_influences[c];
+                            cc_params.local_external_potential[c] = collect_gate_influence_bounds(c);
+
+                            const double skeleton_influence =
+                                *implemented_circuit.circuit.super_circuit
+                                     .get_simulated_bdl_wires_for_input_index(
+                                         consistent_super_circuit_input_indices.at(super_circuit_input_index_ix))
+                                     .get()
+                                     .get_local_internal_potential(c);
+
+                            cc_params.local_external_potential[c][0] += skeleton_influence;
+                            cc_params.local_external_potential[c][1] += skeleton_influence;
                         });
-                }
-            }
 
-            if (!at_least_one_physically_valid)
-            {
-                operational_assessment_results.status = operational_status::NON_OPERATIONAL;
+                    const auto sim_res =
+                        clustercomplete<Lyt, local_external_potential_type::BOUNDED>(only_canvasses, cc_params);
 
-                return operational_assessment_results;
-            }
-        }
+                    if (sim_res.charge_distributions.empty())
+                    {
+                        // first pruning: physical infeasibility of canvas layouts
+
+                        operational_assessment_results.status = operational_status::NON_OPERATIONAL;
+
+                        return operational_assessment_results;
+                    }
+
+                    // second pruning: physical infeasibility of skeleton
+                    // NOTE: instead of the implementation below it might be better to only check the sub-circuit
+           skeleton bdl_input_iterator<Lyt> bii{implemented_circuit.circuit.super_circuit.skeleton,
+                                                parameters.input_bdl_iterator_params};
+                    bii = consistent_super_circuit_input_indices.at(super_circuit_input_index_ix);
+
+                    charge_distribution_surface<Lyt, local_external_potential_type::BOUNDED> simulated_bdl_wires{
+                        implemented_circuit.circuit.super_circuit
+                            .get_simulated_bdl_wires_for_input_index(
+                                consistent_super_circuit_input_indices.at(super_circuit_input_index_ix))
+                            .get()};  // todo: check clone behavior
+
+                    simulated_bdl_wires.template update_local_internal_potential<true>();  // todo do this earlier
+
+                    typename charge_distribution_surface<Lyt, local_external_potential_type::BOUNDED>::
+                        local_external_potential_map_t& bounded_influence_from_canvasses =
+                            simulated_bdl_wires.get_local_external_potentials_reference();
+
+                    // first collect bounded influence from other canvasses
+                    (*bii).foreach_cell([&](const auto& c)
+                                        { bounded_influence_from_canvasses[c] = collect_gate_influence_bounds(c); });
+
+                    bool at_least_one_physically_valid = false;
+
+                    // then collect influence for each simulated charge distribution of the sub-circuit canvasses
+                    for (uint64_t cds_ix = 0; cds_ix < sim_res.charge_distributions.size(); ++cds_ix)
+                    {
+                        const charge_distribution_surface<Lyt, local_external_potential_type::BOUNDED>& cds =
+                            sim_res.charge_distributions.at(cds_ix);
+
+                        std::unordered_map<cell<Lyt>, double> sub_circuit_canvas_influences{};
+                        sub_circuit_canvas_influences.reserve((*bii).num_cells());
+
+                        (*bii).foreach_cell(
+                            [&](const auto& c)
+                            {
+                                double sub_circuit_canvas_influence_sum = 0.0;
+
+                                cds.foreach_cell(
+                                    [&](const cell<Lyt>& canvas_c)
+                                    {
+                                        sub_circuit_canvas_influence_sum +=
+                                            simulated_bdl_wires.get_chargeless_potential_between_sidbs(c, canvas_c) *
+                                            charge_state_to_sign(cds.get_charge_state(canvas_c));
+                                    });
+
+                                bounded_influence_from_canvasses[c][0] += sub_circuit_canvas_influence_sum;
+                                bounded_influence_from_canvasses[c][1] += sub_circuit_canvas_influence_sum;
+
+                                sub_circuit_canvas_influences[c] = sub_circuit_canvas_influence_sum;
+                            });
+
+                        simulated_bdl_wires.update_local_external_potential();
+                        simulated_bdl_wires.determine_effective_charge_transition_thresholds();
+
+                        simulated_bdl_wires.template validity_check<true>();
+
+                        if (simulated_bdl_wires.is_physically_valid())
+                        {
+                            // second pruning: the skeleton is not physically valid under any of the simulated
+           sub-circuit
+                            // canvas charge distributions
+
+                            at_least_one_physically_valid = true;
+
+                            break;
+                        }
+
+                        if (cds_ix < sim_res.charge_distributions.size() - 1)
+                        {
+                            (*bii).foreach_cell(
+                                [&](const auto& c)
+                                {
+                                    bounded_influence_from_canvasses[c][0] -= sub_circuit_canvas_influences[c];
+                                    bounded_influence_from_canvasses[c][1] -= sub_circuit_canvas_influences[c];
+                                });
+                        }
+                    }
+
+                    if (!at_least_one_physically_valid)
+                    {
+                        operational_assessment_results.status = operational_status::NON_OPERATIONAL;
+
+                        return operational_assessment_results;
+                    }
+                }*/
 
         bdl_input_iterator<Lyt> bii{implemented_circuit.cell_layout, parameters.input_bdl_iterator_params};
         bii = 0;
@@ -431,7 +437,7 @@ class is_circuit_operational_impl
                 operational_status::OPERATIONAL};
 
             // performs physical simulation of a given SiDB layout at a given input combination
-            auto maybe_results = physical_simulation_of_layout(*bii, bii.get_current_input_index());
+            auto maybe_results = physical_simulation_of_layout(*bii, i);
 
             if (!maybe_results.has_value())
             {
@@ -467,6 +473,8 @@ class is_circuit_operational_impl
             const operational_assessment_for_input& op_assessment_for_input =
                 determine_status_and_logic_match(i, std::move(skeleton_influence_bounds), simulation_results);
 
+            // std::cout << "for input " << i << ": "
+            //           << (op_assessment_for_input.status == operational_status::OPERATIONAL) << std::endl;
             if (op_assessment_for_input.status == operational_status::NON_OPERATIONAL)
             {
                 // the input combination is not operational
@@ -588,11 +596,18 @@ class is_circuit_operational_impl
             const auto& sim_res =
                 clustercomplete<Lyt, ExtPotType>(cell_lyt_without_internal_output_perturber, cc_params);
 
+            // std::cout << "RES START" << std::endl;
+            // for (const auto& c : sim_res.charge_distributions)
+            // {
+            //     print_layout(c);
+            // }
+            // std::cout << "RES END" << std::endl;
+
             return std::make_pair(std::move(sim_res), std::move(skeleton_influence_bounds));
         }
         else
         {
-            if (parameters.print)
+            // if (parameters.print)
             {
                 std::cout << "\nstarting exact simulation task (#SiDBs: " << lyt.num_cells() << ")" << std::endl;
             }
@@ -600,7 +615,7 @@ class is_circuit_operational_impl
             clustercomplete_params<cell<Lyt>> cc_params{parameters.simulation_parameters};
             const auto&                       res = clustercomplete(lyt, cc_params);
 
-            if (parameters.print)
+            // if (parameters.print)
             {
                 std::cout << "exact simulation terminated in " << res.simulation_runtime.count() << " seconds\n\n";
                 if (res.charge_distributions.empty())
@@ -641,15 +656,36 @@ class is_circuit_operational_impl
         typename charge_distribution_surface<
             Lyt, local_external_potential_type::BOUNDED>::local_external_potential_map_t& influence_bounds =
             cds.get_local_external_potentials_reference();
+
+        // input perturbers MUST be negatively charged todo: this state might need to be a "fallback" -> inf bounds
+        bool input_perturber_not_negatively_charged = false;
+
         cds.foreach_cell(
             [&](const auto& c)
             {
+                if (input_perturber_not_negatively_charged)
+                {
+                    return;
+                }
+
+                if (cds.get_cell_type(c) == sidb_technology::cell_type::INPUT &&
+                    cds.get_charge_state(c) != sidb_charge_state::NEGATIVE)
+                {
+                    input_perturber_not_negatively_charged = true;
+                    return;
+                }
+
                 if (implemented_circuit.circuit.is_not_internal_output_perturber(cds, c))
                 {
                     influence_bounds[c][0] -= skeleton_influence_bounds.at(c)[0];
                     influence_bounds[c][1] -= skeleton_influence_bounds.at(c)[1];
                 }
             });
+
+        if (input_perturber_not_negatively_charged)
+        {
+            return std::nullopt;
+        }
 
         for (const uint64_t i :
              implemented_circuit.circuit.get_consistent_super_circuit_input_indices(sub_circuit_input_index).get())
@@ -779,35 +815,6 @@ class is_circuit_operational_impl
         return possible_ground_state_indices_per_super_circuit_input;
     }
     /**
-     * This function returns `true` if `0` is encoded in the charge state of the given BDL pair. `false` otherwise.
-     * Assumes row clocking.
-     *
-     * @param ground_state The ground state charge distribution surface.
-     * @param bdl BDL pair to be evaluated.
-     * @return `true` if `0` is encoded, `false` otherwise.
-     */
-    [[nodiscard]] bool encodes_bit_zero(const charge_distribution_surface<Lyt, ExtPotType>& ground_state,
-                                        const bdl_pair<cell<Lyt>>&                          bdl) const noexcept
-    {
-        return static_cast<bool>((ground_state.get_charge_state(bdl.upper) == sidb_charge_state::NEGATIVE) &&
-                                 (ground_state.get_charge_state(bdl.lower) == sidb_charge_state::NEUTRAL));
-    }
-
-    /**
-     * This function returns `true` if `1` is encoded in the charge state of the given BDL pair. `false` otherwise.
-     * Assumes row clocking.
-     *
-     * @param ground_state The ground state charge distribution surface.
-     * @param bdl BDL pair to be evaluated.
-     * @return `true` if `1` is encoded, `false` otherwise.
-     */
-    [[nodiscard]] bool encodes_bit_one(const charge_distribution_surface<Lyt, ExtPotType>& ground_state,
-                                       const bdl_pair<cell<Lyt>>&                          bdl) const noexcept
-    {
-        return static_cast<bool>((ground_state.get_charge_state(bdl.upper) == sidb_charge_state::NEUTRAL) &&
-                                 (ground_state.get_charge_state(bdl.lower) == sidb_charge_state::NEGATIVE));
-    }
-    /**
     * todo
 
     * @param given_cds The charge distribution surface to be checked for operation.
@@ -824,6 +831,12 @@ class is_circuit_operational_impl
                 .get_simulated_bdl_wires_for_input_index(
                     implemented_circuit.circuit.get_consistent_super_circuit_input_indices(input_pattern).get().front())
                 .get();
+
+        // std::cout << "match" << std::endl;
+        // print_layout(given_cds);
+        // std::cout << "to" << std::endl;
+        // print_layout(simulated_bdl_wires);
+        // std::cout << "\n";
 
         for (const bdl_wire<Lyt>& wire : implemented_circuit.circuit.bdl_wires)
         {

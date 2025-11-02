@@ -441,7 +441,7 @@ int main(int argc, char* argv[])  // NOLINT
                                                                                              params, &st);
 
             // check equivalence
-            const auto miter = mockturtle::miter<mockturtle::klut_network>(mapped_network, st.gate_layout.value());
+            // const auto miter = mockturtle::miter<mockturtle::klut_network>(mapped_network, st.gate_layout.value());
             // const auto eq    = mockturtle::equivalence_checking(*miter);
             // assert(eq.has_value());
 
@@ -451,13 +451,14 @@ int main(int argc, char* argv[])  // NOLINT
             for (const auto& lyt : lyts)
             {
                 std::cout << "want to write to: "
-                          << (b_dir / "exact_benchmarks_runtime" / "AND" / std::to_string(ix) / ".sqd").c_str();
+                          << (b_dir / "exact_benchmarks_layout" / "AND" / (std::to_string(ix) + ".sqd")).c_str()
+                          << std::endl;
                 write_sqd_layout(lyt,
-                                 (b_dir / "exact_benchmarks_runtime" / "AND" / std::to_string(ix++) / ".sqd").c_str());
+                                 (b_dir / "exact_benchmarks_layout" / "AND" / (std::to_string(ix++) + ".sqd")).c_str());
             }
 
             // write runtime to file
-            const auto    runtime_path = b_dir / "exact_benchmarks_runtime" / num_in_dir / (name.string() + ".txt");
+            const auto runtime_path = b_dir / "exact_benchmarks_runtime" /*/ num_in_dir */ / (name.string() + ".txt");
             std::ofstream os{runtime_path, std::ofstream::out};
             if (!os.is_open())
             {
