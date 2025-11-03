@@ -450,9 +450,6 @@ int main(int argc, char* argv[])  // NOLINT
             uint64_t ix = 0;
             for (const auto& lyt : lyts)
             {
-                std::cout << "want to write to: "
-                          << (b_dir / "exact_benchmarks_layout" / "AND" / (std::to_string(ix) + ".sqd")).c_str()
-                          << std::endl;
                 write_sqd_layout(lyt,
                                  (b_dir / "exact_benchmarks_layout" / "AND" / (std::to_string(ix++) + ".sqd")).c_str());
             }
@@ -466,6 +463,8 @@ int main(int argc, char* argv[])  // NOLINT
             }
             const auto runtime_string = fmt::format("{:.2f}", mockturtle::to_seconds(st.time_total));
             os.write(runtime_string.c_str(), static_cast<uint32_t>(runtime_string.size()));
+
+            return EXIT_SUCCESS;
 
             sidb_circuits_with_defects(benchmark, mockturtle::to_seconds(st.time_total),
                                        st.exact_stats.num_aspect_ratios, !lyts.empty());

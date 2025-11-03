@@ -154,24 +154,21 @@ class advanced_circuit_design_impl
 
         circuit->tighten_gate_influence_bounds_until_fixpoint();
 
-        while (circuit_design_level < num_gates_to_design)
+        while (circuit_design_level < num_gates_to_design - 1)
         {
             // prune by assessing gate design combinations for increasingly large sets of connected gates
             if (!prune_gate_designs(
                     circuit_design_level,
                     std::string_view{
                         std::to_string(circuit_design_level + 1) +
-                        (circuit_design_level == num_gates_to_design - 1 ?
-                             " | GLOBAL" :
-                             (circuit_design_level == 0 ?
-                                  " GATE" :
-                                  (params.sub_circuit_mode == advanced_circuit_design_params<
-                                                                  CellLyt>::sub_circuit_creation_mode::CONNECTED_GATES ?
-                                       " CONNECTED GATES" :
-                                   params.sub_circuit_mode == advanced_circuit_design_params<
-                                                                  CellLyt>::sub_circuit_creation_mode::ADJACENT_GATES ?
-                                       " ADJACENT GATES" :
-                                       " GATES")))}))
+                        (circuit_design_level == 0 ? " GATE" :
+                         params.sub_circuit_mode ==
+                                 advanced_circuit_design_params<CellLyt>::sub_circuit_creation_mode::CONNECTED_GATES ?
+                                                     " CONNECTED GATES" :
+                         params.sub_circuit_mode ==
+                                 advanced_circuit_design_params<CellLyt>::sub_circuit_creation_mode::ADJACENT_GATES ?
+                                                     " ADJACENT GATES" :
+                                                     " GATES")}))
             {
                 circuit_design_level = 0;
 
@@ -965,7 +962,7 @@ class advanced_circuit_design_impl
                 gate_design_assessments[n].resize(circuit->gate_designs.at(n).size());
             });
 
-        std::unordered_map<mockturtle::node<GateLyt>, uint64_t> num_gate_designs_pruned{};
+        std::map<mockturtle::node<GateLyt>, uint64_t> num_gate_designs_pruned{};
 
         stats.gate_layout->foreach_node(
             [&](const auto& n)
@@ -999,67 +996,6 @@ class advanced_circuit_design_impl
 
                 make_pruning_assessments(gate_lyt_windows, n, t, gate_design_assessments[n]);
 
-                // std::vector<gate_design_t> selected_gate_implementations{};
-
-                for (uint64_t ix = 0; ix < gate_design_assessments.at(n).size(); ++ix)
-                {
-                    if (gate_design_assessments.at(n).at(ix))
-                    {
-                        // selected_gate_implementations.push_back(std::move(circuit->gate_designs[n][ix]));
-                    }
-                    else
-                    {
-                        ++num_gate_designs_pruned[n];
-                    }
-                }
-
-                // circuit->gate_designs[n] = std::move(selected_gate_implementations);
-
-                std::cout << "PRUNED " << num_gate_designs_pruned[n] << " out of "
-                          << gate_design_assessments.at(n).size() << std::endl;
-
-                // circuit->tighten_gate_influence_bounds_until_fixpoint();
-            });
-
-        std::cout << std::endl;
-
-        uint64_t pruned_total = 0;
-
-        std::cout << "\n==================================\n";
-        std::cout << std::left << std::setw(10) << "TILE"
-                  << " | " << std::right << std::setw(8) << "#PRUNED"
-                  << " | " << std::right << std::setw(10) << "#REMAINING"
-                  << "\n";
-        std::cout << "----------------------------------\n";
-
-        for (const auto& [n, num_pruned] : num_gate_designs_pruned)
-        {
-            auto tile      = stats.gate_layout->get_tile(n);
-            auto remaining = circuit->gate_designs.at(n).size() - num_pruned;
-
-            std::cout << std::left << std::setw(10) << tile << " | " << std::right << std::setw(8) << num_pruned
-                      << " | " << std::right << std::setw(10) << remaining << "\n";
-
-            pruned_total += num_pruned;
-        }
-
-        std::cout << "----------------------+-----------\n";
-        std::cout << std::right << std::setw(21) << pruned_total << "\n";
-        std::cout << "==================================\n";
-
-        if (pruned_total == 0)
-        {
-            return true;
-        }
-
-        stats.gate_layout->foreach_node(
-            [&](const auto& n)
-            {
-                if (skip_physical_design_for_node(*stats.gate_layout, n))
-                {
-                    return;
-                }
-
                 std::vector<gate_design_t> selected_gate_implementations{};
 
                 for (uint64_t ix = 0; ix < gate_design_assessments.at(n).size(); ++ix)
@@ -1068,12 +1004,91 @@ class advanced_circuit_design_impl
                     {
                         selected_gate_implementations.push_back(std::move(circuit->gate_designs[n][ix]));
                     }
+                    else
+                    {
+                        ++num_gate_designs_pruned[n];
+                    }
                 }
 
                 circuit->gate_designs[n] = std::move(selected_gate_implementations);
+
+                std::cout << "PRUNED " << num_gate_designs_pruned[n] << " out of "
+                          << gate_design_assessments.at(n).size() << std::endl;
+
+                if (circuit->gate_designs[n].empty())
+                {
+                    throw std::runtime_error{fmt::format("All gate designs pruned for tile {}", t)};
+                }
+
+                if (num_gate_designs_pruned.at(n) > 0)
+                {
+                    circuit->tighten_gate_influence_bounds_until_fixpoint();
+                }
             });
 
-        circuit->tighten_gate_influence_bounds_until_fixpoint();
+        std::cout << std::endl;
+
+        uint64_t pruned_total    = 0;
+        uint64_t remaining_total = 0;
+
+        std::cout << "\n**********************************\n";
+        std::cout << std::left << std::setw(10) << "TILE"
+                  << " | " << std::right << std::setw(8) << "#PRUNED"
+                  << " | " << std::right << std::setw(10) << "#REMAINING"
+                  << "\n";
+        std::cout << "----------------------------------\n";
+
+        circuit->gate_layout.foreach_node(
+            [&](const auto& n)
+            {
+                if (skip_physical_design_for_node(circuit->gate_layout, n))
+                {
+                    return;
+                }
+
+                const auto num_pruned = num_gate_designs_pruned.at(n);
+
+                const auto& tile      = stats.gate_layout->get_tile(n);
+                const auto  remaining = circuit->gate_designs.at(n).size();
+
+                std::cout << std::left << std::setw(10) << tile << " | " << std::right << std::setw(8) << num_pruned
+                          << " | " << std::right << std::setw(10) << remaining << "\n";
+
+                pruned_total += num_pruned;
+                remaining_total += remaining;
+            });
+        std::cout << "----------------------+----------- +\n";
+        std::cout << std::right << std::setw(21) << pruned_total << " | " << std::right << std::setw(10)
+                  << remaining_total << "\n";
+        std::cout << "**********************************\n";
+
+        if (pruned_total == 0)
+        {
+            return true;
+        }
+        //
+        // stats.gate_layout->foreach_node(
+        //     [&](const auto& n)
+        //     {
+        //         if (skip_physical_design_for_node(*stats.gate_layout, n))
+        //         {
+        //             return;
+        //         }
+        //
+        //         std::vector<gate_design_t> selected_gate_implementations{};
+        //
+        //         for (uint64_t ix = 0; ix < gate_design_assessments.at(n).size(); ++ix)
+        //         {
+        //             if (gate_design_assessments.at(n).at(ix))
+        //             {
+        //                 selected_gate_implementations.push_back(std::move(circuit->gate_designs[n][ix]));
+        //             }
+        //         }
+        //
+        //         circuit->gate_designs[n] = std::move(selected_gate_implementations);
+        //     });
+        //
+        // circuit->tighten_gate_influence_bounds_until_fixpoint();
 
         return false;
     }
@@ -1084,64 +1099,109 @@ class advanced_circuit_design_impl
     {
         std::cout << "\n\nLOOKING FOR OPERATIONAL CIRCUIT EXHAUSTIVELY" << std::endl;
 
-        std::vector<CellLyt> result{};
+        std::vector<CellLyt>               result{};
+        std::vector<std::vector<uint64_t>> all_combinations;
 
-        // operational_params.print = true;  // after comment: reenable function constness
-
-        std::vector<uint64_t> indices(circuit->gate_designs.size(), 0);
-
-        while (true)
+        // === 1. Generate all combinations first ===
         {
-            CellLyt operational_circuit_candidate{circuit->skeleton.clone()};
-            for (uint64_t i = 0; i < circuit->gate_designs.size(); i++)
+            std::vector<uint64_t> indices(circuit->gate_designs.size(), 0);
+            bool                  stop = false;
+            while (!stop)
             {
-                const auto& [n, op_gate_designs_for_gate] =
-                    *std::next(circuit->gate_designs.cbegin(), static_cast<int64_t>(i));
+                all_combinations.push_back(indices);
 
-                for (const uint64_t gate_design_cell_index : op_gate_designs_for_gate.at(indices.at(i)))
+                // Increment indices like an odometer f
+                for (uint64_t i = 0; i < indices.size(); ++i)
                 {
-                    // original code used circuit->all_canvas_positions.at(n).at(gate_design_cell_index)
-                    operational_circuit_candidate.assign_cell_type(
-                        circuit->all_canvas_positions.at(n).at(gate_design_cell_index),
-                        sidb_technology::cell_type::LOGIC);
+                    if (++indices[i] <
+                        std::next(circuit->gate_designs.cbegin(), static_cast<int64_t>(i))->second.size())
+                    {
+                        break;  // No carry needed
+                    }
+                    indices[i] = 0;  // Reset this index and carry over to the next
+                    if (i == indices.size() - 1)
+                    {
+                        stop = true;  // Stop when the last index overflows
+                    }
                 }
             }
+        }
 
-            std::cout << "trying combination: ";
-            for (uint64_t i = 0; i < circuit->gate_designs.size(); i++)
+        const auto            total_jobs  = all_combinations.size();
+        const uint64_t        max_threads = std::min<uint64_t>(params.available_threads, total_jobs);
+        std::atomic<uint64_t> processed_jobs{0};
+
+        // === 2. Progress bar setup ===
+#if (PROGRESS_BARS)
+        mockturtle::progress_bar bar{static_cast<uint32_t>(std::min<uint64_t>(total_jobs, UINT32_MAX)),
+                                     "[i] Finding operational circuits: |{0}|"};
+#endif
+
+        // === 3. Thread management ===
+        std::mutex               result_mutex;
+        std::vector<std::thread> workers;
+        std::atomic<uint64_t>    next_job{0};
+
+        // Thread count manager
+        const auto tcm = std::make_unique<thread_count_manager>(params.available_threads - max_threads);
+
+        auto worker = [&](const uint64_t thread_id)
+        {
+            while (true)
             {
-                std::cout << indices.at(i) << " ";
-            }
-            std::cout << std::endl;
+                const uint64_t job_index = next_job.fetch_add(1);
+                if (job_index >= total_jobs)
+                    break;
 
-            if (is_circuit_operational(
+                const auto& indices = all_combinations[job_index];
+
+                CellLyt operational_circuit_candidate{circuit->skeleton.clone()};
+                for (uint64_t i = 0; i < circuit->gate_designs.size(); i++)
+                {
+                    const auto& [n, op_gate_designs_for_gate] =
+                        *std::next(circuit->gate_designs.cbegin(), static_cast<int64_t>(i));
+
+                    for (const uint64_t gate_design_cell_index : op_gate_designs_for_gate.at(indices.at(i)))
+                    {
+                        operational_circuit_candidate.assign_cell_type(
+                            circuit->all_canvas_positions.at(n).at(gate_design_cell_index),
+                            sidb_technology::cell_type::LOGIC);
+                    }
+                }
+
+                const auto status_result = is_circuit_operational(
                     sidb_cell_level_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>{
                         operational_circuit_candidate,
                         sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>{*circuit}},
-                    operational_params)
-                    .status == operational_status::OPERATIONAL)
-            {
-                // std::cout << "\n\nGENERATED CIRCUIT:" << std::endl;
-                // print_layout(operational_circuit_candidate);
+                    operational_params, tcm);
 
-                result.push_back(operational_circuit_candidate);
-            }
-
-            // Increment indices like an odometer
-            for (uint64_t i = 0; i < indices.size(); ++i)
-            {
-                if (++indices[i] < std::next(circuit->gate_designs.cbegin(), static_cast<int64_t>(i))->second.size())
+                if (status_result.status == operational_status::OPERATIONAL)
                 {
-                    break;  // No carry needed
+                    std::lock_guard lock{result_mutex};
+                    result.push_back(operational_circuit_candidate);
                 }
 
-                indices[i] = 0;  // Reset this index and carry over to the next
+                processed_jobs.fetch_add(1);
 
-                if (i == indices.size() - 1)
-                {
-                    return result;  // Stop when the last index overflows
-                }
+#if (PROGRESS_BARS)
+                if (thread_id == 0)
+                    bar(processed_jobs.load());
+#endif
             }
+
+            // Return one thread's worth of work to the pool
+            tcm->return_threads(1);
+        };
+
+        // === 4. Spawn threads ===
+        for (uint64_t i = 0; i < max_threads; ++i)
+        {
+            workers.emplace_back(worker, i);
+        }
+
+        for (auto& w : workers)
+        {
+            w.join();
         }
 
         return result;
