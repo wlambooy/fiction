@@ -1397,7 +1397,7 @@ class charge_distribution_surface<Lyt, ExtPotType, false> : public Lyt
      * previous charge distribution is used to make the update more efficient, `charge_distribution_history::CONSIDER`
      * otherwise.
      */
-    template <bool consider_NONE_charge_states = false>
+    template <bool consider_NONE_charge_states = false, bool debug = false>
     void update_after_charge_change(
         const dependent_cell_mode         dep_cell                = dependent_cell_mode::FIXED,
         const energy_calculation          energy_calculation_mode = energy_calculation::UPDATE_ENERGY,
@@ -1412,7 +1412,7 @@ class charge_distribution_surface<Lyt, ExtPotType, false> : public Lyt
         {
             this->recompute_electrostatic_potential_energy();
         }
-        this->validity_check<consider_NONE_charge_states>();
+        this->validity_check<consider_NONE_charge_states, debug>();
     }
     /**
      * The configuration stability of the current charge distribution is evaluated. It is performed as the last check
@@ -1420,7 +1420,7 @@ class charge_distribution_surface<Lyt, ExtPotType, false> : public Lyt
      *
      * @return `true` if and only if the present charge distribution layout is deemed to be configuration stable.
      */
-    template <bool consider_NONE_charge_states = false>
+    template <bool consider_NONE_charge_states = false, bool debug = false>
     [[nodiscard]] bool is_configuration_stable() const noexcept
     {
         const auto hop_del =
@@ -1432,13 +1432,20 @@ class charge_distribution_surface<Lyt, ExtPotType, false> : public Lyt
                 // return strg->local_ext_pot[c1][0] - strg->local_ext_pot[c2][1] +
                 //        (0.5 * (strg->local_int_pot[c1] - strg->local_int_pot[c2] - strg->pot_mat[c1][c2]));
                 // non strict version
-                return strg->local_ext_pot[c1][1] - strg->local_ext_pot[c2][0] +
-                       (0.5 * (strg->local_int_pot[c1] - strg->local_int_pot[c2] - strg->pot_mat[c1][c2]));
+
+                // return strg->local_ext_pot[c1][1] - strg->local_ext_pot[c2][0] +
+                //        (0.5 * (strg->local_int_pot[c1] - strg->local_int_pot[c2] - strg->pot_mat[c1][c2]));
+                return strg->local_ext_pot[c1][1] - strg->local_ext_pot[c2][0] + strg->local_int_pot[c1] -
+                       strg->local_int_pot[c2] - strg->pot_mat[c1][c2];
+                // todo this is only for special local external potential
             }
             else
             {
-                return strg->local_ext_pot[c1] - strg->local_ext_pot[c2] +
-                       (0.5 * (strg->local_int_pot[c1] - strg->local_int_pot[c2] - strg->pot_mat[c1][c2]));
+                // return strg->local_ext_pot[c1] - strg->local_ext_pot[c2] +
+                //     (0.5 * (strg->local_int_pot[c1] - strg->local_int_pot[c2] - strg->pot_mat[c1][c2]));
+                return strg->local_ext_pot[c1] - strg->local_ext_pot[c2] + strg->local_int_pot[c1] -
+                       strg->local_int_pot[c2] - strg->pot_mat[c1][c2];
+                // todo this is only for special local external potential
             }
         };
 
@@ -1475,6 +1482,19 @@ class charge_distribution_surface<Lyt, ExtPotType, false> : public Lyt
                 if (hop_del(i, j) <
                     -constants::ERROR_MARGIN)  // Checks if energetically favored hops exist between two SiDBs.
                 {
+                    if constexpr (debug)
+                    {
+                        std::cout << "fault at " << i << " = " << strg->sidb_order[i].x << ',' << strg->sidb_order[i].y
+                                  << " with loc pot " << strg->local_int_pot[i] << " and cs "
+                                  << charge_configuration_to_string({strg->cell_charge[i]}) << " and ext pot ("
+                                  << strg->local_ext_pot[i][0] << "," << strg->local_ext_pot[i][1] << ")" << std::endl;
+                        // << strg->local_ext_pot[i] << ")" << std::endl;
+                        std::cout << "together with " << j << " = " << strg->sidb_order[j].x << ','
+                                  << strg->sidb_order[j].y << " with loc pot " << strg->local_int_pot[j] << " and cs "
+                                  << charge_configuration_to_string({strg->cell_charge[j]}) << " and ext pot ("
+                                  << strg->local_ext_pot[j][0] << "," << strg->local_ext_pot[j][1] << ")" << std::endl;
+                        // << strg->local_ext_pot[j] << ")" << std::endl;
+                    }
                     return false;
                 }
             }
@@ -1488,7 +1508,7 @@ class charge_distribution_surface<Lyt, ExtPotType, false> : public Lyt
      * The physical validity of the current charge distribution is evaluated and stored in the storage struct. A
      * charge distribution is valid if the *Population Stability* and the *Configuration Stability* is fulfilled.
      */
-    template <bool consider_NONE_charge_states = false>
+    template <bool consider_NONE_charge_states = false, bool debug = false>
     void validity_check() noexcept
     {
         // this for-loop checks if the "population stability" is fulfilled.
@@ -1517,6 +1537,14 @@ class charge_distribution_surface<Lyt, ExtPotType, false> : public Lyt
 
             if (!valid)
             {
+                if constexpr (debug)
+                {
+                    std::cout << "fault at " << i << " = " << strg->sidb_order[i].x << ',' << strg->sidb_order[i].y
+                              << " with loc pot " << strg->local_int_pot[i] << " and cs "
+                              << charge_configuration_to_string({strg->cell_charge[i]}) << " and ext pot ("
+                              << strg->local_ext_pot[i][0] << "," << strg->local_ext_pot[i][1] << ")" << std::endl;
+                }
+
                 strg->validity = false;  // if at least one SiDB does not fulfill the population stability, the validity
                                          // of the given charge distribution is set to "false".
                 return;
@@ -1524,7 +1552,7 @@ class charge_distribution_surface<Lyt, ExtPotType, false> : public Lyt
         }
 
         // if population stability is fulfilled for all SiDBs, the "configuration stability" is checked.
-        strg->validity = is_configuration_stable<consider_NONE_charge_states>();
+        strg->validity = is_configuration_stable<consider_NONE_charge_states, debug>();
     }
     /**
      * This function returns the currently stored validity of the present charge distribution layout.

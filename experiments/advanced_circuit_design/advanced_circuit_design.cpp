@@ -291,7 +291,7 @@ int main(int argc, char* argv[])  // NOLINT
     using cell_lyt = sidb_cell_clk_lyt_cube;
     using lyt_t    = sidb_defect_surface<cell_lyt>;
 
-    // using skeleton = sidb_bdl_skeleton_original_bestagon;  // sidb_bdl_skeleton_1;
+    // using skeleton = sidb_bdl_skeleton_original_bestagon;
     // using skeleton = sidb_bdl_skeleton_1;
     using skeleton = sidb_bdl_skeleton_hexamini;
     //
@@ -337,6 +337,26 @@ int main(int argc, char* argv[])  // NOLINT
     // // Hydrogen-terminated Silicon Surface Probed by a Moveable Quantum Dot."
     // const auto stray_db   = sidb_defect{sidb_defect_type::DB, -1, 4.1, 1.8};
     // const auto si_vacancy = sidb_defect{sidb_defect_type::SI_VACANCY, -1, 10.6, 5.9};
+
+    // const auto lyt = read_sqd_layout<sidb_100_cell_clk_lyt>("handmadeXNOR.sqd", "file");
+    // const auto sim_res = clustercomplete(lyt);
+    // print_layout(sim_res.groundstates().front());
+    // auto gs = sim_res.groundstates().front();
+    // for (const auto& cell : gs.get_sidb_order())
+    // {
+    //     std::cout << cell.x << ' ' << cell.y << " : " << *gs.get_local_internal_potential(cell) << std::endl;
+    //     if ((cell.y >= 32 && cell.y <= 50 || cell.x > 48) && gs.get_charge_state(cell) ==
+    //     sidb_charge_state::NEGATIVE)
+    //     {
+    //         gs.assign_charge_state(cell, sidb_charge_state::NEUTRAL);
+    //     }
+    // }
+    // print_layout(gs);
+    // gs.update_after_charge_change();
+    // for (const auto& cell : gs.get_sidb_order())
+    // {
+    //     std::cout << cell.x << ' ' << cell.y << " : " << *gs.get_local_internal_potential(cell) << std::endl;
+    // }
 
     static const std::string layouts_folder =
         fmt::format("{}/physical_design_with_on_the_fly_gate_design/layouts", EXPERIMENTS_PATH);

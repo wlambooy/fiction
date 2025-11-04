@@ -132,9 +132,13 @@ class sidb_bdl_circuit
                     return;
                 }
 
-                for (const cell<CellLyt>& c :
-                     all_coordinates_in_spanned_area(relative_to_absolute_canvas_position(gate_lyt, canvas.first, t),
-                                                     relative_to_absolute_canvas_position(gate_lyt, canvas.second, t)))
+                const std::pair<cell<CellLyt>, cell<CellLyt>> actual_canvas = canvas;
+                // t == tile<GateLyt>{1, 2} ? canvas :
+                //                            std::make_pair(cell<CellLyt>{12, 10}, cell<CellLyt>{14, 13});
+
+                for (const cell<CellLyt>& c : all_coordinates_in_spanned_area(
+                         relative_to_absolute_canvas_position(gate_lyt, actual_canvas.first, t),
+                         relative_to_absolute_canvas_position(gate_lyt, actual_canvas.second, t)))
                 {
                     lyt.assign_cell_type(c, sidb_technology::cell_type::LOGIC);
                     lyt.assign_cell_tile(c, {gate_lyt.get_tile(n).x, gate_lyt.get_tile(n).y, 0});
@@ -523,48 +527,64 @@ class sidb_bdl_circuit
             }
         }
 
-        uint64_t pruned_total = 0;
+        uint64_t pruned_total    = 0;
+        uint64_t remaining_total = 0;
 
-        std::cout << "\n==================================\n";
-        std::cout << std::left << std::setw(10) << "TILE"
-                  << " | " << std::right << std::setw(8) << "#PRUNED"
+        std::stringstream ss{};
+
+        ss << "\n==================================\n";
+        ss << std::left << std::setw(10) << "TILE"
+           << " | " << std::right << std::setw(8) << "#PRUNED"
                   << " | " << std::right << std::setw(10) << "#REMAINING"
                   << "\n";
-        std::cout << "----------------------------------\n";
+        ss << "----------------------------------\n";
 
-        for (const auto& [n, designs] : gate_designs)
-        {
-            // bool print = false;
-            // for (const canvas_combination& gate : designs)
-            // {
-            //     print |=
-            //         gate.size() == 2 &&
-            //         ((all_canvas_positions.at(n).at(gate.at(0)) == cell<CellLyt>{53, 42} &&
-            //           all_canvas_positions.at(n).at(gate.at(1)) == cell<CellLyt>{54, 44}) ||
-            //          (all_canvas_positions.at(n).at(gate.at(0)) == cell<CellLyt>{36, 26} &&
-            //           all_canvas_positions.at(n).at(gate.at(1)) == cell<CellLyt>{38, 29}) ||
-            //          (all_canvas_positions.at(n).at(gate.at(0)) == cell<CellLyt>{70, 26} &&
-            //          all_canvas_positions.at(n).at(gate.at(1)) == cell<CellLyt>{68, 29}) ||
-            //         (all_canvas_positions.at(n).at(gate.at(0)) == cell<CellLyt>{44, 58} &&
-            //          all_canvas_positions.at(n).at(gate.at(1)) == cell<CellLyt>{42, 61}));
-            // }
-            const uint64_t total     = gate_design_counts.at(n);
+        gate_layout.foreach_node(
+            [&](const auto& n)
+            {
+                if (skip_physical_design_for_node(gate_layout, n))
+                {
+                    return;
+                }
+                const auto& designs = gate_designs.at(n);
+
+                const uint64_t total     = gate_design_counts.at(n);
             const uint64_t pruned    = total - designs.size();
             const uint64_t remaining = designs.size();
 
-            std::cout << std::left << std::setw(10) << gate_layout.get_tile(n) << " | " << std::right << std::setw(8)
-                      << pruned << " | " << std::right << std::setw(10) << remaining << "\n";
-            // if (print)
-            // {
-            //     std::cout << "OK" << std::endl;
-            // }
+            bool print = false;
+            for (const canvas_combination& gate : designs)
+            {
+                print |= gate.size() == 2 && ((all_canvas_positions.at(n).at(gate.at(0)) == cell<CellLyt>{53, 39} &&
+                                               all_canvas_positions.at(n).at(gate.at(1)) == cell<CellLyt>{55, 44}) ||
+                                              (all_canvas_positions.at(n).at(gate.at(0)) == cell<CellLyt>{36, 26} &&
+                                               all_canvas_positions.at(n).at(gate.at(1)) == cell<CellLyt>{38, 29}) ||
+                                              (all_canvas_positions.at(n).at(gate.at(0)) == cell<CellLyt>{70, 26} &&
+                                               all_canvas_positions.at(n).at(gate.at(1)) == cell<CellLyt>{68, 29}) ||
+                                              (all_canvas_positions.at(n).at(gate.at(0)) == cell<CellLyt>{44, 58} &&
+                                               all_canvas_positions.at(n).at(gate.at(1)) == cell<CellLyt>{42, 61}));
+            }
 
-            pruned_total += pruned;
-        }
+            ss << std::left << std::setw(10) << gate_layout.get_tile(n) << " | " << std::right << std::setw(8) << pruned
+               << " | " << std::right << std::setw(10) << remaining << "\n";
+            if (print)
+            {
+                    ss << "OK" << std::endl;
+                }
 
-        std::cout << "----------------------+-----------\n";
-        std::cout << std::right << std::setw(21) << pruned_total << "\n";
-        std::cout << "==================================\n";
+                pruned_total += pruned;
+                remaining_total += remaining;
+            });
+
+        ss << "----------------------+----------- +\n";
+        ss << std::right << std::setw(21) << pruned_total << " | " << std::right << std::setw(10) << remaining_total
+           << "\n";
+        ss << "==================================\n";
+
+        // if (pruned_total > 0)
+        // {
+            std::cout << ss.str();
+        // }
     }
 
   private:
@@ -738,6 +758,8 @@ class sidb_bdl_circuit
                 expected_signal_at_gate_connection[outgoing_tiles.front()].insert(
                     {lower_tile, kitty::get_bit(gate_layout.node_function(gate_layout.get_node(lower_tile)), tt_inp)});
             }
+
+            cds.update_local_internal_potential();
         }
 
         return simulated_bdl_wires_per_input;
@@ -767,9 +789,13 @@ class sidb_bdl_circuit
 
                     const tile<GateLyt>& t = gate_lyt.get_tile(n);
 
+                    const std::pair<cell<CellLyt>, cell<CellLyt>> actual_canvas = canvas;
+                    // t == tile<GateLyt>{1, 2} ? canvas :
+                        //                            std::make_pair(cell<CellLyt>{12, 10}, cell<CellLyt>{14, 13});
+
                     std::vector<cell<CellLyt>> cells = all_coordinates_in_spanned_area(
-                        relative_to_absolute_canvas_position(gate_lyt, canvas.first, t),
-                        relative_to_absolute_canvas_position(gate_lyt, canvas.second, t));
+                        relative_to_absolute_canvas_position(gate_lyt, actual_canvas.first, t),
+                        relative_to_absolute_canvas_position(gate_lyt, actual_canvas.second, t));
 
                     (*bii).foreach_cell(
                         [&](const cell<CellLyt>& c)
@@ -1558,7 +1584,6 @@ struct sidb_cell_level_bdl_circuit
     const CellLyt&                                                     cell_layout;
     const sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>& circuit{};
 
-    // todo construct using std::unordered_map<tile<GateLyt>, canvas_positions> ?
     explicit sidb_cell_level_bdl_circuit(
         const CellLyt& lyt, const sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>& bdl_circuit) noexcept :
             cell_layout{lyt},

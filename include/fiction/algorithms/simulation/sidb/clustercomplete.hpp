@@ -4,6 +4,7 @@
 
 #ifndef FICTION_CLUSTERCOMPLETE_HPP
 #define FICTION_CLUSTERCOMPLETE_HPP
+#include <fiction/io/print_layout.hpp>
 
 #if (FICTION_ALGLIB_ENABLED)
 
@@ -447,8 +448,6 @@ class clustercomplete_impl
             return;
         }
 
-        // charge_layout_copy.recompute_electrostatic_potential_energy(); // for debug only
-
         // population stability is a given when this function is called; hence the charge distribution is physically
         // valid when configuration stability is met
         charge_layout_copy.declare_physically_valid();
@@ -461,7 +460,8 @@ class clustercomplete_impl
             //     assert(arr[0] <= arr[1]);
             //     save.push_back({arr[0], arr[1]});
             // }
-            charge_layout_copy.restrict_local_external_potential_to_pop_stability();
+            charge_layout_copy.restrict_local_external_potential_to_pop_stability();  // todo check if this works with
+                                                                                      // the circuit designer
             // uint64_t ix = 0;
             // for (const auto& [c, arr] : charge_layout_copy.get_local_external_potential_map())
             // {

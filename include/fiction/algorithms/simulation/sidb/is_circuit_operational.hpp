@@ -269,7 +269,7 @@ class is_circuit_operational_impl
             sim_res_per_input.reserve(1 << implemented_circuit.circuit.num_inputs);
         }
 
-        /*// perform quickcell pruning
+        // perform quickcell pruning
         Lyt only_canvasses{};
         implemented_circuit.cell_layout.foreach_cell(
             [&](const cell<Lyt>& c)
@@ -277,8 +277,10 @@ class is_circuit_operational_impl
                 if (implemented_circuit.cell_layout.get_cell_type(c) == sidb_technology::cell_type::LOGIC)
                 {
                     only_canvasses.assign_cell_type(c, sidb_technology::cell_type::LOGIC);
+                    // std::cout << c.x << ' ' << c.y << std::endl;
                 }
             });
+        // std::cout << std::endl;
 
         std::set<uint64_t> consistent_super_circuit_input_indices_set{};
         for (auto i = 0u; i < 1 << implemented_circuit.circuit.num_inputs; ++i)
@@ -378,8 +380,6 @@ class is_circuit_operational_impl
                         consistent_super_circuit_input_indices.at(super_circuit_input_index_ix))
                     .get()};  // todo: check clone behavior
 
-            simulated_bdl_wires.template update_local_internal_potential<true>();  // todo do this earlier
-
             typename charge_distribution_surface<Lyt, local_external_potential_type::BOUNDED>::
                 local_external_potential_map_t& bounded_influence_from_canvasses =
                     simulated_bdl_wires.get_local_external_potentials_reference();
@@ -450,7 +450,7 @@ class is_circuit_operational_impl
 
                 return operational_assessment_results;
             }
-        }*/
+        }
 
         bdl_input_iterator<Lyt> bii{implemented_circuit.cell_layout, parameters.input_bdl_iterator_params};
         bii = 0;
@@ -620,15 +620,26 @@ class is_circuit_operational_impl
 
             cc_params.available_threads = 1;
 
+            if (parameters.print)
+            {
+                for (const auto& [c, b] : cc_params.local_external_potential)
+                {
+                    std::cout << c.x << ' ' << c.y << " : " << b[0] << ' ' << b[1] << std::endl;
+                }
+            }
+
             const auto& sim_res =
                 clustercomplete<Lyt, ExtPotType>(cell_lyt_without_internal_output_perturber, cc_params);
 
-            // std::cout << "RES START" << std::endl;
-            // for (const auto& c : sim_res.charge_distributions)
-            // {
-            //     print_layout(c);
-            // }
-            // std::cout << "RES END" << std::endl;
+            if (parameters.print)
+            {
+                std::cout << "RES START" << std::endl;
+                for (const auto& c : sim_res.charge_distributions)
+                {
+                    print_layout(c);
+                }
+                std::cout << "RES END" << std::endl;
+            }
 
             return std::make_pair(std::move(sim_res), std::move(skeleton_influence_bounds));
         }
@@ -643,7 +654,8 @@ class is_circuit_operational_impl
 
             cc_params.available_threads = 1 + (thread_counter ? thread_counter->reserve_threads() : 0);
 
-            const auto& res             = clustercomplete(lyt, cc_params);
+            const auto& res = clustercomplete(lyt, cc_params);
+
             if (thread_counter)
             {
                 thread_counter->return_threads(cc_params.available_threads - 1);
@@ -866,11 +878,14 @@ class is_circuit_operational_impl
                     implemented_circuit.circuit.get_consistent_super_circuit_input_indices(input_pattern).get().front())
                 .get();
 
-        // std::cout << "match" << std::endl;
-        // print_layout(given_cds);
-        // std::cout << "to" << std::endl;
-        // print_layout(simulated_bdl_wires);
-        // std::cout << "\n";
+        if (parameters.print)
+        {
+            std::cout << "match" << std::endl;
+            print_layout(given_cds);
+            std::cout << "to" << std::endl;
+            print_layout(simulated_bdl_wires);
+            std::cout << "\n";
+        }
 
         for (const bdl_wire<Lyt>& wire : implemented_circuit.circuit.bdl_wires)
         {

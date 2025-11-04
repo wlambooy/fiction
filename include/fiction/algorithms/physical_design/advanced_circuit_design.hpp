@@ -161,14 +161,17 @@ class advanced_circuit_design_impl
                     circuit_design_level,
                     std::string_view{
                         std::to_string(circuit_design_level + 1) +
-                        (circuit_design_level == 0 ? " GATE" :
-                         params.sub_circuit_mode ==
-                                 advanced_circuit_design_params<CellLyt>::sub_circuit_creation_mode::CONNECTED_GATES ?
-                                                     " CONNECTED GATES" :
-                         params.sub_circuit_mode ==
-                                 advanced_circuit_design_params<CellLyt>::sub_circuit_creation_mode::ADJACENT_GATES ?
-                                                     " ADJACENT GATES" :
-                                                     " GATES")}))
+                        (circuit_design_level == num_gates_to_design - 1 ?
+                             " | GLOBAL" :
+                             (circuit_design_level == 0 ?
+                                  " GATE" :
+                                  (params.sub_circuit_mode == advanced_circuit_design_params<
+                                                                  CellLyt>::sub_circuit_creation_mode::CONNECTED_GATES ?
+                                       " CONNECTED GATES" :
+                                   params.sub_circuit_mode == advanced_circuit_design_params<
+                                                                  CellLyt>::sub_circuit_creation_mode::ADJACENT_GATES ?
+                                       " ADJACENT GATES" :
+                                       " GATES")))}))
             {
                 circuit_design_level = 0;
 
@@ -312,16 +315,22 @@ class advanced_circuit_design_impl
 
                     const tile<GateLyt>& t = stats.gate_layout->get_tile(n);
 
+                    const std::pair<cell<CellLyt>, cell<CellLyt>> actual_canvas = params.canvas;
+                    // t == tile<GateLyt>{1, 2} ? params.canvas :
+                    //                            std::make_pair(cell<CellLyt>{12, 10}, cell<CellLyt>{14, 13});
+
                     const std::vector<cell<CellLyt>>& all_sidbs_in_canvas = all_coordinates_in_spanned_area(
-                        circuit->relative_to_absolute_canvas_position(circuit->gate_layout, params.canvas.first, t),
-                        circuit->relative_to_absolute_canvas_position(circuit->gate_layout, params.canvas.second, t));
+                        circuit->relative_to_absolute_canvas_position(circuit->gate_layout, actual_canvas.first, t),
+                        circuit->relative_to_absolute_canvas_position(circuit->gate_layout, actual_canvas.second, t));
 
                     std::vector<gate_design_t> all_combinations;
 
                     // // Reserve an estimated capacity if possible (optional optimization) todo
                     // all_combinations.reserve(estimate_total_combinations(max_sidbs, total_positions));
 
-                    for (std::size_t num_sidbs = 0; num_sidbs <= params.maximum_number_of_canvas_sidbs; ++num_sidbs)
+                    for (std::size_t num_sidbs = 0;
+                         num_sidbs <= (t == tile<GateLyt>{1, 2} ? params.maximum_number_of_canvas_sidbs : 2);
+                         ++num_sidbs)
                     {
                         auto combinations = determine_all_combinations_of_distributing_k_entities_on_n_positions(
                             num_sidbs, all_sidbs_in_canvas.size());
@@ -573,7 +582,7 @@ class advanced_circuit_design_impl
                                      const std::vector<mockturtle::node<GateLyt>>& node_vec,
                                      const foreach_node<std::vector<uint64_t>>&    indices_to_trial,
                                      const uint64_t trial_number, const CellLyt& cell_lyt,
-                                     uint64_t& total_number_of_simulator_calls) noexcept
+                                     uint64_t& total_number_of_simulator_calls, bool print = false) noexcept
     {
         // std::cout << "PERFORMING TRIAL | number = " << trial_number << " | ";
         // std::flush(std::cout);
@@ -653,6 +662,33 @@ class advanced_circuit_design_impl
             assert(trial_number < indices_to_trial.at(node).size() &&
                    "Trial number exceeds the number of available samples");
 
+            bool otherprint = false;
+            // if (print && ((circuit->gate_layout.get_tile(node) == tile<GateLyt>{1, 1} &&
+            //      circuit->gate_designs.at(node).at(indices_to_trial.at(node).at(trial_number)).size() == 2 &&
+            //      // circuit->gate_designs.at(node).at(indices_to_trial.at(node).at(trial_number)).front() == 12 &&
+            //      // circuit->gate_designs.at(node).at(indices_to_trial.at(node).at(trial_number)).back() == 26) ||
+            //      circuit->gate_designs.at(node).at(indices_to_trial.at(node).at(trial_number)).front() == 0 &&
+            //      circuit->gate_designs.at(node).at(indices_to_trial.at(node).at(trial_number)).back() == 11) ||
+            //     (circuit->gate_layout.get_tile(node) == tile<GateLyt>{2, 1} &&
+            //      circuit->gate_designs.at(node).at(indices_to_trial.at(node).at(trial_number)).size() == 2 &&
+            //      // circuit->gate_designs.at(node).at(indices_to_trial.at(node).at(trial_number)).front() == 14 &&
+            //      // circuit->gate_designs.at(node).at(indices_to_trial.at(node).at(trial_number)).back() == 24)))
+            //     circuit->gate_designs.at(node).at(indices_to_trial.at(node).at(trial_number)).front() == 2 &&
+            //     circuit->gate_designs.at(node).at(indices_to_trial.at(node).at(trial_number)).back() == 9)))
+            // {
+            //     std::cout << "NOWWW going NEXT it" << std::endl;
+            //     otherprint = true;
+            //
+            //     int k = 0;
+            //     while (k < 4)
+            //     {
+            //         std::cout << "\t";
+            //         k++;
+            //     }
+            //     std::cout << std::endl;
+            // }
+            print &= otherprint;
+
             // select a random gate implementation
             for (const uint64_t gate_design_cell_index :
                  circuit->gate_designs.at(node).at(indices_to_trial.at(node).at(trial_number)))
@@ -662,11 +698,19 @@ class advanced_circuit_design_impl
             }
         }
 
+        if (print)
+        {
+            print_layout(cell_lyt_clone);
+        }
+
+        auto new_params  = operational_params;
+        new_params.print = print;
+
         // sub-circuit logic match assessment
         const circuit_operational_assessment<CellLyt, local_external_potential_type::BOUNDED>& op_assessment =
             is_circuit_operational<CellLyt, GateLyt, local_external_potential_type::BOUNDED, SkeletonGateLibrary>(
                 sidb_cell_level_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>{cell_lyt_clone, sub_circuit},
-                operational_params);
+                new_params);
 
         if (op_assessment.simulator_invocations > 0)
         {
@@ -866,9 +910,34 @@ class advanced_circuit_design_impl
                         // construction. Call perform_trial with the prepared arguments.
                         const gate_design_t& gate_design = circuit->gate_designs.at(n).at(job.gate_design_index);
 
+                        bool print = false;
+                        // if (t == tile<GateLyt>{1, 2} && gate_design.size() == 2 && gate_design.front() == 1 &&
+                        //     gate_design.back() == 23)
+                        // {
+                        //     print = true;
+                        //     std::cout << "NOW IT COMES" << std::endl;
+                        //
+                        //     int k = 0;
+                        //     std::vector<uint64_t> l{};
+                        //     while (k < 4)
+                        //     {
+                        //         std::cout << "\t";
+                        //         l.push_back(k++);
+                        //     }
+                        //     if (l.size() == 4)
+                        //     {
+                        //         std::cout << std::endl;
+                        //     }
+                        // }
+
                         const bool operational =
                             perform_trial(*pp.sub_ptr, n, gate_design, pp.node_vec, pp.sampled_indices,
-                                          job.trial_number, pp.cell_lyt, local_simulator_calls);
+                                          job.trial_number, pp.cell_lyt, local_simulator_calls, print);
+
+                        if (print)
+                        {
+                            std::cout << "OPERATIONAL: " << operational << std::endl;
+                        }
 
                         if (operational)
                         {
@@ -964,10 +1033,14 @@ class advanced_circuit_design_impl
 
         std::map<mockturtle::node<GateLyt>, uint64_t> num_gate_designs_pruned{};
 
+        const bool global_pruning = strncmp(std::prev(level_str.cend(), 6), "GLOBAL", 6) == 0;
+
+        bool global_pruning_early_exit = false;
+
         stats.gate_layout->foreach_node(
             [&](const auto& n)
             {
-                if (skip_physical_design_for_node(*stats.gate_layout, n))
+                if (skip_physical_design_for_node(*stats.gate_layout, n) || global_pruning_early_exit)
                 {
                     return;
                 }
@@ -1020,23 +1093,37 @@ class advanced_circuit_design_impl
                     throw std::runtime_error{fmt::format("All gate designs pruned for tile {}", t)};
                 }
 
-                if (num_gate_designs_pruned.at(n) > 0)
+                if (num_gate_designs_pruned.at(n) == 0)
                 {
-                    circuit->tighten_gate_influence_bounds_until_fixpoint();
+                    return;
+                }
+
+                circuit->tighten_gate_influence_bounds_until_fixpoint();
+
+                if (global_pruning)
+                {
+                    global_pruning_early_exit = true;
                 }
             });
 
         std::cout << std::endl;
 
+        if (global_pruning_early_exit)
+        {
+            return false;
+        }
+
+        std::stringstream ss{};
+
         uint64_t pruned_total    = 0;
         uint64_t remaining_total = 0;
 
-        std::cout << "\n**********************************\n";
-        std::cout << std::left << std::setw(10) << "TILE"
-                  << " | " << std::right << std::setw(8) << "#PRUNED"
-                  << " | " << std::right << std::setw(10) << "#REMAINING"
-                  << "\n";
-        std::cout << "----------------------------------\n";
+        ss << "\n**********************************\n";
+        ss << std::left << std::setw(10) << "TILE"
+           << " | " << std::right << std::setw(8) << "#PRUNED"
+           << " | " << std::right << std::setw(10) << "#REMAINING"
+           << "\n";
+        ss << "----------------------------------\n";
 
         circuit->gate_layout.foreach_node(
             [&](const auto& n)
@@ -1051,46 +1138,27 @@ class advanced_circuit_design_impl
                 const auto& tile      = stats.gate_layout->get_tile(n);
                 const auto  remaining = circuit->gate_designs.at(n).size();
 
-                std::cout << std::left << std::setw(10) << tile << " | " << std::right << std::setw(8) << num_pruned
-                          << " | " << std::right << std::setw(10) << remaining << "\n";
+                ss << std::left << std::setw(10) << tile << " | " << std::right << std::setw(8) << num_pruned << " | "
+                   << std::right << std::setw(10) << remaining << "\n";
 
                 pruned_total += num_pruned;
                 remaining_total += remaining;
             });
-        std::cout << "----------------------+----------- +\n";
-        std::cout << std::right << std::setw(21) << pruned_total << " | " << std::right << std::setw(10)
-                  << remaining_total << "\n";
-        std::cout << "**********************************\n";
+        ss << "----------------------+----------- +\n";
+        ss << std::right << std::setw(21) << pruned_total << " | " << std::right << std::setw(10) << remaining_total
+           << "\n";
+        ss << "**********************************\n";
 
         if (pruned_total == 0)
         {
             return true;
         }
-        //
-        // stats.gate_layout->foreach_node(
-        //     [&](const auto& n)
-        //     {
-        //         if (skip_physical_design_for_node(*stats.gate_layout, n))
-        //         {
-        //             return;
-        //         }
-        //
-        //         std::vector<gate_design_t> selected_gate_implementations{};
-        //
-        //         for (uint64_t ix = 0; ix < gate_design_assessments.at(n).size(); ++ix)
-        //         {
-        //             if (gate_design_assessments.at(n).at(ix))
-        //             {
-        //                 selected_gate_implementations.push_back(std::move(circuit->gate_designs[n][ix]));
-        //             }
-        //         }
-        //
-        //         circuit->gate_designs[n] = std::move(selected_gate_implementations);
-        //     });
-        //
-        // circuit->tighten_gate_influence_bounds_until_fixpoint();
+
+        std::cout << ss.str();
 
         return false;
+
+        return pruned_total == 0;
     }
     /**
      * todo
@@ -1103,29 +1171,89 @@ class advanced_circuit_design_impl
         std::vector<std::vector<uint64_t>> all_combinations;
 
         // === 1. Generate all combinations first ===
+        std::vector<uint64_t> indices(circuit->gate_designs.size(), 0);  // todo reserve?
+        bool                  stop = false;
+        while (!stop)
         {
-            std::vector<uint64_t> indices(circuit->gate_designs.size(), 0);
-            bool                  stop = false;
-            while (!stop)
+            std::unordered_set<std::pair<mockturtle::node<GateLyt>, gate_design_t>, SetHash> current_combination{};
+
+            auto powerset_check = [&](const auto& input) -> bool
+            {
+                const uint64_t combination_size = input.size();
+
+                std::vector<decltype(input.cbegin())> iterators;
+                iterators.reserve(combination_size);
+
+                for (auto it = input.cbegin(); it != input.cend(); ++it)
+                {
+                    iterators.push_back(it);
+                }
+
+                // Iterate over all non-empty subsets using bitmask
+                for (uint64_t mask = 1; mask < 1ULL << combination_size; ++mask)
+                {
+                    if ((mask & (mask - 1)) == 0)
+                    {
+                        continue;  // combination must be size > 1
+                    }
+
+                    std::unordered_set<std::pair<mockturtle::node<GateLyt>, gate_design_t>, SetHash> subset;
+
+                    for (size_t i = 0; i < combination_size; ++i)
+                    {
+                        if (mask & (1ULL << i))
+                        {
+                            subset.insert(*iterators[i]);
+                        }
+                    }
+
+                    if (excluded_combinations.find(subset) != excluded_combinations.cend())
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
+            };
+
+            for (uint64_t i = 0; i < indices.size(); ++i)
+            {
+                const auto& [n, designs] = *std::next(circuit->gate_designs.cbegin(), static_cast<int64_t>(i));
+                current_combination.emplace(n, designs.at(indices.at(i)));
+            }
+
+            if (powerset_check(current_combination))
             {
                 all_combinations.push_back(indices);
+            }
 
-                // Increment indices like an odometer f
-                for (uint64_t i = 0; i < indices.size(); ++i)
+            // Increment indices like an odometer f
+            for (uint64_t i = 0; i < indices.size(); ++i)
+            {
+                if (++indices[i] < std::next(circuit->gate_designs.cbegin(), static_cast<int64_t>(i))->second.size())
                 {
-                    if (++indices[i] <
-                        std::next(circuit->gate_designs.cbegin(), static_cast<int64_t>(i))->second.size())
-                    {
-                        break;  // No carry needed
-                    }
-                    indices[i] = 0;  // Reset this index and carry over to the next
-                    if (i == indices.size() - 1)
-                    {
-                        stop = true;  // Stop when the last index overflows
-                    }
+                    break;  // No carry needed
+                }
+                indices[i] = 0;  // Reset this index and carry over to the next
+                if (i == indices.size() - 1)
+                {
+                    stop = true;  // Stop when the last index overflows
                 }
             }
         }
+
+        uint64_t total_num_combinations = 1;
+
+        for (const auto [_, designs] : circuit->gate_designs)
+        {
+            total_num_combinations *= designs.size();
+        }
+
+        std::cout << fmt::format("{} combinations | {} simulations | cache hits ~ {:.4f}%", total_num_combinations,
+                                 all_combinations.size(),
+                                 1.0 - static_cast<double>(all_combinations.size()) /
+                                           static_cast<double>(total_num_combinations))
+                  << std::endl;
 
         const auto            total_jobs  = all_combinations.size();
         const uint64_t        max_threads = std::min<uint64_t>(params.available_threads, total_jobs);
