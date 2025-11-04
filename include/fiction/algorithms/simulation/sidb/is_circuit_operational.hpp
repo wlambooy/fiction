@@ -246,29 +246,8 @@ class is_circuit_operational_impl
      * @return Pair with the first element indicating the operational status (either `OPERATIONAL` or `NON_OPERATIONAL`)
      * and the second element indicating the reason if it is non-operational.
      */
-    [[nodiscard]] circuit_operational_assessment<Lyt, ExtPotType> run() noexcept
+    [[nodiscard]] operational_status run() noexcept
     {
-        circuit_operational_assessment<Lyt, ExtPotType> operational_assessment_results{operational_status::OPERATIONAL};
-
-        // when `termination_condition::ALL_INPUT_COMBINATIONS_ASSESSED` is set, the results of the operational status
-        // assessment are also stored for each input separately
-        std::vector<operational_assessment_for_input> assessment_results_per_input{};
-
-        if (parameters.termination_cond ==
-            is_circuit_operational_params::termination_condition::ALL_INPUT_COMBINATIONS_ASSESSED)
-        {
-            assessment_results_per_input.reserve(1 << implemented_circuit.circuit.num_inputs);
-        }
-
-        // when `simulation_results_mode::KEEP_SIMULATION_RESULTS` is set, the simulation results must be collected for
-        // each input combination
-        std::vector<typename circuit_operational_assessment<Lyt, ExtPotType>::simulation_results_t> sim_res_per_input{};
-        if (parameters.simulation_results_retention ==
-            is_circuit_operational_params::simulation_results_mode::KEEP_SIMULATION_RESULTS)
-        {
-            sim_res_per_input.reserve(1 << implemented_circuit.circuit.num_inputs);
-        }
-
         // perform quickcell pruning
         Lyt only_canvasses{};
         implemented_circuit.cell_layout.foreach_cell(
@@ -277,10 +256,8 @@ class is_circuit_operational_impl
                 if (implemented_circuit.cell_layout.get_cell_type(c) == sidb_technology::cell_type::LOGIC)
                 {
                     only_canvasses.assign_cell_type(c, sidb_technology::cell_type::LOGIC);
-                    // std::cout << c.x << ' ' << c.y << std::endl;
                 }
             });
-        // std::cout << std::endl;
 
         std::set<uint64_t> consistent_super_circuit_input_indices_set{};
         for (auto i = 0u; i < 1 << implemented_circuit.circuit.num_inputs; ++i)
@@ -299,9 +276,7 @@ class is_circuit_operational_impl
         const std::vector<uint64_t> consistent_super_circuit_input_indices{
             consistent_super_circuit_input_indices_set.cbegin(), consistent_super_circuit_input_indices_set.cend()};
 
-        for (uint64_t super_circuit_input_index_ix = 0;
-             super_circuit_input_index_ix < consistent_super_circuit_input_indices.size();
-             ++super_circuit_input_index_ix)
+        for (const uint64_t super_circuit_input_index : consistent_super_circuit_input_indices)
         {
             clustercomplete_params<cell<Lyt>, local_external_potential_type::BOUNDED> cc_params{
                 parameters.simulation_parameters};
@@ -330,8 +305,7 @@ class is_circuit_operational_impl
 
                         const std::array<double, 2>& influence_bounds_from_super_circuit_n =
                             implemented_circuit.circuit.super_circuit.get_gate_design_influence_bounds(
-                                consistent_super_circuit_input_indices.at(super_circuit_input_index_ix), n, c,
-                                super_circuit_n);
+                                super_circuit_input_index, n, c, super_circuit_n);
 
                         gate_design_influence_bound_sum[0] += influence_bounds_from_super_circuit_n[0];
                         gate_design_influence_bound_sum[1] += influence_bounds_from_super_circuit_n[1];
@@ -347,8 +321,7 @@ class is_circuit_operational_impl
 
                     const double skeleton_influence =
                         *implemented_circuit.circuit.super_circuit
-                             .get_simulated_bdl_wires_for_input_index(
-                                 consistent_super_circuit_input_indices.at(super_circuit_input_index_ix))
+                             .get_simulated_bdl_wires_for_input_index(super_circuit_input_index)
                              .get()
                              .get_local_internal_potential(c);
 
@@ -363,21 +336,18 @@ class is_circuit_operational_impl
             {
                 // first pruning: physical infeasibility of canvas layouts
 
-                operational_assessment_results.status = operational_status::NON_OPERATIONAL;
-
-                return operational_assessment_results;
+                return operational_status::NON_OPERATIONAL;
             }
 
             // second pruning: physical infeasibility of skeleton
             // NOTE: instead of the implementation below it might be better to only check the sub-circuit skeleton
             bdl_input_iterator<Lyt> bii{implemented_circuit.circuit.super_circuit.skeleton,
                                         parameters.input_bdl_iterator_params};
-            bii = consistent_super_circuit_input_indices.at(super_circuit_input_index_ix);
+            bii = super_circuit_input_index;
 
             charge_distribution_surface<Lyt, local_external_potential_type::BOUNDED> simulated_bdl_wires{
                 implemented_circuit.circuit.super_circuit
-                    .get_simulated_bdl_wires_for_input_index(
-                        consistent_super_circuit_input_indices.at(super_circuit_input_index_ix))
+                    .get_simulated_bdl_wires_for_input_index(super_circuit_input_index)
                     .get()};  // todo: check clone behavior
 
             typename charge_distribution_surface<Lyt, local_external_potential_type::BOUNDED>::
@@ -446,9 +416,7 @@ class is_circuit_operational_impl
 
             if (!at_least_one_physically_valid)
             {
-                operational_assessment_results.status = operational_status::NON_OPERATIONAL;
-
-                return operational_assessment_results;
+                return operational_status::NON_OPERATIONAL;
             }
         }
 
@@ -458,111 +426,37 @@ class is_circuit_operational_impl
         // number of different input combinations
         for (auto i = 0u; i < 1 << implemented_circuit.circuit.num_inputs; ++i, ++bii)
         {
-            operational_assessment_for_input assessment_results_for_this_input_combination{
-                operational_status::OPERATIONAL};
-
-            // performs physical simulation of a given SiDB layout at a given input combination
-            auto maybe_results = physical_simulation_of_layout(*bii, i);
-
-            if (!maybe_results.has_value())
+            if (!implemented_circuit.circuit.input_index_possible_in_super_circuit(i))
             {
+                // input combination cannot exist in super circuit
+
                 continue;
             }
 
-            ++operational_assessment_results.simulator_invocations;
+            bool at_least_one_physically_valid = false;
 
-            auto& [simulation_results, skeleton_influence_bounds] = *maybe_results;
+            for (const uint64_t super_circuit_input_index :
+                 implemented_circuit.circuit.get_consistent_super_circuit_input_indices(i).get())
+            {
+                // performs physical simulation of a given SiDB layout at a given input combination
+
+                if (const auto& sim_res = physical_simulation_of_layout(*bii, i, super_circuit_input_index);
+                    determine_status_and_logic_match(i, sim_res) == operational_status::OPERATIONAL)
+                {
+                    at_least_one_physically_valid = true;
+
+                    break;
+                }
+            }
 
             // if no physically valid charge distributions were found, the layout is non-operational
-            if (simulation_results.charge_distributions.empty())
+            if (!at_least_one_physically_valid)
             {
-                operational_assessment_results.status = operational_status::NON_OPERATIONAL;
-
-                if (parameters.termination_cond ==
-                    is_circuit_operational_params::termination_condition::ON_FIRST_NON_OPERATIONAL)
-                {
-                    return operational_assessment_results;
-                }
-
-                // all input combinations are being assessed
-
-                assessment_results_for_this_input_combination.status = operational_status::NON_OPERATIONAL;
-
-                assessment_results_for_this_input_combination.simulation_results.emplace();
-
-                assessment_results_per_input.push_back(std::move(assessment_results_for_this_input_combination));
-
-                continue;
-            }
-
-            const operational_assessment_for_input& op_assessment_for_input =
-                determine_status_and_logic_match(i, std::move(skeleton_influence_bounds), simulation_results);
-
-            // std::cout << "for input " << i << ": "
-            //           << (op_assessment_for_input.status == operational_status::OPERATIONAL) << std::endl;
-            if (op_assessment_for_input.status == operational_status::NON_OPERATIONAL)
-            {
-                // the input combination is not operational
-
-                operational_assessment_results.status = operational_status::NON_OPERATIONAL;
-
-                if (parameters.termination_cond ==
-                    is_circuit_operational_params::termination_condition::ON_FIRST_NON_OPERATIONAL)
-                {
-                    return operational_assessment_results;
-                }
-            }
-
-            if (parameters.termination_cond ==
-                is_circuit_operational_params::termination_condition::ALL_INPUT_COMBINATIONS_ASSESSED)
-            {
-                assessment_results_for_this_input_combination.status      = op_assessment_for_input.status;
-                assessment_results_for_this_input_combination.logic_match = op_assessment_for_input.logic_match;
-            }
-
-            if (parameters.print)
-            {
-                std::cout << "STATUS: "
-                          << (op_assessment_for_input.status == operational_status::NON_OPERATIONAL ? "NON-" : "")
-                          << "OPERATIONAL" << std::endl;
-                std::cout << fmt::format("logic match: {:.3f}", op_assessment_for_input.logic_match) << std::endl;
-            }
-
-            // store the assessment results for this input combination when the termination condition is set to
-            // `termination_condition::ALL_INPUT_COMBINATION_ASSESSED` or the simulation result retention is set to
-            // `simulation_results_mode::KEEP_SIMULATION_RESULTS`
-            if (parameters.termination_cond ==
-                    is_circuit_operational_params::termination_condition::ALL_INPUT_COMBINATIONS_ASSESSED ||
-                parameters.simulation_results_retention ==
-                    is_circuit_operational_params::simulation_results_mode::KEEP_SIMULATION_RESULTS)
-            {
-                // save simulation results when the simulation result retention is set to
-                // `simulation_results_mode::KEEP_SIMULATION_RESULTS`
-                if (parameters.simulation_results_retention ==
-                    is_circuit_operational_params::simulation_results_mode::KEEP_SIMULATION_RESULTS)
-                {
-                    assessment_results_for_this_input_combination.simulation_results =
-                        std::move(simulation_results.charge_distributions);
-                }
-
-                assessment_results_per_input.push_back(std::move(assessment_results_for_this_input_combination));
+                return operational_status::NON_OPERATIONAL;
             }
         }
 
-        // store the assessment results for all input combinations when the termination condition is set to
-        // `termination_condition::ALL_INPUT_COMBINATION_ASSESSED` or the simulation result retention is set to
-        // `simulation_results_mode::KEEP_SIMULATION_RESULTS`
-        if (parameters.termination_cond ==
-                is_circuit_operational_params::termination_condition::ALL_INPUT_COMBINATIONS_ASSESSED ||
-            parameters.simulation_results_retention ==
-                is_circuit_operational_params::simulation_results_mode::KEEP_SIMULATION_RESULTS)
-        {
-            operational_assessment_results.assessment_per_input = std::move(assessment_results_per_input);
-        }
-
-        // note: when all input combinations are assessed per termination condition, the assessment can yield the layout
-        // is non-operational, yet we do not give a reason
-        return operational_assessment_results;
+        return operational_status::OPERATIONAL;
     }
 
   private:
@@ -575,8 +469,7 @@ class is_circuit_operational_impl
     const std::unique_ptr<thread_count_manager>& thread_counter;
 
     using pair_t = std::pair<sidb_simulation_result<Lyt, ExtPotType>,
-                             typename charge_distribution_surface<
-                                 Lyt, local_external_potential_type::BOUNDED>::local_external_potential_map_t>;
+                             typename charge_distribution_surface<Lyt>::local_external_potential_map_t>;
     /**
      * This function conducts physical simulation of the given SiDB layout.
      * The simulation results are stored in the `sim_result` variable.
@@ -585,36 +478,27 @@ class is_circuit_operational_impl
      * @return Simulation results.
      */
     template <bool consider_internal_skeleton = false>
-    [[nodiscard]] std::optional<pair_t> physical_simulation_of_layout(const Lyt&     lyt,
-                                                                      const uint64_t input_index) noexcept
+    [[nodiscard]] sidb_simulation_result<Lyt, ExtPotType>
+    physical_simulation_of_layout(const Lyt& lyt, const uint64_t input_index,
+                                  const uint64_t super_circuit_input_index) noexcept
     {
 #if (FICTION_ALGLIB_ENABLED)
         // perform ClusterComplete exact simulation
         if constexpr (ExtPotType == local_external_potential_type::BOUNDED)
         {
-            if (!implemented_circuit.circuit.input_index_possible_in_super_circuit(input_index))
-            {
-                // input combination cannot exist in super circuit
-
-                return std::nullopt;
-            }
-
             clustercomplete_params<cell<Lyt>, ExtPotType> cc_params{parameters.simulation_parameters};
 
-            const typename charge_distribution_surface<Lyt, local_external_potential_type::BOUNDED>::
-                local_external_potential_map_t& skeleton_influence_bounds =
-                    implemented_circuit.circuit.template collect_influence_bounds<consider_internal_skeleton>(
-                        lyt, input_index, cc_params.local_external_potential);
+            implemented_circuit.circuit.collect_influence_bounds(lyt, input_index, super_circuit_input_index,
+                                                                 cc_params.local_external_potential);
 
-            Lyt cell_lyt_without_internal_output_perturber{};
+            Lyt cell_lyt_without_internal_perturbers{};
 
             lyt.foreach_cell(
                 [&](const auto& c)
                 {
-                    if (const auto& ct = implemented_circuit.circuit.is_not_internal_output_perturber(lyt, c);
-                        ct.has_value())
+                    if (const auto& ct = implemented_circuit.circuit.is_not_internal_perturber(lyt, c); ct.has_value())
                     {
-                        cell_lyt_without_internal_output_perturber.assign_cell_type(c, *ct);
+                        cell_lyt_without_internal_perturbers.assign_cell_type(c, *ct);
                     }
                 });
 
@@ -626,10 +510,10 @@ class is_circuit_operational_impl
                 {
                     std::cout << c.x << ' ' << c.y << " : " << b[0] << ' ' << b[1] << std::endl;
                 }
+                print_layout(cell_lyt_without_internal_perturbers);
             }
 
-            const auto& sim_res =
-                clustercomplete<Lyt, ExtPotType>(cell_lyt_without_internal_output_perturber, cc_params);
+            const auto& sim_res = clustercomplete<Lyt, ExtPotType>(cell_lyt_without_internal_perturbers, cc_params);
 
             if (parameters.print)
             {
@@ -641,7 +525,7 @@ class is_circuit_operational_impl
                 std::cout << "RES END" << std::endl;
             }
 
-            return std::make_pair(std::move(sim_res), std::move(skeleton_influence_bounds));
+            return sim_res;
         }
         else
         {
@@ -667,18 +551,13 @@ class is_circuit_operational_impl
                 if (res.charge_distributions.empty())
                 {
                     std::cout << "NO CHARGE DISTRIBUTIONS FOUNDS" << std::endl;
-                    return std::make_optional<pair_t>(
-                        {std::move(res),
-                         typename charge_distribution_surface<
-                             Lyt, local_external_potential_type::BOUNDED>::local_external_potential_map_t{}});
+                    return res;
                 }
                 print_layout(res.groundstates().front());
                 std::cout << std::endl;
             }
 
-            return std::make_optional<pair_t>(
-                {std::move(res), typename charge_distribution_surface<
-                                     Lyt, local_external_potential_type::BOUNDED>::local_external_potential_map_t{}});
+            return res;
         }
 
 #else   // FICTION_ALGLIB_ENABLED
@@ -687,178 +566,53 @@ class is_circuit_operational_impl
 #endif  // FICTION_ALGLIB_ENABLED
     }
 
-    [[nodiscard]] std::optional<std::vector<std::array<double, 2>>> get_energy_bounds_per_super_circuit_input(
-        const uint64_t sub_circuit_input_index,
-        const typename charge_distribution_surface<
-            Lyt, local_external_potential_type::BOUNDED>::local_external_potential_map_t& skeleton_influence_bounds,
-        charge_distribution_surface<Lyt, ExtPotType>&                                     cds) noexcept
+    [[nodiscard]] std::vector<uint64_t> get_possible_ground_state_indices(
+        const std::vector<charge_distribution_surface<Lyt, ExtPotType>>& simulated_charge_distributions) noexcept
     {
-        std::vector<std::array<double, 2>> energy_bounds_per_super_circuit_input{};
-        energy_bounds_per_super_circuit_input.reserve(
-            implemented_circuit.circuit.get_consistent_super_circuit_input_indices(sub_circuit_input_index)
-                .get()
-                .size());
+        std::vector<std::pair<uint64_t, std::array<double, 2>>> sorted_indices{};
+        sorted_indices.reserve(simulated_charge_distributions.size());
 
-        typename charge_distribution_surface<
-            Lyt, local_external_potential_type::BOUNDED>::local_external_potential_map_t& influence_bounds =
-            cds.get_local_external_potentials_reference();
-
-        // input perturbers MUST be negatively charged todo: this state might need to be a "fallback" -> inf bounds
-        bool input_perturber_not_negatively_charged = false;
-
-        cds.foreach_cell(
-            [&](const auto& c)
-            {
-                if (input_perturber_not_negatively_charged)
-                {
-                    return;
-                }
-
-                if (cds.get_cell_type(c) == sidb_technology::cell_type::INPUT &&
-                    cds.get_charge_state(c) != sidb_charge_state::NEGATIVE)
-                {
-                    input_perturber_not_negatively_charged = true;
-                    return;
-                }
-
-                if (implemented_circuit.circuit.is_not_internal_output_perturber(cds, c))
-                {
-                    influence_bounds[c][0] -= skeleton_influence_bounds.at(c)[0];
-                    influence_bounds[c][1] -= skeleton_influence_bounds.at(c)[1];
-                }
-            });
-
-        if (input_perturber_not_negatively_charged)
+        for (uint64_t cds_ix = 0; cds_ix < simulated_charge_distributions.size(); ++cds_ix)
         {
-            return std::nullopt;
+            sorted_indices.emplace_back(cds_ix,
+                                        simulated_charge_distributions.at(cds_ix).get_electrostatic_potential_energy());
         }
 
-        for (const uint64_t i :
-             implemented_circuit.circuit.get_consistent_super_circuit_input_indices(sub_circuit_input_index).get())
-        {
-            cds.foreach_cell(
-                [&](const auto& c)
-                {
-                    if (implemented_circuit.circuit.is_not_internal_output_perturber(cds, c))
-                    {
-                        const double skeleton_influence =
-                            implemented_circuit.circuit.get_skeleton_influence(sub_circuit_input_index, i, c);
+        // Sort by energy[0] ascending, then energy[1] descending
+        std::sort(sorted_indices.begin(), sorted_indices.end(),
+                  [&](const auto& a, const auto& b)
+                  {
+                      const std::array<double, 2>& e1 = a.second;
+                      const std::array<double, 2>& e2 = b.second;
 
-                        influence_bounds[c][0] += skeleton_influence;
-                        influence_bounds[c][1] += skeleton_influence;
-                    }
-                });
-
-            cds.recompute_electrostatic_potential_energy();
-
-            cds.determine_effective_charge_transition_thresholds();
-            cds.validity_check();
-
-            if (!cds.is_physically_valid())
-            {
-                return std::nullopt;
-            }
-
-            energy_bounds_per_super_circuit_input.push_back(cds.get_electrostatic_potential_energy());
-
-            if (i == implemented_circuit.circuit.get_consistent_super_circuit_input_indices(sub_circuit_input_index)
-                         .get()
-                         .back())
-            {
-                break;
-            }
-
-            cds.foreach_cell(
-                [&](const auto& c)
-                {
-                    if (implemented_circuit.circuit.is_not_internal_output_perturber(cds, c))
-                    {
-                        const double skeleton_influence =
-                            implemented_circuit.circuit.get_skeleton_influence(sub_circuit_input_index, i, c);
-
-                        influence_bounds[c][0] -= skeleton_influence;
-                        influence_bounds[c][1] -= skeleton_influence;
-                    }
-                });
-        }
-
-        return std::make_optional(std::move(energy_bounds_per_super_circuit_input));
-    }
-
-    [[nodiscard]] std::optional<std::vector<std::vector<uint64_t>>>
-    get_possible_ground_state_indices_per_super_circuit_input(
-        const uint64_t                                                   sub_circuit_input_index,
-        const std::vector<charge_distribution_surface<Lyt, ExtPotType>>& simulated_charge_distributions,
-        std::vector<std::optional<std::vector<std::array<double, 2>>>>&& energy_bounds) noexcept
-    {
-        std::vector<std::vector<uint64_t>> possible_ground_state_indices_per_super_circuit_input{};
-        possible_ground_state_indices_per_super_circuit_input.reserve(
-            implemented_circuit.circuit.get_consistent_super_circuit_input_indices(sub_circuit_input_index)
-                .get()
-                .size());
-
-        for (uint64_t super_circuit_input_index_ix = 0;
-             super_circuit_input_index_ix <
-             implemented_circuit.circuit.get_consistent_super_circuit_input_indices(sub_circuit_input_index)
-                 .get()
-                 .size();
-             ++super_circuit_input_index_ix)
-        {
-            std::vector<uint64_t> sorted_indices{};
-            sorted_indices.reserve(simulated_charge_distributions.size());
-
-            for (uint64_t cds_ix = 0; cds_ix < simulated_charge_distributions.size(); ++cds_ix)
-            {
-                if (energy_bounds.at(cds_ix))
-                {
-                    sorted_indices.push_back(cds_ix);
-                }
-            }
-
-            if (sorted_indices.empty())
-            {
-                return std::nullopt;
-            }
-
-            // Sort by energy[0] ascending, then energy[1] descending
-            std::sort(sorted_indices.begin(), sorted_indices.end(),
-                      [&](const auto& a, const auto& b)
+                      if (std::abs(e1[0] - e2[0]) < constants::ERROR_MARGIN)
                       {
-                          const std::array<double, 2>& e1 = energy_bounds.at(a)->at(super_circuit_input_index_ix);
-                          const std::array<double, 2>& e2 = energy_bounds.at(b)->at(super_circuit_input_index_ix);
+                          return e1[1] > e2[1];
+                      }
 
-                          if (std::abs(e1[0] - e2[0]) < constants::ERROR_MARGIN)
-                          {
-                              return e1[1] > e2[1];
-                          }
+                      return e1[0] < e2[0];
+                  });
 
-                          return e1[0] < e2[0];
-                      });
+        std::vector possible_ground_state_indices{sorted_indices.front().first};
+        possible_ground_state_indices.reserve(sorted_indices.size());
 
-            std::vector possible_ground_state_indices{sorted_indices.front()};
-            possible_ground_state_indices.reserve(sorted_indices.size());
+        double max_energy = sorted_indices.front().second[1];
 
-            double max_energy = energy_bounds.at(sorted_indices.front())->at(super_circuit_input_index_ix)[1];
+        for (uint64_t ix = 1; ix < sorted_indices.size(); ++ix)
+        {
+            const std::array<double, 2>& bounded_energy = sorted_indices.at(ix).second;
 
-            for (uint64_t ix = 1; ix < sorted_indices.size(); ++ix)
+            if (bounded_energy[0] > max_energy - constants::ERROR_MARGIN)
             {
-                const std::array<double, 2>& bounded_energy =
-                    energy_bounds.at(sorted_indices.at(ix))->at(super_circuit_input_index_ix);
-
-                if (bounded_energy[0] > max_energy - constants::ERROR_MARGIN)
-                {
-                    break;  // Done: all future entries start after max_energy
-                }
-
-                possible_ground_state_indices.push_back(sorted_indices.at(ix));
-
-                max_energy = std::max(max_energy, bounded_energy[1]);
+                break;  // Done: all future entries start after max_energy
             }
 
-            possible_ground_state_indices_per_super_circuit_input.push_back(std::move(possible_ground_state_indices));
+            possible_ground_state_indices.push_back(sorted_indices.at(ix).first);
+
+            max_energy = std::max(max_energy, bounded_energy[1]);
         }
 
-        return possible_ground_state_indices_per_super_circuit_input;
+        return possible_ground_state_indices;
     }
     /**
     * todo
@@ -868,7 +622,7 @@ class is_circuit_operational_impl
     * @return Pair with the first element indicating the operational status (either `OPERATIONAL` or `NON_OPERATIONAL`)
     * and the second element indicating the reason if it is non-operational.
     */
-    [[nodiscard]] operational_assessment_for_input
+    [[nodiscard]] operational_status
     assess_logic_match_of_charge_distribution(const charge_distribution_surface<Lyt, ExtPotType>& given_cds,
                                               const uint64_t input_pattern) noexcept
     {
@@ -898,7 +652,7 @@ class is_circuit_operational_impl
                 {
                     if (upper_cs != simulated_bdl_wires.get_charge_state(pair.upper))
                     {
-                        return operational_assessment_for_input{operational_status::NON_OPERATIONAL};
+                        return operational_status::NON_OPERATIONAL;
                     }
                 }
 
@@ -906,92 +660,48 @@ class is_circuit_operational_impl
                 {
                     if (lower_cs != simulated_bdl_wires.get_charge_state(pair.lower))
                     {
-                        return operational_assessment_for_input{operational_status::NON_OPERATIONAL};
+                        return operational_status::NON_OPERATIONAL;
                     }
                 }
             }
         }
 
-        return operational_assessment_for_input{operational_status::OPERATIONAL};
+        return operational_status::OPERATIONAL;
     }
 
-    [[nodiscard]] operational_assessment_for_input determine_status_and_logic_match(
-        const uint64_t i,
-        typename charge_distribution_surface<
-            Lyt, local_external_potential_type::BOUNDED>::local_external_potential_map_t&& skeleton_influence_bounds,
-        sidb_simulation_result<Lyt, ExtPotType>&                                           simulation_results) noexcept
+    [[nodiscard]] operational_status
+    determine_status_and_logic_match(const uint64_t                                 i,
+                                     const sidb_simulation_result<Lyt, ExtPotType>& simulation_results) noexcept
     {
-        operational_assessment_for_input op_ass{operational_status::OPERATIONAL};
-
         if constexpr (ExtPotType == local_external_potential_type::BOUNDED)
         {
-            std::vector<std::optional<std::vector<std::array<double, 2>>>> energy_bounds{};
-            energy_bounds.reserve(simulation_results.charge_distributions.size());
-
-            for (charge_distribution_surface<Lyt, ExtPotType>& cds : simulation_results.charge_distributions)
+            for (const uint64_t cds_ix : get_possible_ground_state_indices(simulation_results.charge_distributions))
             {
-                energy_bounds.push_back(get_energy_bounds_per_super_circuit_input(i, skeleton_influence_bounds, cds));
-            }
-
-            const std::optional<std::vector<std::vector<uint64_t>>>& maybe_possible_ground_state_indices =
-                get_possible_ground_state_indices_per_super_circuit_input(i, simulation_results.charge_distributions,
-                                                                          std::move(energy_bounds));
-
-            if (!maybe_possible_ground_state_indices.has_value())
-            {
-                op_ass.status = operational_status::NON_OPERATIONAL;
-
-                return op_ass;
-            }
-
-            for (const std::vector<uint64_t>& possible_ground_state_indices : *maybe_possible_ground_state_indices)
-            {
-                bool at_least_one_operational = false;
-
-                for (const uint64_t cds_ix : possible_ground_state_indices)
+                if (assess_logic_match_of_charge_distribution(simulation_results.charge_distributions.at(cds_ix), i) ==
+                    operational_status::OPERATIONAL)
                 {
-                    if (assess_logic_match_of_charge_distribution(simulation_results.charge_distributions.at(cds_ix), i)
-                            .status == operational_status::OPERATIONAL)
-                    {
-                        at_least_one_operational = true;
-
-                        break;
-                    }
-                }
-
-                if (!at_least_one_operational)
-                {
-                    op_ass.status = operational_status::NON_OPERATIONAL;
-
-                    break;
+                    return operational_status::OPERATIONAL;
                 }
             }
+
+            return operational_status::NON_OPERATIONAL;
         }
         else
         {
             const auto ground_states = simulation_results.groundstates();
 
-            double logic_match_sum = 0.0;
-
             for (const auto& gs : ground_states)
             {
-                const operational_assessment_for_input& op_assessment =
-                    assess_logic_match_of_charge_distribution(gs, i);
-
-                logic_match_sum += op_assessment.logic_match;
-
-                if (op_assessment.status == operational_status::NON_OPERATIONAL)
+                if (assess_logic_match_of_charge_distribution(gs, i) == operational_status::NON_OPERATIONAL)
                 {
-                    op_ass.status = operational_status::NON_OPERATIONAL;
+                    return operational_status::NON_OPERATIONAL;
 
-                    // break;
+                    break;
                 }
             }
 
-            op_ass.logic_match = logic_match_sum / static_cast<double>(ground_states.size());
+            return operational_status::OPERATIONAL;
         }
-
-        return op_ass;
     }
 };
 
@@ -1015,7 +725,7 @@ class is_circuit_operational_impl
 template <typename Lyt, typename GateLyt,
           local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED,
           typename SkeletonGateLibrary>
-[[nodiscard]] circuit_operational_assessment<Lyt, ExtPotType>
+[[nodiscard]] operational_status
 is_circuit_operational(const sidb_cell_level_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>& implemented_circuit,
                        const is_circuit_operational_params&                                  params = {},
                        const std::unique_ptr<detail::thread_count_manager>&                  tcm    = nullptr) noexcept
@@ -1035,18 +745,17 @@ is_circuit_operational(const sidb_cell_level_bdl_circuit<Lyt, GateLyt, SkeletonG
     detail::is_circuit_operational_impl<Lyt, GateLyt, ExtPotType, SkeletonGateLibrary> p{implemented_circuit, params,
                                                                                          tcm};
 
-    const auto& assessment_result = p.run();
+    const auto& status = p.run();
 
     if (params.print)
     {
-        std::cout << "\n\nOVERALL STATUS: "
-                  << (assessment_result.status == operational_status::NON_OPERATIONAL ? "NON-" : "") << "OPERATIONAL"
-                  << std::endl;
+        std::cout << "\n\nOVERALL STATUS: " << (status == operational_status::NON_OPERATIONAL ? "NON-" : "")
+                  << "OPERATIONAL" << std::endl;
 
         std::cout << std::endl;
     }
 
-    return assessment_result;
+    return status;
 }
 
 }  // namespace fiction

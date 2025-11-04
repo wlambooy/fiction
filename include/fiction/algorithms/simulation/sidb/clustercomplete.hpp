@@ -454,23 +454,7 @@ class clustercomplete_impl
 
         if constexpr (ExtPotType == local_external_potential_type::BOUNDED)
         {
-            // std::vector<std::array<double, 2>> save{};
-            // for (const auto& [c, arr] : charge_layout_copy.get_local_external_potential_map())
-            // {
-            //     assert(arr[0] <= arr[1]);
-            //     save.push_back({arr[0], arr[1]});
-            // }
-            charge_layout_copy.restrict_local_external_potential_to_pop_stability();  // todo check if this works with
-                                                                                      // the circuit designer
-            // uint64_t ix = 0;
-            // for (const auto& [c, arr] : charge_layout_copy.get_local_external_potential_map())
-            // {
-            //     assert(arr[0] <= arr[1]);
-            //     assert(save[ix][0] <= arr[0]);
-            //     assert(arr[1] <= save[ix][1]);
-            //     assert((save[ix][1] - save[ix][0]) - (arr[1] - arr[0]) >= 0);
-            //     ix++;
-            // }
+            charge_layout_copy.restrict_local_external_potential_to_pop_stability();
         }
 
         if constexpr (is_sidb_defect_surface_v<Lyt>)

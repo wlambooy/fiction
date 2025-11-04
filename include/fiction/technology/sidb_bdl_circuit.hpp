@@ -132,9 +132,8 @@ class sidb_bdl_circuit
                     return;
                 }
 
-                const std::pair<cell<CellLyt>, cell<CellLyt>> actual_canvas = canvas;
-                // t == tile<GateLyt>{1, 2} ? canvas :
-                //                            std::make_pair(cell<CellLyt>{12, 10}, cell<CellLyt>{14, 13});
+                const std::pair<cell<CellLyt>, cell<CellLyt>> actual_canvas =  // canvas;
+                    t == tile<GateLyt>{1, 2} ? canvas : std::make_pair(cell<CellLyt>{12, 10}, cell<CellLyt>{14, 13});
 
                 for (const cell<CellLyt>& c : all_coordinates_in_spanned_area(
                          relative_to_absolute_canvas_position(gate_lyt, actual_canvas.first, t),
@@ -490,17 +489,6 @@ class sidb_bdl_circuit
                                     }
 
                                     const tile<GateLyt>& other_t = gate_layout.get_tile(other_n);
-
-                                    // // if (other_t == tile<GateLyt>{1, 2})
-                                    // {
-                                    //     std::cout << "\n\nremoving the gate nums below" << std::endl;
-                                    //     for (const uint64_t gate_num : gate_nums_to_prune.at(other_n))
-                                    //     {
-                                    //         std::cout << gate_num << std::endl;
-                                    //     }
-                                    //     std::cout << "END\n\n" << std::endl;
-                                    // }
-
                                     if (gate_designs.at(other_n).size() == gate_nums_to_prune.at(other_n).size())
                                     {
                                         throw std::runtime_error{
@@ -535,8 +523,8 @@ class sidb_bdl_circuit
         ss << "\n==================================\n";
         ss << std::left << std::setw(10) << "TILE"
            << " | " << std::right << std::setw(8) << "#PRUNED"
-                  << " | " << std::right << std::setw(10) << "#REMAINING"
-                  << "\n";
+           << " | " << std::right << std::setw(10) << "#REMAINING"
+           << "\n";
         ss << "----------------------------------\n";
 
         gate_layout.foreach_node(
@@ -549,28 +537,11 @@ class sidb_bdl_circuit
                 const auto& designs = gate_designs.at(n);
 
                 const uint64_t total     = gate_design_counts.at(n);
-            const uint64_t pruned    = total - designs.size();
-            const uint64_t remaining = designs.size();
+                const uint64_t pruned    = total - designs.size();
+                const uint64_t remaining = designs.size();
 
-            bool print = false;
-            for (const canvas_combination& gate : designs)
-            {
-                print |= gate.size() == 2 && ((all_canvas_positions.at(n).at(gate.at(0)) == cell<CellLyt>{53, 39} &&
-                                               all_canvas_positions.at(n).at(gate.at(1)) == cell<CellLyt>{55, 44}) ||
-                                              (all_canvas_positions.at(n).at(gate.at(0)) == cell<CellLyt>{36, 26} &&
-                                               all_canvas_positions.at(n).at(gate.at(1)) == cell<CellLyt>{38, 29}) ||
-                                              (all_canvas_positions.at(n).at(gate.at(0)) == cell<CellLyt>{70, 26} &&
-                                               all_canvas_positions.at(n).at(gate.at(1)) == cell<CellLyt>{68, 29}) ||
-                                              (all_canvas_positions.at(n).at(gate.at(0)) == cell<CellLyt>{44, 58} &&
-                                               all_canvas_positions.at(n).at(gate.at(1)) == cell<CellLyt>{42, 61}));
-            }
-
-            ss << std::left << std::setw(10) << gate_layout.get_tile(n) << " | " << std::right << std::setw(8) << pruned
-               << " | " << std::right << std::setw(10) << remaining << "\n";
-            if (print)
-            {
-                    ss << "OK" << std::endl;
-                }
+                ss << std::left << std::setw(10) << gate_layout.get_tile(n) << " | " << std::right << std::setw(8)
+                   << pruned << " | " << std::right << std::setw(10) << remaining << "\n";
 
                 pruned_total += pruned;
                 remaining_total += remaining;
@@ -581,10 +552,10 @@ class sidb_bdl_circuit
            << "\n";
         ss << "==================================\n";
 
-        // if (pruned_total > 0)
-        // {
+        if (pruned_total > 0)
+        {
             std::cout << ss.str();
-        // }
+        }
     }
 
   private:
@@ -789,9 +760,9 @@ class sidb_bdl_circuit
 
                     const tile<GateLyt>& t = gate_lyt.get_tile(n);
 
-                    const std::pair<cell<CellLyt>, cell<CellLyt>> actual_canvas = canvas;
-                    // t == tile<GateLyt>{1, 2} ? canvas :
-                        //                            std::make_pair(cell<CellLyt>{12, 10}, cell<CellLyt>{14, 13});
+                    const std::pair<cell<CellLyt>, cell<CellLyt>> actual_canvas =  // canvas;
+                        t == tile<GateLyt>{1, 2} ? canvas :
+                                                   std::make_pair(cell<CellLyt>{12, 10}, cell<CellLyt>{14, 13});
 
                     std::vector<cell<CellLyt>> cells = all_coordinates_in_spanned_area(
                         relative_to_absolute_canvas_position(gate_lyt, actual_canvas.first, t),
@@ -1175,11 +1146,13 @@ class sidb_bdl_sub_circuit
     const std::vector<tile<GateLyt>> tiles{};
 
     [[nodiscard]] std::optional<sidb_technology::cell_type>
-    is_not_internal_output_perturber(const CellLyt& lyt, const cell<CellLyt>& c) const noexcept
+    is_not_internal_perturber(const CellLyt& lyt, const cell<CellLyt>& c) const noexcept
     {
         if (const auto ct = lyt.get_cell_type(c);
-            ct != sidb_technology::cell_type::OUTPUT_PERTURBER ||
-            super_circuit.skeleton.get_cell_type(c) == sidb_technology::cell_type::OUTPUT_PERTURBER)
+            (ct != sidb_technology::cell_type::OUTPUT_PERTURBER ||
+             super_circuit.skeleton.get_cell_type(c) == sidb_technology::cell_type::OUTPUT_PERTURBER) &&
+            (ct != sidb_technology::cell_type::INPUT ||
+             super_circuit.skeleton.get_cell_type(c) == sidb_technology::cell_type::INPUT))
         {
             return ct;
         }
@@ -1205,27 +1178,17 @@ class sidb_bdl_sub_circuit
                     ->get_local_internal_potential(c);
     }
 
-    template <bool consider_internal_skeleton = false>
-    typename charge_distribution_surface<CellLyt,
-                                         local_external_potential_type::BOUNDED>::local_external_potential_map_t
-    collect_influence_bounds(const CellLyt& lyt, const uint64_t input_index,
+    void
+    collect_influence_bounds(const CellLyt& lyt, const uint64_t input_index, const uint64_t super_circuit_input_index,
                              typename charge_distribution_surface<CellLyt, local_external_potential_type::BOUNDED>::
                                  local_external_potential_map_t& influence_bounds) const noexcept
     {
-        const std::vector<uint64_t>& consistent_super_circuit_input_indices =
-            consistent_super_circuit_input_indices_per_input.at(input_index);
-
         influence_bounds.reserve(lyt.num_cells());
-
-        typename charge_distribution_surface<CellLyt,
-                                             local_external_potential_type::BOUNDED>::local_external_potential_map_t
-            skeleton_influence_bounds{};
-        skeleton_influence_bounds.reserve(lyt.num_cells());
 
         lyt.foreach_cell(
             [&](const auto& c)
             {
-                if (!is_not_internal_output_perturber(lyt, c))
+                if (!is_not_internal_perturber(lyt, c))
                 {
                     return;
                 }
@@ -1233,76 +1196,43 @@ class sidb_bdl_sub_circuit
                 const mockturtle::node<GateLyt>& n = super_circuit.gate_layout.get_node(
                     super_circuit.skeleton_with_canvasses.template get_cell_tile<tile<GateLyt>>(c));
 
-                std::array<double, 2> bounds{std::numeric_limits<double>::infinity(),
-                                             -std::numeric_limits<double>::infinity()};
-
-                std::array<double, 2> skeleton_bounds{std::numeric_limits<double>::infinity(),
-                                                      -std::numeric_limits<double>::infinity()};
-
-                for (uint64_t super_circuit_input_index_ix = 0;
-                     super_circuit_input_index_ix < consistent_super_circuit_input_indices.size();
-                     ++super_circuit_input_index_ix)  // todo: ix_ix really necessary?
+                const auto collect_skeleton_influence = [&]
                 {
-                    const auto collect_skeleton_influence = [&]
+                    const charge_distribution_surface<CellLyt, local_external_potential_type::BOUNDED>&
+                        simulated_bdl_wires =
+                            *super_circuit_simulated_bdl_wires_per_input.at(input_index).at(super_circuit_input_index);
+
+                    assert(simulated_bdl_wires.get_local_internal_potential(c).has_value() &&
+                           "c is not part of the layout");
+
+                    return *simulated_bdl_wires.get_local_internal_potential(c);
+                };
+
+                const double skeleton_influence = collect_skeleton_influence();
+
+                std::array<double, 2> gate_design_influence_bound_sum = {0, 0};
+
+                super_circuit.gate_layout.foreach_node(
+                    [&](const auto& super_circuit_n)
                     {
-                        if (consider_internal_skeleton)
+                        if (skip_physical_design_for_node(super_circuit.gate_layout, super_circuit_n) ||
+                            std::find(tiles.cbegin(), tiles.cend(),
+                                      super_circuit.gate_layout.get_tile(super_circuit_n)) != tiles.cend())
                         {
-                            const charge_distribution_surface<CellLyt, local_external_potential_type::BOUNDED>&
-                                simulated_bdl_wires = super_circuit.get_simulated_bdl_wires_for_input_index(
-                                    consistent_super_circuit_input_indices.at(super_circuit_input_index_ix));
-
-                            assert(simulated_bdl_wires.get_local_internal_potential(c).has_value() &&
-                                   "c is not part of the layout");
-
-                            return *simulated_bdl_wires.get_local_internal_potential(c);
+                            return;
                         }
 
-                        const charge_distribution_surface<CellLyt, local_external_potential_type::BOUNDED>&
-                            simulated_bdl_wires =
-                                *super_circuit_simulated_bdl_wires_per_input.at(input_index)
-                                     .at(consistent_super_circuit_input_indices.at(super_circuit_input_index_ix));
+                        const std::array<double, 2>& influence_bounds_from_super_circuit_n =
+                            super_circuit.get_gate_design_influence_bounds(super_circuit_input_index, n, c,
+                                                                           super_circuit_n);
 
-                        assert(simulated_bdl_wires.get_local_internal_potential(c).has_value() &&
-                               "c is not part of the layout");
+                        gate_design_influence_bound_sum[0] += influence_bounds_from_super_circuit_n[0];
+                        gate_design_influence_bound_sum[1] += influence_bounds_from_super_circuit_n[1];
+                    });
 
-                        return *simulated_bdl_wires.get_local_internal_potential(c);
-                    };
-
-                    const double skeleton_influence = collect_skeleton_influence();
-
-                    std::array<double, 2> gate_design_influence_bound_sum = {0, 0};
-
-                    super_circuit.gate_layout.foreach_node(
-                        [&](const auto& super_circuit_n)
-                        {
-                            if (skip_physical_design_for_node(super_circuit.gate_layout, super_circuit_n) ||
-                                std::find(tiles.cbegin(), tiles.cend(),
-                                          super_circuit.gate_layout.get_tile(super_circuit_n)) != tiles.cend())
-                            {
-                                return;
-                            }
-
-                            const std::array<double, 2>& influence_bounds_from_super_circuit_n =
-                                super_circuit.get_gate_design_influence_bounds(
-                                    consistent_super_circuit_input_indices.at(super_circuit_input_index_ix), n, c,
-                                    super_circuit_n);
-
-                            gate_design_influence_bound_sum[0] += influence_bounds_from_super_circuit_n[0];
-                            gate_design_influence_bound_sum[1] += influence_bounds_from_super_circuit_n[1];
-                        });
-
-                    bounds[0] = std::min(bounds[0], skeleton_influence + gate_design_influence_bound_sum[0]);
-                    bounds[1] = std::max(bounds[1], skeleton_influence + gate_design_influence_bound_sum[1]);
-
-                    skeleton_bounds[0] = std::min(skeleton_bounds[0], skeleton_influence);
-                    skeleton_bounds[1] = std::max(skeleton_bounds[1], skeleton_influence);
-                }
-
-                influence_bounds[c]          = std::move(bounds);
-                skeleton_influence_bounds[c] = std::move(skeleton_bounds);
+                influence_bounds[c][0] = skeleton_influence + gate_design_influence_bound_sum[0];
+                influence_bounds[c][1] = skeleton_influence + gate_design_influence_bound_sum[1];
             });
-
-        return skeleton_influence_bounds;
     }
 
   private:
@@ -1543,15 +1473,14 @@ class sidb_bdl_sub_circuit
 
                 // neutralise sub-circuit and store charge information in external potential
 
-                simulated_bdl_wires_copy
-                    .initialize_matrices_for_electrostatic_calculation();  // todo: necessary? don't think so
-
                 sub_circuit_skeleton_with_canvasses.foreach_cell(
                     [&](const auto& c)
                     {
-                        if ((sub_circuit_skeleton_with_canvasses.get_cell_type(c) ==
-                                 sidb_technology::cell_type::OUTPUT_PERTURBER &&
+                        if (const auto ct = sub_circuit_skeleton_with_canvasses.get_cell_type(c);
+                            (ct == sidb_technology::cell_type::OUTPUT_PERTURBER &&
                              super_circuit.skeleton.get_cell_type(c) != sidb_technology::cell_type::OUTPUT_PERTURBER) ||
+                            (ct == sidb_technology::cell_type::INPUT &&
+                             super_circuit.skeleton.get_cell_type(c) != sidb_technology::cell_type::INPUT) ||
                             simulated_bdl_wires_copy.get_charge_state(c) == sidb_charge_state::NEUTRAL)
                         {
                             return;

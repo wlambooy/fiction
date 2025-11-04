@@ -450,7 +450,7 @@ int main(int argc, char* argv[])  // NOLINT
             const auto i2 = g.create_pi("2", {2, 0});
             const auto b1 = g.create_buf(i1, {1, 1});
             const auto b2 = g.create_buf(i2, {2, 1});
-            const auto a  = g.create_and(b1, b2, {1, 2});
+            const auto a  = g.create_xnor(b1, b2, {1, 2});
             // const auto a  = g.create_xor(b1, b2, {1, 2});
             const auto b3 = g.create_buf(a, {1, 3});
             g.create_po(b3, "o", {0, 4});
@@ -471,7 +471,7 @@ int main(int argc, char* argv[])  // NOLINT
             for (const auto& lyt : lyts)
             {
                 write_sqd_layout(lyt,
-                                 (b_dir / "exact_benchmarks_layout" / "AND" / (std::to_string(ix++) + ".sqd")).c_str());
+                                 (b_dir / "exact_benchmarks_layout" / "XNOR" / (std::to_string(ix++) + ".sqd")).c_str());
             }
 
             // write runtime to file
