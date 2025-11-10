@@ -204,6 +204,8 @@ static const char *__doc_fiction_advanced_circuit_design_params_maximum_repeated
 
 static const char *__doc_fiction_advanced_circuit_design_params_num_trials = R"doc()doc";
 
+static const char *__doc_fiction_advanced_circuit_design_params_print_found_circuits = R"doc()doc";
+
 static const char *__doc_fiction_advanced_circuit_design_params_quantization_mode = R"doc()doc";
 
 static const char *__doc_fiction_advanced_circuit_design_params_quantization_mode_SOFTEN_PRUNING = R"doc()doc";
@@ -5471,6 +5473,8 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl_operational
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_params = R"doc(Parameters for the on-the-fly circuit design.)doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_perform_trial = R"doc()doc";
+
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_powerset_check = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_prune_gate_designs = R"doc(todo)doc";
 
@@ -15688,6 +15692,10 @@ Parameter ``v``:
 Parameter ``rest``:
     Remaining values to hash.)doc";
 
+static const char *__doc_fiction_hash_combine_2 = R"doc()doc";
+
+static const char *__doc_fiction_hash_combine_3 = R"doc()doc";
+
 static const char *__doc_fiction_heuristic_sidb_simulation_engine = R"doc(Selector exclusively for heuristic SiDB simulation engines.)doc";
 
 static const char *__doc_fiction_heuristic_sidb_simulation_engine_QUICKSIM =
@@ -16896,7 +16904,11 @@ Returns:
     result provided by the heuristic physical simulation. `false`
     otherwise.)doc";
 
+static const char *__doc_fiction_is_hashable = R"doc()doc";
+
 static const char *__doc_fiction_is_hexagonal_layout = R"doc()doc";
+
+static const char *__doc_fiction_is_iterable = R"doc()doc";
 
 static const char *__doc_fiction_is_linear_scheme =
 R"doc(Checks whether a given clocking scheme is registered as a cycle-free
