@@ -23,7 +23,7 @@ public:
   {}
 };
 
-class sidb_bdl_skeleton_hexamini : public sidb_skeleton_gate_library<27, 22>  // width and height of a hexagon
+class sidb_bdl_skeleton_hexamini : public sidb_skeleton_gate_library<25, 22>  // width and height of a hexagon
 {
   public:
     sidb_bdl_skeleton_hexamini() noexcept :

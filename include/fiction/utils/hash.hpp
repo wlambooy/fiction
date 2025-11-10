@@ -33,6 +33,43 @@ void hash_combine(std::size_t& seed, const T& v, const Rest&... rest)
     (hash_combine(seed, rest), ...);
 }
 
+// Detect whether std::hash<T> is valid
+template <typename T, typename = void>
+struct is_hashable : std::false_type
+{};
+
+template <typename T>
+struct is_hashable<T, std::void_t<decltype(std::hash<T>{}(std::declval<T>()))>> : std::true_type
+{};
+
+// Detect whether a type is iterable (has begin/end)
+template <typename T, typename = void>
+struct is_iterable : std::false_type
+{};
+
+template <typename T>
+struct is_iterable<T, std::void_t<decltype(std::begin(std::declval<T>())), decltype(std::end(std::declval<T>()))>>
+        : std::true_type
+{};
+
+// Overload for hashable types
+template <typename T>
+inline typename std::enable_if<is_hashable<T>::value>::type hash_combine(std::size_t& seed, const T& v)
+{
+    seed ^= std::hash<T>{}(v) + 0x9e3779b9 + (seed << 6u) + (seed >> 2u);
+}
+
+// Overload for iterable types (e.g. std::vector)
+template <typename T>
+inline typename std::enable_if<!is_hashable<T>::value && is_iterable<T>::value>::type hash_combine(std::size_t& seed,
+                                                                                                   const T&     v)
+{
+    for (const auto& e : v)
+    {
+        hash_combine(seed, e);
+    }
+}
+
 }  // namespace fiction
 
 namespace std

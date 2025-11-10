@@ -93,18 +93,18 @@ class sidb_bdl_circuit
             relative_to_absolute_cell_position<SkeletonGateLibrary::gate_x_size(), SkeletonGateLibrary::gate_y_size(),
                                                GateLyt, CellLyt>(gate_lyt, t, rel_pos);
 
-        const bool nw = gate_lyt.has_north_western_incoming_signal(t);
-        const bool ne = gate_lyt.has_north_eastern_incoming_signal(t);
-
-        if (nw && !ne)
-        {
-            absolute_c.x -= 3;  // SkeletonGateLibrary::gate_x_size() / 8;
-        }
-
-        if (!nw && ne)
-        {
-            absolute_c.x += 3;  // SkeletonGateLibrary::gate_x_size() / 8;
-        }
+        // const bool nw = gate_lyt.has_north_western_incoming_signal(t);
+        // const bool ne = gate_lyt.has_north_eastern_incoming_signal(t);
+        //
+        // if (nw && !ne)
+        // {
+        //     absolute_c.x -= 2;  // SkeletonGateLibrary::gate_x_size() / 8;
+        // }
+        //
+        // if (!nw && ne)
+        // {
+        //     absolute_c.x += 2;  // SkeletonGateLibrary::gate_x_size() / 8;
+        // }
 
         return absolute_c;
     }
@@ -132,8 +132,8 @@ class sidb_bdl_circuit
                     return;
                 }
 
-                const std::pair<cell<CellLyt>, cell<CellLyt>> actual_canvas =  // canvas;
-                    t == tile<GateLyt>{1, 2} ? canvas : std::make_pair(cell<CellLyt>{12, 10}, cell<CellLyt>{14, 13});
+                const std::pair<cell<CellLyt>, cell<CellLyt>> actual_canvas = canvas;
+                // t == tile<GateLyt>{1, 2} ? canvas : std::make_pair(cell<CellLyt>{11, 10}, cell<CellLyt>{13, 13});
 
                 for (const cell<CellLyt>& c : all_coordinates_in_spanned_area(
                          relative_to_absolute_canvas_position(gate_lyt, actual_canvas.first, t),
@@ -394,8 +394,6 @@ class sidb_bdl_circuit
     void tighten_gate_influence_bounds_until_fixpoint(
         const uint64_t available_threads = std::thread::hardware_concurrency()) noexcept
     {
-        // std::cout << '\n';
-
         std::unordered_map<mockturtle::node<GateLyt>, uint64_t> gate_design_counts{};
         gate_design_counts.reserve(gate_designs.size());
 
@@ -760,9 +758,9 @@ class sidb_bdl_circuit
 
                     const tile<GateLyt>& t = gate_lyt.get_tile(n);
 
-                    const std::pair<cell<CellLyt>, cell<CellLyt>> actual_canvas =  // canvas;
-                        t == tile<GateLyt>{1, 2} ? canvas :
-                                                   std::make_pair(cell<CellLyt>{12, 10}, cell<CellLyt>{14, 13});
+                    const std::pair<cell<CellLyt>, cell<CellLyt>> actual_canvas = canvas;
+                    // t == tile<GateLyt>{1, 2} ? canvas :
+                    //                            std::make_pair(cell<CellLyt>{11, 10}, cell<CellLyt>{13, 13});
 
                     std::vector<cell<CellLyt>> cells = all_coordinates_in_spanned_area(
                         relative_to_absolute_canvas_position(gate_lyt, actual_canvas.first, t),

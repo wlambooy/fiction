@@ -105,7 +105,7 @@ class unsuccessful_gate_design_error : public std::runtime_error
  */
 template <typename CellLyt, typename GateLibrary, typename GateLyt>
 static void assign_gate(CellLyt& cell_lyt, const typename GateLibrary::fcn_gate& g, const GateLyt& gate_lyt,
-                        const tile<GateLyt>& t)
+                        const tile<GateLyt>& t, const std::optional<typename technology<CellLyt>::cell_type>& only_cell_type = std::nullopt)
 {
     const mockturtle::node<GateLyt>& n = gate_lyt.get_node(t);
 
@@ -132,7 +132,7 @@ static void assign_gate(CellLyt& cell_lyt, const typename GateLibrary::fcn_gate&
             const cell<CellLyt> pos{start_x + x, start_y + y, layer};
             const auto          type{g[static_cast<uint64_t>(y)][static_cast<uint64_t>(x)]};
 
-            if (technology<CellLyt>::is_empty_cell(type))
+            if (technology<CellLyt>::is_empty_cell(type) || (only_cell_type.has_value() && *only_cell_type != type))
             {
                 continue;
             }

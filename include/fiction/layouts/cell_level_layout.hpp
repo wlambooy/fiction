@@ -70,8 +70,8 @@ class cell_level_layout : public ClockedLayout
         uint16_t tile_size_x;
         uint16_t tile_size_y;
 
-        phmap::parallel_flat_hash_map<Cell, cell_type> cell_type_map{};
-        phmap::parallel_flat_hash_map<Cell, cell_mode> cell_mode_map{};
+        phmap::parallel_flat_hash_map<Cell, cell_type>                          cell_type_map{};
+        phmap::parallel_flat_hash_map<Cell, cell_mode>                          cell_mode_map{};
         phmap::parallel_flat_hash_map<Cell, typename ClockedLayout::clock_zone> cell_tile_map{};
 
         phmap::flat_hash_map<Cell, std::string> cell_name_map{};
@@ -298,11 +298,12 @@ class cell_level_layout : public ClockedLayout
      * @param c Cell position whose assigned cell mode is desired. todo
      * @return Cell mode assigned to cell position `c`.
      */
-    [[nodiscard]] typename ClockedLayout::clock_zone get_cell_tile(const cell& c) const noexcept
+    template <typename tile_t = typename ClockedLayout::clock_zone>
+    [[nodiscard]] tile_t get_cell_tile(const cell& c) const noexcept
     {
         if (auto it = strg->cell_tile_map.find(c); it != strg->cell_tile_map.cend())
         {
-            return it->second;
+            return {it->second.x, it->second.y};
         }
 
         return {};

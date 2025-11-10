@@ -12,6 +12,8 @@
 #include "fiction/utils/gate_design_utils.hpp"
 #include "fiction/utils/math_utils.hpp"
 
+#include <phmap.h>
+
 #include <mutex>
 #include <thread>
 
@@ -94,6 +96,8 @@ struct advanced_circuit_design_params
     sub_circuit_creation_mode sub_circuit_mode = sub_circuit_creation_mode::CONNECTED_GATES;
 
     uint64_t available_threads = std::thread::hardware_concurrency();
+
+    bool print_found_circuits = false;
 };
 
 /**
@@ -285,7 +289,7 @@ class advanced_circuit_design_impl
     struct SetSetHash
     {
         std::size_t
-        operator()(const std::unordered_set<std::pair<mockturtle::node<GateLyt>, gate_design_t>, SetHash>& s) const
+        operator()(const phmap::flat_hash_set<std::pair<mockturtle::node<GateLyt>, gate_design_t>, SetHash>& s) const
         {
             std::size_t seed = 0;
             for (const auto& [e1, e2] : s)
@@ -297,7 +301,7 @@ class advanced_circuit_design_impl
         }
     };
 
-    std::unordered_set<std::unordered_set<std::pair<mockturtle::node<GateLyt>, gate_design_t>, SetHash>, SetSetHash>
+    phmap::flat_hash_set<phmap::flat_hash_set<std::pair<mockturtle::node<GateLyt>, gate_design_t>, SetHash>, SetSetHash>
         excluded_combinations{};
 
     std::mutex excluded_combinations_mutex;
@@ -318,9 +322,9 @@ class advanced_circuit_design_impl
 
                     const tile<GateLyt>& t = stats.gate_layout->get_tile(n);
 
-                    const std::pair<cell<CellLyt>, cell<CellLyt>> actual_canvas =  // params.canvas;
-                        t == tile<GateLyt>{1, 2} ? params.canvas :
-                                                   std::make_pair(cell<CellLyt>{12, 10}, cell<CellLyt>{14, 13});
+                    const std::pair<cell<CellLyt>, cell<CellLyt>> actual_canvas = params.canvas;
+                    // t == tile<GateLyt>{1, 2} ? params.canvas :
+                    //                            std::make_pair(cell<CellLyt>{11, 10}, cell<CellLyt>{13, 13});
 
                     const std::vector<cell<CellLyt>>& all_sidbs_in_canvas = all_coordinates_in_spanned_area(
                         circuit->relative_to_absolute_canvas_position(circuit->gate_layout, actual_canvas.first, t),
@@ -332,8 +336,8 @@ class advanced_circuit_design_impl
                     // all_combinations.reserve(estimate_total_combinations(max_sidbs, total_positions));
 
                     for (std::size_t num_sidbs = 0;
-                         num_sidbs <= (t == tile<GateLyt>{1, 2} ? params.maximum_number_of_canvas_sidbs : 2);
-                         ++num_sidbs)
+                         // num_sidbs <= (t == tile<GateLyt>{1, 2} ? params.maximum_number_of_canvas_sidbs : 2);
+                         num_sidbs <= params.maximum_number_of_canvas_sidbs; ++num_sidbs)
                     {
                         auto combinations = determine_all_combinations_of_distributing_k_entities_on_n_positions(
                             num_sidbs, all_sidbs_in_canvas.size());
@@ -356,8 +360,8 @@ class advanced_circuit_design_impl
         }
     }
 
-    void collect_nodes(const tile<GateLyt>&                           t,
-                       std::unordered_set<mockturtle::node<GateLyt>>& collected_nodes) const noexcept
+    void collect_nodes(const tile<GateLyt>&                             t,
+                       phmap::flat_hash_set<mockturtle::node<GateLyt>>& collected_nodes) const noexcept
     {
         switch (params.sub_circuit_mode)
         {
@@ -435,9 +439,9 @@ class advanced_circuit_design_impl
         std::unordered_map<std::vector<mockturtle::node<GateLyt>>,
                            sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>, VectorHash>;
 
-    void build_subcircuits(const std::unordered_set<mockturtle::node<GateLyt>>& root_collection,
-                           std::vector<mockturtle::node<GateLyt>>&              path,
-                           std::unordered_set<mockturtle::node<GateLyt>>& visited, const size_t depth,
+    void build_subcircuits(const phmap::flat_hash_set<mockturtle::node<GateLyt>>& root_collection,
+                           std::vector<mockturtle::node<GateLyt>>&                path,
+                           phmap::flat_hash_set<mockturtle::node<GateLyt>>& visited, const size_t depth,
                            const size_t max_depth, gate_lyt_window_map& result) const
     {
         if (depth == max_depth)
@@ -466,7 +470,7 @@ class advanced_circuit_design_impl
 
         const tile<GateLyt> current_tile = stats.gate_layout->get_tile(path.back());
 
-        std::unordered_set<mockturtle::node<GateLyt>> collection = root_collection;
+        phmap::flat_hash_set<mockturtle::node<GateLyt>> collection = root_collection;
         collect_nodes(current_tile, collection);
 
         for (const auto& next_node : collection)
@@ -490,11 +494,11 @@ class advanced_circuit_design_impl
     {
         const tile<GateLyt> current_tile = stats.gate_layout->get_tile(root);
 
-        std::unordered_set<mockturtle::node<GateLyt>> root_collection;
+        phmap::flat_hash_set<mockturtle::node<GateLyt>> root_collection;
         collect_nodes(current_tile, root_collection);
 
-        std::vector<mockturtle::node<GateLyt>>        path    = {root};
-        std::unordered_set<mockturtle::node<GateLyt>> visited = {root};
+        std::vector<mockturtle::node<GateLyt>>          path    = {root};
+        phmap::flat_hash_set<mockturtle::node<GateLyt>> visited = {root};
 
         build_subcircuits(root_collection, path, visited, 0, max_depth, result);
     }
@@ -530,7 +534,7 @@ class advanced_circuit_design_impl
         }
 
         // Step 1: Sample unique indices in range [0, num_possible_trials)
-        std::unordered_set<uint64_t>            sampled_flat_indices;
+        phmap::flat_hash_set<uint64_t>          sampled_flat_indices;
         std::mt19937                            rng(std::random_device{}());
         std::uniform_int_distribution<uint64_t> dist(0, num_possible_trials - 1);
 
@@ -580,6 +584,46 @@ class advanced_circuit_design_impl
         return num_possible_trials;
     }
 
+    [[nodiscard]] bool powerset_check(
+        const phmap::flat_hash_set<std::pair<mockturtle::node<GateLyt>, gate_design_t>, SetHash>& input) const noexcept
+    {
+        const uint64_t combination_size = input.size();
+
+        std::vector<decltype(input.cbegin())> iterators;
+        iterators.reserve(combination_size);
+
+        for (auto it = input.cbegin(); it != input.cend(); ++it)
+        {
+            iterators.push_back(it);
+        }
+
+        // Iterate over all non-empty subsets using bitmask
+        for (uint64_t mask = 1; mask < 1ULL << combination_size; ++mask)
+        {
+            if ((mask & (mask - 1)) == 0)
+            {
+                continue;  // combination must be size > 1
+            }
+
+            phmap::flat_hash_set<std::pair<mockturtle::node<GateLyt>, gate_design_t>, SetHash> subset;
+
+            for (size_t i = 0; i < combination_size; ++i)
+            {
+                if (mask & (1ULL << i))
+                {
+                    subset.insert(*iterators[i]);
+                }
+            }
+
+            if (excluded_combinations.find(subset) != excluded_combinations.cend())
+            {
+                return false;
+            }
+        }
+
+        return true;
+    };
+
     [[nodiscard]] bool perform_trial(const sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>& sub_circuit,
                                      const mockturtle::node<GateLyt>& n, const gate_design_t& gate_design,
                                      const std::vector<mockturtle::node<GateLyt>>& node_vec,
@@ -587,50 +631,11 @@ class advanced_circuit_design_impl
                                      const uint64_t trial_number, const CellLyt& cell_lyt,
                                      uint64_t& total_number_of_simulator_calls) noexcept
     {
-        std::unordered_set<std::pair<mockturtle::node<GateLyt>, gate_design_t>, SetHash> current_combination{};
+        phmap::flat_hash_set<std::pair<mockturtle::node<GateLyt>, gate_design_t>, SetHash> current_combination{};
 
         if (node_vec.size() > 1)
         {
             current_combination.emplace(n, gate_design);
-
-            auto powerset_check = [&](const auto& input) -> bool
-            {
-                const uint64_t combination_size = input.size();
-
-                std::vector<decltype(input.cbegin())> iterators;
-                iterators.reserve(combination_size);
-
-                for (auto it = input.cbegin(); it != input.cend(); ++it)
-                {
-                    iterators.push_back(it);
-                }
-
-                // Iterate over all non-empty subsets using bitmask
-                for (uint64_t mask = 1; mask < 1ULL << combination_size; ++mask)
-                {
-                    if ((mask & (mask - 1)) == 0)
-                    {
-                        continue;  // combination must be size > 1
-                    }
-
-                    std::unordered_set<std::pair<mockturtle::node<GateLyt>, gate_design_t>, SetHash> subset;
-
-                    for (size_t i = 0; i < combination_size; ++i)
-                    {
-                        if (mask & (1ULL << i))
-                        {
-                            subset.insert(*iterators[i]);
-                        }
-                    }
-
-                    if (excluded_combinations.find(subset) != excluded_combinations.cend())
-                    {
-                        return false;
-                    }
-                }
-
-                return true;
-            };
 
             for (const mockturtle::node<GateLyt>& node : node_vec)
             {
@@ -1095,46 +1100,7 @@ class advanced_circuit_design_impl
         bool                  stop = false;
         while (!stop)
         {
-            std::unordered_set<std::pair<mockturtle::node<GateLyt>, gate_design_t>, SetHash> current_combination{};
-
-            auto powerset_check = [&](const auto& input) -> bool
-            {
-                const uint64_t combination_size = input.size();
-
-                std::vector<decltype(input.cbegin())> iterators;
-                iterators.reserve(combination_size);
-
-                for (auto it = input.cbegin(); it != input.cend(); ++it)
-                {
-                    iterators.push_back(it);
-                }
-
-                // Iterate over all non-empty subsets using bitmask
-                for (uint64_t mask = 1; mask < 1ULL << combination_size; ++mask)
-                {
-                    if ((mask & (mask - 1)) == 0)
-                    {
-                        continue;  // combination must be size > 1
-                    }
-
-                    std::unordered_set<std::pair<mockturtle::node<GateLyt>, gate_design_t>, SetHash> subset;
-
-                    for (size_t i = 0; i < combination_size; ++i)
-                    {
-                        if (mask & (1ULL << i))
-                        {
-                            subset.insert(*iterators[i]);
-                        }
-                    }
-
-                    if (excluded_combinations.find(subset) != excluded_combinations.cend())
-                    {
-                        return false;
-                    }
-                }
-
-                return true;
-            };
+            phmap::flat_hash_set<std::pair<mockturtle::node<GateLyt>, gate_design_t>, SetHash> current_combination{};
 
             for (uint64_t i = 0; i < indices.size(); ++i)
             {
@@ -1190,6 +1156,8 @@ class advanced_circuit_design_impl
         std::vector<std::thread> workers;
         std::atomic<uint64_t>    next_job{0};
 
+        uint64_t next_printed_result = 0;
+
         // Thread count manager
         const auto tcm = std::make_unique<thread_count_manager>(params.available_threads - max_threads);
 
@@ -1218,10 +1186,10 @@ class advanced_circuit_design_impl
                 }
 
                 if (is_circuit_operational(
-                    sidb_cell_level_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>{
-                        operational_circuit_candidate,
-                        sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>{*circuit}},
-                    operational_params, tcm) == operational_status::OPERATIONAL)
+                        sidb_cell_level_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>{
+                            operational_circuit_candidate,
+                            sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>{*circuit}},
+                        operational_params, tcm) == operational_status::OPERATIONAL)
                 {
                     std::lock_guard lock{result_mutex};
                     result.push_back(operational_circuit_candidate);
@@ -1231,7 +1199,27 @@ class advanced_circuit_design_impl
 
 #if (PROGRESS_BARS)
                 if (thread_id == 0)
+                {
                     bar(processed_jobs.load());
+
+                    if (params.print_found_circuits)
+                    {
+                        uint64_t size;
+
+                        {
+                            std::lock_guard lock{result_mutex};
+
+                            size = result.size();
+                        }
+
+                        for (uint64_t ix = next_printed_result; ix < size; ++ix)
+                        {
+                            print_layout(result.at(ix));
+                        }
+
+                        next_printed_result += size - next_printed_result;
+                    }
+                }
 #endif
             }
 

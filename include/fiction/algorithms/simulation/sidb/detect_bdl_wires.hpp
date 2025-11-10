@@ -52,7 +52,7 @@ struct detect_bdl_wires_params
      * A distance threshold, which is used to determine if two pairs of BDLs are part of the same wire. (unit: nm).
      */
     // double threshold_bdl_interdistance = 2.0;
-    double threshold_bdl_interdistance = 2.7;
+    double threshold_bdl_interdistance = 2.0;
     /**
      * Parameters for the `detect_bdl_pairs` algorithm.
      */

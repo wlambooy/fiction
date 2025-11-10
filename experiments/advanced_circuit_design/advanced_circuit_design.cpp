@@ -57,9 +57,10 @@
 namespace fs = std::filesystem;
 
 template <typename lyt_t, typename skeleton>
-advanced_circuit_design_params<lyt_t> parse_params(const int argc, char** argv,
-                                                   // design_sidb_gates_params<lyt_t>& design_gate_params,
-                                                   const std::optional<lyt_t>& surface_lattice)
+std::pair<advanced_circuit_design_params<lyt_t>, std::string>
+parse_params(const int argc, char** argv,
+             // design_sidb_gates_params<lyt_t>& design_gate_params,
+             const std::optional<lyt_t>& surface_lattice)
 {
     advanced_circuit_design_params<lyt_t> params{};
 
@@ -111,6 +112,11 @@ advanced_circuit_design_params<lyt_t> parse_params(const int argc, char** argv,
     app.add_option("--gate_design_mode", gate_design_mode, "Gate design mode: r (random), e (exhaustive)");
 
     app.add_option("--threads", threads_signed, "Available threads (0 = all)");
+
+    std::string func = "AND";
+    app.add_option("--func", func, "Function name");
+
+    app.add_flag("--print_solutions", params.print_found_circuits, "Print found solutions during exhaustive search");
 
     // Parse CLI args
     try
@@ -276,7 +282,7 @@ advanced_circuit_design_params<lyt_t> parse_params(const int argc, char** argv,
     params.defect_surface = surface_lattice;
     // params.design_gate_params = design_gate_params;
 
-    return params;
+    return {params, func};
 }
 
 int main(int argc, char* argv[])  // NOLINT
@@ -291,9 +297,9 @@ int main(int argc, char* argv[])  // NOLINT
     using cell_lyt = sidb_cell_clk_lyt_cube;
     using lyt_t    = sidb_defect_surface<cell_lyt>;
 
-    // using skeleton = sidb_bdl_skeleton_original_bestagon;
+    using skeleton = sidb_bdl_skeleton_original_bestagon;
     // using skeleton = sidb_bdl_skeleton_1;
-    using skeleton = sidb_bdl_skeleton_hexamini;
+    // using skeleton = sidb_bdl_skeleton_hexamini;
     //
     // /// DESIGN GATE PARAMS
     //
@@ -440,20 +446,42 @@ int main(int argc, char* argv[])  // NOLINT
             // perform technology mapping
             const auto mapped_network = technology_mapping(cut_xag, tech_map_params);
 
-            const advanced_circuit_design_params<lyt_t> params =
-                parse_params<lyt_t, skeleton>(argc, argv, surface_lattice);
+            const auto& [params, func] = parse_params<lyt_t, skeleton>(argc, argv, surface_lattice);
 
             advanced_circuit_design_stats<gate_lyt> st{};
 
-            gate_lyt   g{{2, 4}, row_clocking<gate_lyt>()};
+            // gate_lyt                     g{{2, 4}, row_clocking<gate_lyt>()};
+            // const auto                   i1 = g.create_pi("1", {0, 0});
+            // const auto                   i2 = g.create_pi("2", {2, 0});
+            // const auto                   b1 = g.create_buf(i1, {1, 1});
+            // const auto                   b2 = g.create_buf(i2, {2, 1});
+            // mockturtle::signal<gate_lyt> a;
+            // if (func == "AND")
+            //     a = g.create_and(b1, b2, {1, 2});
+            // else if (func == "OR")
+            //     a = g.create_or(b1, b2, {1, 2});
+            // else if (func == "NOR")
+            //     a = g.create_nor(b1, b2, {1, 2});
+            // else if (func == "NAND")
+            //     a = g.create_nand(b1, b2, {1, 2});
+            // else if (func == "XOR")
+            //     a = g.create_xor(b1, b2, {1, 2});
+            // else if (func == "XNOR")
+            //     a = g.create_xnor(b1, b2, {1, 2});
+            // else
+            //     a = g.create_and(b1, b2, {1, 2});
+            // const auto b3 = g.create_buf(a, {1, 3});
+            // g.create_po(b3, "o", {0, 4});
+            //
+            // std::cout << "Creating " << func << " ...\n" << std::endl;
+
+            gate_lyt   g{{2, 3}, row_clocking<gate_lyt>()};
             const auto i1 = g.create_pi("1", {0, 0});
-            const auto i2 = g.create_pi("2", {2, 0});
-            const auto b1 = g.create_buf(i1, {1, 1});
-            const auto b2 = g.create_buf(i2, {2, 1});
-            const auto a  = g.create_xnor(b1, b2, {1, 2});
-            // const auto a  = g.create_xor(b1, b2, {1, 2});
-            const auto b3 = g.create_buf(a, {1, 3});
-            g.create_po(b3, "o", {0, 4});
+            const auto i2 = g.create_pi("2", {1, 0});
+            const auto i3 = g.create_pi("3", {2, 1});
+            const auto a  = g.create_and(i1, i2, {1, 1});
+            const auto o  = g.create_or(a, i3, {1, 2});
+            g.create_po(o, "o", {1, 3});
 
             const std::vector<lyt_t>& lyts =
                 advanced_circuit_design<decltype(mapped_network), lyt_t, gate_lyt, skeleton>(g  // mapped_network
@@ -471,7 +499,7 @@ int main(int argc, char* argv[])  // NOLINT
             for (const auto& lyt : lyts)
             {
                 write_sqd_layout(lyt,
-                                 (b_dir / "exact_benchmarks_layout" / "XNOR" / (std::to_string(ix++) + ".sqd")).c_str());
+                                 (b_dir / "exact_benchmarks_layout" / func / (std::to_string(ix++) + ".sqd")).c_str());
             }
 
             // write runtime to file

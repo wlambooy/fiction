@@ -126,6 +126,7 @@ template <uint16_t GateSizeX, uint16_t GateSizeY, typename GateLyt, typename Cel
         if constexpr (has_pointy_top_hex_orientation_v<GateLyt>)
         {
             // vertical distance between pointy top hexagons is height * 3/4
+            // absolute_c = {t.x * GateSizeX, static_cast<decltype(absolute_c.y)>(t.y * GateSizeY * 3 / 4 - 2 * t.y), t.z}; // todo
             absolute_c = {t.x * GateSizeX, static_cast<decltype(absolute_c.y)>(t.y * (GateSizeY * 3 / 4)), t.z};
         }
         else if constexpr (has_flat_top_hex_orientation_v<GateLyt>)
