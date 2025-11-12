@@ -50,6 +50,7 @@ class sidb_bdl_circuit
                                                       bdl_wire_params.bdl_pairs_params)},
             num_inputs{input_bdl_pairs.size()},
             gate_connections{get_gate_connections(bdl_wires, skeleton, gate_lyt)},
+            all_canvas_positions{get_all_canvas_positions_per_node(gate_lyt, rel_canvas)},
             simulated_bdl_wires_per_input{simulate_bdl_wires_for_each_input(gate_layout, sim_params,
                                                                             skeleton_with_canvasses, output_perturbers,
                                                                             bdl_wires, num_inputs, gate_connections)},
@@ -76,13 +77,7 @@ class sidb_bdl_circuit
     const uint64_t                                             num_inputs{};
     const std::vector<std::pair<tile<GateLyt>, tile<GateLyt>>> gate_connections{};
 
-    /**
-     * A canvas combination is a combination of canvas positions as a vector of canvas position indices.
-     */
-    using canvas_combination = std::vector<std::size_t>;
-
-    std::unordered_map<mockturtle::node<GateLyt>, std::vector<cell<CellLyt>>>      all_canvas_positions{};
-    std::unordered_map<mockturtle::node<GateLyt>, std::vector<canvas_combination>> gate_designs{};
+    const std::unordered_map<mockturtle::node<GateLyt>, std::vector<cell<CellLyt>>> all_canvas_positions{};
 
     [[nodiscard]] static cell<CellLyt> relative_to_absolute_canvas_position(const GateLyt&       gate_lyt,
                                                                             const cell<CellLyt>& rel_pos,
@@ -621,6 +616,32 @@ class sidb_bdl_circuit
 
         return output_perturbers;
     }
+
+    [[nodiscard]] static std::unordered_map<mockturtle::node<GateLyt>, std::vector<cell<CellLyt>>>
+    get_all_canvas_positions_per_node(const GateLyt&                                 gate_lyt,
+                                      const std::pair<cell<CellLyt>, cell<CellLyt>>& canvas) noexcept
+    {
+        std::unordered_map<mockturtle::node<GateLyt>, std::vector<cell<CellLyt>>> all_canvas_positions_per_node{};
+
+        gate_lyt.foreach_node(
+            [&](const auto& n)
+            {
+                if (skip_physical_design_for_node(gate_lyt, n))
+                {
+                    return;
+                }
+
+                const tile<GateLyt>& t = gate_lyt.get_tile(n);
+
+                all_canvas_positions_per_node[n] = all_coordinates_in_spanned_area(
+                    sidb_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>::relative_to_absolute_canvas_position(
+                        gate_lyt, canvas.first, t),
+                    sidb_bdl_circuit<CellLyt, GateLyt, SkeletonGateLibrary>::relative_to_absolute_canvas_position(
+                        gate_lyt, canvas.second, t));
+            });
+
+        return all_canvas_positions_per_node;
+    }
 };
 
 template <typename CellLyt, typename GateLyt, typename SkeletonGateLibrary>
@@ -743,16 +764,15 @@ class sidb_bdl_sub_circuit
         // todo: defects ... ?
     }
 
-private:
+  private:
     const std::vector<std::vector<uint64_t>> consistent_super_circuit_input_indices_per_input{};
 
-public:
+  public:
     const std::vector<
         std::vector<std::optional<charge_distribution_surface<CellLyt, local_external_potential_type::BOUNDED>>>>
         super_circuit_simulated_bdl_wires_per_input{};
 
-private:
-
+  private:
     [[nodiscard]] static std::vector<tile<GateLyt>> get_all_tiles(const GateLyt& gate_lyt) noexcept
     {
         std::vector<tile<GateLyt>> tiles{};
