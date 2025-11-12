@@ -292,7 +292,7 @@ int main(int argc, char* argv[])  // NOLINT
     using cell_lyt = sidb_cell_clk_lyt_cube;
     using lyt_t    = sidb_defect_surface<cell_lyt>;
 
-    using skeleton = sidb_bdl_skeleton_1;
+    using skeleton = sidb_bdl_skeleton_august;
 
     /// DESIGN GATE PARAMS
 

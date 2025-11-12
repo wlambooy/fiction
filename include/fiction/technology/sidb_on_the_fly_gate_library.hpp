@@ -25,6 +25,7 @@
 #include "fiction/utils/layout_utils.hpp"
 #include "fiction/utils/truth_table_utils.hpp"
 
+#include <kitty/print.hpp>
 #include <phmap.h>
 
 #include <array>
@@ -148,8 +149,7 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, Ga
                                     sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>{
                                         std::cref(*super_circuit),
                                         {t},
-                                        op_params->input_bdl_iterator_params.bdl_wire_params,
-                                        t},
+                                        op_params->input_bdl_iterator_params.bdl_wire_params},
                                     op_params);
                             }
                         }
@@ -158,8 +158,7 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, Ga
                             sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>{
                                 std::cref(*super_circuit),
                                 {t},
-                                op_params->input_bdl_iterator_params.bdl_wire_params,
-                                t},
+                                op_params->input_bdl_iterator_params.bdl_wire_params},
                             op_params);
                     }
                 }
@@ -191,8 +190,7 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, Ga
                                         sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>{
                                             std::cref(*super_circuit),
                                             {t},
-                                            op_params->input_bdl_iterator_params.bdl_wire_params,
-                                            t},
+                                            op_params->input_bdl_iterator_params.bdl_wire_params},
                                         op_params);
                                 }
                             }
@@ -202,8 +200,7 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, Ga
                                 sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>{
                                     std::cref(*super_circuit),
                                     {t},
-                                    op_params->input_bdl_iterator_params.bdl_wire_params,
-                                    t},
+                                    op_params->input_bdl_iterator_params.bdl_wire_params},
                                 op_params);
                         }
 
@@ -219,8 +216,7 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, Ga
                                     sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>{
                                         std::cref(*super_circuit),
                                         {t},
-                                        op_params->input_bdl_iterator_params.bdl_wire_params,
-                                        t},
+                                        op_params->input_bdl_iterator_params.bdl_wire_params},
                                     op_params);
                             }
                         }
@@ -230,8 +226,7 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, Ga
                             sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>{
                                 std::cref(*super_circuit),
                                 {t},
-                                op_params->input_bdl_iterator_params.bdl_wire_params,
-                                t},
+                                op_params->input_bdl_iterator_params.bdl_wire_params},
                             op_params);
                     }
 
@@ -252,8 +247,7 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, Ga
                         sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>{
                             std::cref(*super_circuit),
                             {t},
-                            op_params->input_bdl_iterator_params.bdl_wire_params,
-                            t},
+                            op_params->input_bdl_iterator_params.bdl_wire_params},
                         op_params);
                 }
             }
@@ -263,8 +257,7 @@ class sidb_on_the_fly_gate_library : public fcn_gate_library<sidb_technology, Ga
                 sidb_bdl_sub_circuit<CellLyt, GateLyt, SkeletonGateLibrary>{
                     std::cref(*super_circuit),
                     {t},
-                    op_params->input_bdl_iterator_params.bdl_wire_params,
-                    t},
+                    op_params->input_bdl_iterator_params.bdl_wire_params},
                 op_params);
         }
 

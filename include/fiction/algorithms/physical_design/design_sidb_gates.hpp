@@ -311,7 +311,7 @@ class design_sidb_gates_impl
             return false;
         };
 
-        uint64_t num_solutions_found = 0;
+        std::atomic<uint64_t> num_solutions_found = 0;
 
         const uint64_t max_number_of_solutions =
             std::min(params.maximum_number_of_solutions, static_cast<uint64_t>(stats.number_of_layouts));
@@ -357,14 +357,14 @@ class design_sidb_gates_impl
                                 });
                         }
 
-                        {
-                            const std::lock_guard lock{mutex_to_protect_designed_gate_layouts};
-
-                            if (check_if_gate_design_is_already_present(result_lyt.value()))
-                            {
-                                continue;
-                            }
-                        }
+                        // {
+                        //     const std::lock_guard lock{mutex_to_protect_designed_gate_layouts};
+                        //
+                        //     if (check_if_gate_design_is_already_present(result_lyt.value()))
+                        //     {
+                        //         continue;
+                        //     }
+                        // }
 
                         if (!circuit.has_value())
                         {
@@ -410,7 +410,7 @@ class design_sidb_gates_impl
                         if (num_solutions_found < params.maximum_number_of_solutions)
                         {
                             // update the progress bar
-                            bar(num_solutions_found);
+                            bar(num_solutions_found.load());
                         }
 #endif
                     }
@@ -856,7 +856,7 @@ class design_sidb_gates_impl
         }
 
         return circuit->super_circuit.relative_to_absolute_canvas_position(circuit->gate_layout, c,
-                                                                           *circuit->gate_tile);
+                                                                           circuit->tiles.front());
     };
     /**
      * This function makes sure that underlying parameters for `is_operational` are set according to the given
