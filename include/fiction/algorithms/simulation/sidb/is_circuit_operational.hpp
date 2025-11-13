@@ -555,8 +555,7 @@ class is_circuit_operational_impl
             }
         }
 
-        op_assessment.logic_match =
-            static_cast<double>(successful_bdl_pairs_count) /
+        op_assessment.logic_match = static_cast<double>(successful_bdl_pairs_count) /
                                     static_cast<double>(implemented_circuit.circuit.num_bdl_pairs - omit_input_count);
 
         if (successful_bdl_pairs_count == implemented_circuit.circuit.num_bdl_pairs - omit_input_count)
@@ -599,7 +598,6 @@ class is_circuit_operational_impl
         if constexpr (ExtPotType == local_external_potential_type::BOUNDED)
         {
             clustercomplete_params<cell<Lyt>, ExtPotType> cc_params{parameters.simulation_parameters};
-            cc_params.available_threads = 1 + (thread_counter ? thread_counter->reserve_threads() : 0);
 
             Lyt cell_lyt{};
 
@@ -656,6 +654,8 @@ class is_circuit_operational_impl
             {
                 cc_params.local_external_potential[c] = bounds;
             }
+
+            cc_params.available_threads = 1 + (thread_counter ? thread_counter->reserve_threads() : 0);
 
             const auto& sim_res = clustercomplete<Lyt, ExtPotType>(cell_lyt, cc_params);
 
