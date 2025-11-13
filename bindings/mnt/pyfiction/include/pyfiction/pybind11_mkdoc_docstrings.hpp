@@ -20535,7 +20535,11 @@ static const char *__doc_fiction_sidb_bdl_circuit_sidb_bdl_circuit = R"doc()doc"
 
 static const char *__doc_fiction_sidb_bdl_circuit_sim_params = R"doc()doc";
 
+static const char *__doc_fiction_sidb_bdl_circuit_simulate_bdl_wires_for_each_input = R"doc()doc";
+
 static const char *__doc_fiction_sidb_bdl_circuit_skeleton = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_circuit_skeleton_with_canvasses = R"doc()doc";
 
 static const char *__doc_fiction_sidb_bdl_sub_circuit = R"doc()doc";
 
@@ -20543,17 +20547,29 @@ static const char *__doc_fiction_sidb_bdl_sub_circuit_augment_gate_lyt_window = 
 
 static const char *__doc_fiction_sidb_bdl_sub_circuit_bdl_wires = R"doc()doc";
 
+static const char *__doc_fiction_sidb_bdl_sub_circuit_collect_consistent_super_circuit_input_indices = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_sub_circuit_consistent_super_circuit_input_indices_per_input = R"doc()doc";
+
 static const char *__doc_fiction_sidb_bdl_sub_circuit_create_gate_lyt_window_for_tiles = R"doc()doc";
 
 static const char *__doc_fiction_sidb_bdl_sub_circuit_gate_layout = R"doc(SiDB gate-level layout.)doc";
 
-static const char *__doc_fiction_sidb_bdl_sub_circuit_gate_tile = R"doc()doc";
+static const char *__doc_fiction_sidb_bdl_sub_circuit_get_all_tiles = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_sub_circuit_get_consistent_super_circuit_input_indices = R"doc()doc";
 
 static const char *__doc_fiction_sidb_bdl_sub_circuit_get_energy_of_expected_charge_distribution_with_sub_circuit_charge_distribution = R"doc()doc";
 
-static const char *__doc_fiction_sidb_bdl_sub_circuit_get_simulated_bdl_wires_for_input_indices = R"doc()doc";
+static const char *__doc_fiction_sidb_bdl_sub_circuit_get_skeleton_influence = R"doc()doc";
 
 static const char *__doc_fiction_sidb_bdl_sub_circuit_input_bdl_pairs = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_sub_circuit_input_index_possible_in_super_circuit = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_sub_circuit_is_not_internal_perturber = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_sub_circuit_make_super_circuit_input_identity = R"doc()doc";
 
 static const char *__doc_fiction_sidb_bdl_sub_circuit_num_bdl_pairs = R"doc()doc";
 
@@ -20566,6 +20582,8 @@ static const char *__doc_fiction_sidb_bdl_sub_circuit_sidb_bdl_sub_circuit_2 = R
 static const char *__doc_fiction_sidb_bdl_sub_circuit_skeleton = R"doc()doc";
 
 static const char *__doc_fiction_sidb_bdl_sub_circuit_super_circuit = R"doc()doc";
+
+static const char *__doc_fiction_sidb_bdl_sub_circuit_tiles = R"doc()doc";
 
 static const char *__doc_fiction_sidb_bestagon_library =
 R"doc(A gate library for the SiDB technology that is based on Y-shaped gates
