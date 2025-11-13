@@ -1157,8 +1157,9 @@ class advanced_circuit_design_impl
             }
 
             if ((global_pruning && first_passing_ix == gate_fitness_assessments.size() - 1) ||
-                static_cast<double>(first_passing_ix) / static_cast<double>(gate_fitness_assessments.size()) <
-                    (1.0 - params.selectivity_tolerance) * selectivity)
+                (!global_pruning &&
+                 static_cast<double>(first_passing_ix) / static_cast<double>(gate_fitness_assessments.size()) <
+                     (1.0 - params.selectivity_tolerance) * selectivity))
             {
                 std::cout << "ASSESSMENT COMPLETED\n" << std::endl;
 
