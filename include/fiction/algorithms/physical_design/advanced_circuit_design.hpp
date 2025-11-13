@@ -1294,7 +1294,8 @@ class advanced_circuit_design_impl
             stats.gate_layout->foreach_node(
                 [&](const auto& n)
                 {
-                    if (skip_physical_design_for_node(*stats.gate_layout, n) || completed_assessment.at(n))
+                    if (skip_physical_design_for_node(*stats.gate_layout, n) || completed_assessment.at(n) ||
+                        (global_pruning && maybe_lyt.has_value()))
                     {
                         return;
                     }
@@ -1334,12 +1335,9 @@ class advanced_circuit_design_impl
                                                              gate_fitness_assessments[n], global_pruning,
                                                              num_input_combinations, lyt_mutex, maybe_lyt);
 
-                        if (global_pruning)
+                        if (global_pruning && maybe_lyt.has_value())
                         {
-                            if (maybe_lyt.has_value())
-                            {
-                                return;  // quit if an operational circuit has been found
-                            }
+                            return;  // quit if an operational circuit has been found
                         }
 
                         if (discriminate_fitness_assessments(
@@ -1354,12 +1352,9 @@ class advanced_circuit_design_impl
 
             std::cout << std::endl;
 
-            if (global_pruning)
+            if (global_pruning && maybe_lyt.has_value())
             {
-                if (maybe_lyt.has_value())
-                {
-                    return maybe_lyt.value();  // return the operational circuit
-                }
+                return maybe_lyt.value();  // return the operational circuit
             }
 
             stats.gate_layout->foreach_node(
