@@ -1294,9 +1294,15 @@ class advanced_circuit_design_impl
             stats.gate_layout->foreach_node(
                 [&](const auto& n)
                 {
-                    if (skip_physical_design_for_node(*stats.gate_layout, n) || completed_assessment.at(n) ||
-                        gate_designs.at(n).size() == 1 || (global_pruning && maybe_lyt.has_value()))
+                    if (skip_physical_design_for_node(*stats.gate_layout, n) || completed_assessment.at(n) || (global_pruning && maybe_lyt.has_value()))
                     {
+                        return;
+                    }
+
+                    if (gate_designs.at(n).size() == 1)
+                    {
+                        completed_assessment[n] = true;
+
                         return;
                     }
 
