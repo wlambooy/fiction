@@ -1,0 +1,31 @@
+// Benchmark "ex" written by ABC on Fri Jul  4 15:14:16 2025
+
+module top (
+    a, b, c, d,
+    F0  );
+  input  a, b, c, d;
+  output F0;
+  wire new_n6, new_n7, new_n8, new_n9, new_n10, new_n11, new_n12, new_n13,
+    new_n14, new_n15, new_n16, new_n17, new_n18, new_n19, new_n20, new_n21,
+    new_n22;
+  assign new_n6 = ~c & d;
+  assign new_n7 = c & ~d;
+  assign new_n8 = ~new_n6 & ~new_n7;
+  assign new_n9 = ~a & b;
+  assign new_n10 = a & ~b;
+  assign new_n11 = ~new_n9 & ~new_n10;
+  assign new_n12 = ~new_n8 & ~new_n11;
+  assign new_n13 = b & c;
+  assign new_n14 = ~b & ~c;
+  assign new_n15 = ~new_n13 & ~new_n14;
+  assign new_n16 = a & ~new_n15;
+  assign new_n17 = ~a & new_n14;
+  assign new_n18 = ~new_n16 & ~new_n17;
+  assign new_n19 = ~d & ~new_n18;
+  assign new_n20 = ~a & ~b;
+  assign new_n21 = new_n6 & new_n20;
+  assign new_n22 = ~new_n19 & ~new_n21;
+  assign F0 = new_n12 | ~new_n22;
+endmodule
+
+
