@@ -5436,6 +5436,8 @@ static const char *__doc_fiction_detail_advanced_circuit_design_impl_collect_nod
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_design_circuit = R"doc()doc";
 
+static const char *__doc_fiction_detail_advanced_circuit_design_impl_design_gates_randomly = R"doc()doc";
+
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_design_sidb_layout = R"doc()doc";
 
 static const char *__doc_fiction_detail_advanced_circuit_design_impl_discriminate_fitness_assessments = R"doc()doc";
