@@ -168,6 +168,9 @@ class advanced_circuit_design_impl
             return *maybe_lyt;
         }
 
+        operational_params.termination_cond =
+            is_circuit_operational_params::termination_condition::ON_FIRST_NON_OPERATIONAL;
+
         return exhaustively_enumerate_gate_design_combinations();
     }
 
@@ -1294,7 +1297,8 @@ class advanced_circuit_design_impl
             stats.gate_layout->foreach_node(
                 [&](const auto& n)
                 {
-                    if (skip_physical_design_for_node(*stats.gate_layout, n) || completed_assessment.at(n) || (global_pruning && maybe_lyt.has_value()))
+                    if (skip_physical_design_for_node(*stats.gate_layout, n) || completed_assessment.at(n) ||
+                        (global_pruning && maybe_lyt.has_value()))
                     {
                         return;
                     }
