@@ -297,9 +297,9 @@ int main(int argc, char* argv[])  // NOLINT
     using cell_lyt = sidb_cell_clk_lyt_cube;
     using lyt_t    = sidb_defect_surface<cell_lyt>;
 
-    using skeleton = sidb_bdl_skeleton_original_bestagon;
+    // using skeleton = sidb_bdl_skeleton_original_bestagon;
     // using skeleton = sidb_bdl_skeleton_1;
-    // using skeleton = sidb_bdl_skeleton_hexamini;
+    using skeleton = sidb_bdl_skeleton_hexamini;
     //
     // /// DESIGN GATE PARAMS
     //
@@ -405,47 +405,47 @@ int main(int argc, char* argv[])  // NOLINT
     {
         const fs::path input_dir = base_dir + "/" + std::to_string(n) + "_in";
 
-        for (const auto& entry : fs::directory_iterator(input_dir))
+        // for (const auto& entry : fs::directory_iterator(input_dir))
         {
-            const auto& verilog_path = entry.path();  // e.g., <something>/benchmarks_verilog/3_in/foo.v
-            const auto  num_in_dir   = verilog_path.parent_path().filename();                   // "3_in"
-            const auto  name         = verilog_path.stem();                                     // "foo"
-            const auto  b_dir        = verilog_path.parent_path().parent_path().parent_path();  // <something>
-            const auto  layout_path  = b_dir / "benchmarks_layout" / num_in_dir / (name.string() + ".sqd");
-            if (std::ifstream is{layout_path.c_str()}; is.is_open())
-            {
-                continue;
-            }
+            // const auto& verilog_path = entry.path();  // e.g., <something>/benchmarks_verilog/3_in/foo.v
+            // const auto  num_in_dir   = verilog_path.parent_path().filename();                   // "3_in"
+            // const auto  name         = verilog_path.stem();                                     // "foo"
+            const auto  b_dir        = input_dir.parent_path().parent_path();  // <something>
+            // const auto  layout_path  = b_dir / "benchmarks_layout" / num_in_dir / (name.string() + ".sqd");
+            // if (std::ifstream is{layout_path.c_str()}; is.is_open())
+            // {
+                // continue;
+            // }
 
-            const auto benchmark = entry.path().string();
-            fmt::print("[attempts] processing {}\n", benchmark);
+            // const auto benchmark = entry.path().string();
+            // fmt::print("[attempts] processing {}\n", benchmark);
 
-            mockturtle::xag_network xag{};
-            const auto              result = lorina::read_verilog(benchmark, mockturtle::verilog_reader(xag));
-            assert(result == lorina::return_code::success);
+            // mockturtle::xag_network xag{};
+            // const auto              result = lorina::read_verilog(benchmark, mockturtle::verilog_reader(xag));
+            // assert(result == lorina::return_code::success);
 
             // compute depth
-            const mockturtle::depth_view depth_xag{xag};
+            // const mockturtle::depth_view depth_xag{xag};
 
-            const technology_mapping_params tech_map_params = all_2_input_functions();
-
-            // parameters for cut rewriting
-            mockturtle::cut_rewriting_params cut_params{};
-            cut_params.cut_enumeration_ps.cut_size = 4;
-
-            const mockturtle::xag_npn_resynthesis<
-                mockturtle::xag_network,                    // the input network type
-                mockturtle::xag_network,                    // the database network type
-                mockturtle::xag_npn_db_kind::xag_complete>  // the kind of database to use
-
-                resynthesis_function{};
-
-            // rewrite network cuts using the given re-synthesis function
-            const auto cut_xag = mockturtle::cut_rewriting(xag, resynthesis_function, cut_params);
-
-            // perform technology mapping
-            const auto mapped_network = technology_mapping(cut_xag, tech_map_params);
-
+            // const technology_mapping_params tech_map_params = all_2_input_functions();
+            //
+            // // parameters for cut rewriting
+            // mockturtle::cut_rewriting_params cut_params{};
+            // cut_params.cut_enumeration_ps.cut_size = 4;
+            //
+            // const mockturtle::xag_npn_resynthesis<
+            //     mockturtle::xag_network,                    // the input network type
+            //     mockturtle::xag_network,                    // the database network type
+            //     mockturtle::xag_npn_db_kind::xag_complete>  // the kind of database to use
+            //
+            //     resynthesis_function{};
+            //
+            // // rewrite network cuts using the given re-synthesis function
+            // const auto cut_xag = mockturtle::cut_rewriting(xag, resynthesis_function, cut_params);
+            //
+            // // perform technology mapping
+            // const auto mapped_network = technology_mapping(cut_xag, tech_map_params);
+            //
             const auto& [params, func] = parse_params<lyt_t, skeleton>(argc, argv, surface_lattice);
 
             advanced_circuit_design_stats<gate_lyt> st{};
@@ -480,11 +480,14 @@ int main(int argc, char* argv[])  // NOLINT
             const auto i2 = g.create_pi("2", {1, 0});
             const auto i3 = g.create_pi("3", {2, 1});
             const auto a  = g.create_and(i1, i2, {1, 1});
-            const auto o  = g.create_or(a, i3, {1, 2});
+            const auto o  = g.create_nor(a, i3, {1, 2});
             g.create_po(o, "o", {1, 3});
 
+
+            // cart_odd_row_gate_clk_lyt g{{7,5}};
+
             const std::vector<lyt_t>& lyts =
-                advanced_circuit_design<decltype(mapped_network), lyt_t, gate_lyt, skeleton>(g  // mapped_network
+                advanced_circuit_design<mockturtle::xag_network, lyt_t, gate_lyt, skeleton>(g  // mapped_network
                                                                                              ,
                                                                                              params, &st);
 
@@ -495,6 +498,9 @@ int main(int argc, char* argv[])  // NOLINT
 
             // write a SiQAD simulation file
             // write_sqd_layout(*lyt, layout_path.c_str());
+
+            create_directory(b_dir / "exact_benchmarks_layout" / func);
+
             uint64_t ix = 0;
             for (const auto& lyt : lyts)
             {
@@ -503,7 +509,7 @@ int main(int argc, char* argv[])  // NOLINT
             }
 
             // write runtime to file
-            const auto runtime_path = b_dir / "exact_benchmarks_runtime" /*/ num_in_dir */ / (name.string() + ".txt");
+            const auto runtime_path = b_dir / "exact_benchmarks_runtime" /*/ num_in_dir */ / (func + ".txt");
             std::ofstream os{runtime_path, std::ofstream::out};
             if (!os.is_open())
             {
@@ -514,7 +520,7 @@ int main(int argc, char* argv[])  // NOLINT
 
             return EXIT_SUCCESS;
 
-            sidb_circuits_with_defects(benchmark, mockturtle::to_seconds(st.time_total),
+            sidb_circuits_with_defects(func, mockturtle::to_seconds(st.time_total),
                                        st.exact_stats.num_aspect_ratios, !lyts.empty());
             sidb_circuits_with_defects.save();
             sidb_circuits_with_defects.table();
