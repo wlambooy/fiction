@@ -2,12 +2,13 @@
 // Created by Willem Lambooy on 27/01/2025.
 //
 
+#include <fiction/algorithms/physical_design/advanced_circuit_design.hpp>
 #if (FICTION_Z3_SOLVER)
 
 #include "fiction_experiments.hpp"
 
 #include <fiction/algorithms/network_transformation/technology_mapping.hpp>
-#include <fiction/algorithms/physical_design/advanced_circuit_design.hpp>
+// #include <fiction/algorithms/physical_design/advanced_circuit_design.hpp>
 // #include <fiction/algorithms/physical_design/design_sidb_gates.hpp>
 #include <fiction/algorithms/simulation/sidb/sidb_simulation_engine.hpp>
 #include <fiction/io/print_layout.hpp>
@@ -113,7 +114,7 @@ parse_params(const int argc, char** argv,
 
     app.add_option("--threads", threads_signed, "Available threads (0 = all)");
 
-    std::string func = "AND";
+    std::string func = "FREEANDEX";
     app.add_option("--func", func, "Function name");
 
     app.add_flag("--print_solutions", params.print_found_circuits, "Print found solutions during exhaustive search");
@@ -399,135 +400,92 @@ int main(int argc, char* argv[])  // NOLINT
     experiments::experiment<std::string, double, uint64_t, bool> sidb_circuits_with_defects{
         "sidb_circuits_with_defects", "benchmark", "runtime", "number of aspect ratios", "success"};
 
-    const std::string base_dir = fmt::format("{}benchmarks_verilog", EXPERIMENTS_PATH);
+    const fs::path b_dir = fmt::format("{}", EXPERIMENTS_PATH);
 
-    for (int n = 2; n <= 4; ++n)
-    {
-        const fs::path input_dir = base_dir + "/" + std::to_string(n) + "_in";
+    const auto& [params, func] = parse_params<lyt_t, skeleton>(argc, argv, surface_lattice);
 
-        // for (const auto& entry : fs::directory_iterator(input_dir))
+    advanced_circuit_design_stats<cart_odd_row_gate_clk_lyt> st{};
+
+    cart_odd_row_gate_clk_lyt g{{7, 5}};
+    const auto                i1 = g.create_pi("1", {0, 0});
+    const auto                i2 = g.create_pi("2", {7, 0});
+    const auto                b1 = g.create_buf(i1, {1, 1});
+    const auto                b2 = g.create_buf(i2, {5, 1});
+    const auto                a1 = g.create_and(i1, i2, {3, 2});
+    // const auto                a2 = g.create_and(i1, i2, {4, 2});
+    // const auto                a3 = g.create_and(i1, i2, {3, 3});
+    const auto o = g.create_po(a1, "o", {4, 4});
+    const auto p = g.create_po(o, "p", {5, 5});
+
+    std::unordered_map<mockturtle::node<cart_odd_row_gate_clk_lyt>, std::pair<uint8_t, uint8_t>> sidb_count_map{};
+    sidb_count_map[g.get_node({0, 0})] = {2, 2};
+    sidb_count_map[g.get_node({7, 0})] = {2, 2};
+    sidb_count_map[g.get_node({1, 1})] = {2, 2};
+    sidb_count_map[g.get_node({5, 1})] = {2, 2};
+    sidb_count_map[g.get_node({3, 2})] = {0, 1};
+    sidb_count_map[g.get_node({4, 2})] = {0, 1};
+    sidb_count_map[g.get_node({3, 3})] = {0, 1};
+    sidb_count_map[g.get_node({4, 4})] = {2, 2};
+    sidb_count_map[g.get_node({5, 5})] = {1, 1};
+
+    g.foreach_node(
+        [&](const auto& n, [[maybe_unused]] auto i)
         {
-            // const auto& verilog_path = entry.path();  // e.g., <something>/benchmarks_verilog/3_in/foo.v
-            // const auto  num_in_dir   = verilog_path.parent_path().filename();                   // "3_in"
-            // const auto  name         = verilog_path.stem();                                     // "foo"
-            const auto  b_dir        = input_dir.parent_path().parent_path();  // <something>
-            // const auto  layout_path  = b_dir / "benchmarks_layout" / num_in_dir / (name.string() + ".sqd");
-            // if (std::ifstream is{layout_path.c_str()}; is.is_open())
-            // {
-                // continue;
-            // }
-
-            // const auto benchmark = entry.path().string();
-            // fmt::print("[attempts] processing {}\n", benchmark);
-
-            // mockturtle::xag_network xag{};
-            // const auto              result = lorina::read_verilog(benchmark, mockturtle::verilog_reader(xag));
-            // assert(result == lorina::return_code::success);
-
-            // compute depth
-            // const mockturtle::depth_view depth_xag{xag};
-
-            // const technology_mapping_params tech_map_params = all_2_input_functions();
-            //
-            // // parameters for cut rewriting
-            // mockturtle::cut_rewriting_params cut_params{};
-            // cut_params.cut_enumeration_ps.cut_size = 4;
-            //
-            // const mockturtle::xag_npn_resynthesis<
-            //     mockturtle::xag_network,                    // the input network type
-            //     mockturtle::xag_network,                    // the database network type
-            //     mockturtle::xag_npn_db_kind::xag_complete>  // the kind of database to use
-            //
-            //     resynthesis_function{};
-            //
-            // // rewrite network cuts using the given re-synthesis function
-            // const auto cut_xag = mockturtle::cut_rewriting(xag, resynthesis_function, cut_params);
-            //
-            // // perform technology mapping
-            // const auto mapped_network = technology_mapping(cut_xag, tech_map_params);
-            //
-            const auto& [params, func] = parse_params<lyt_t, skeleton>(argc, argv, surface_lattice);
-
-            advanced_circuit_design_stats<gate_lyt> st{};
-
-            // gate_lyt                     g{{2, 4}, row_clocking<gate_lyt>()};
-            // const auto                   i1 = g.create_pi("1", {0, 0});
-            // const auto                   i2 = g.create_pi("2", {2, 0});
-            // const auto                   b1 = g.create_buf(i1, {1, 1});
-            // const auto                   b2 = g.create_buf(i2, {2, 1});
-            // mockturtle::signal<gate_lyt> a;
-            // if (func == "AND")
-            //     a = g.create_and(b1, b2, {1, 2});
-            // else if (func == "OR")
-            //     a = g.create_or(b1, b2, {1, 2});
-            // else if (func == "NOR")
-            //     a = g.create_nor(b1, b2, {1, 2});
-            // else if (func == "NAND")
-            //     a = g.create_nand(b1, b2, {1, 2});
-            // else if (func == "XOR")
-            //     a = g.create_xor(b1, b2, {1, 2});
-            // else if (func == "XNOR")
-            //     a = g.create_xnor(b1, b2, {1, 2});
-            // else
-            //     a = g.create_and(b1, b2, {1, 2});
-            // const auto b3 = g.create_buf(a, {1, 3});
-            // g.create_po(b3, "o", {0, 4});
-            //
-            // std::cout << "Creating " << func << " ...\n" << std::endl;
-
-            gate_lyt   g{{2, 3}, row_clocking<gate_lyt>()};
-            const auto i1 = g.create_pi("1", {0, 0});
-            const auto i2 = g.create_pi("2", {1, 0});
-            const auto i3 = g.create_pi("3", {2, 1});
-            const auto a  = g.create_and(i1, i2, {1, 1});
-            const auto o  = g.create_nor(a, i3, {1, 2});
-            g.create_po(o, "o", {1, 3});
-
-
-            // cart_odd_row_gate_clk_lyt g{{7,5}};
-
-            const std::vector<lyt_t>& lyts =
-                advanced_circuit_design<mockturtle::xag_network, lyt_t, gate_lyt, skeleton>(g  // mapped_network
-                                                                                             ,
-                                                                                             params, &st);
-
-            // check equivalence
-            // const auto miter = mockturtle::miter<mockturtle::klut_network>(mapped_network, st.gate_layout.value());
-            // const auto eq    = mockturtle::equivalence_checking(*miter);
-            // assert(eq.has_value());
-
-            // write a SiQAD simulation file
-            // write_sqd_layout(*lyt, layout_path.c_str());
-
-            create_directory(b_dir / "exact_benchmarks_layout" / func);
-
-            uint64_t ix = 0;
-            for (const auto& lyt : lyts)
+            if (g.is_constant(n))
             {
-                write_sqd_layout(lyt,
-                                 (b_dir / "exact_benchmarks_layout" / func / (std::to_string(ix++) + ".sqd")).c_str());
+                return;
             }
 
-            // write runtime to file
-            const auto runtime_path = b_dir / "exact_benchmarks_runtime" /*/ num_in_dir */ / (func + ".txt");
-            std::ofstream os{runtime_path, std::ofstream::out};
-            if (!os.is_open())
+            const tile<cart_odd_row_gate_clk_lyt>& t = g.get_tile(n);
+
+            const cell<lyt_t> nw_position = relative_to_absolute_cell_position<3, 4, cart_odd_row_gate_clk_lyt, lyt_t>(
+                g, t, {g.is_in_odd_row(t) ? 1 : 0, 0});
+            const cell<lyt_t> se_position =
+                relative_to_absolute_cell_position<3, 4, cart_odd_row_gate_clk_lyt, lyt_t>(g, t, {2, 3});
+
+            const std::vector<cell<lyt_t>>& all_sidbs_in_canvas =
+                all_coordinates_in_spanned_area(nw_position, se_position);
+
+            std::cout << "tile: " << t << std::endl;
+            for (const auto& c : all_sidbs_in_canvas)
             {
-                throw std::ofstream::failure("could not open file");
+                std::cout << c.x << " " << c.y << std::endl;
             }
-            const auto runtime_string = fmt::format("{:.2f}", mockturtle::to_seconds(st.time_total));
-            os.write(runtime_string.c_str(), static_cast<uint32_t>(runtime_string.size()));
+            std::cout << std::endl;
+        });
 
-            return EXIT_SUCCESS;
+    const std::vector<lyt_t>& lyts =
+        advanced_circuit_design<lyt_t, cart_odd_row_gate_clk_lyt>(g, sidb_count_map, params, &st);
 
-            sidb_circuits_with_defects(func, mockturtle::to_seconds(st.time_total),
-                                       st.exact_stats.num_aspect_ratios, !lyts.empty());
-            sidb_circuits_with_defects.save();
-            sidb_circuits_with_defects.table();
-        }
+    // write a SiQAD simulation file
+    // write_sqd_layout(*lyt, layout_path.c_str());
+
+    create_directory(b_dir / "exact_benchmarks_layout" / func);
+
+    uint64_t ix = 0;
+    for (const auto& lyt : lyts)
+    {
+        write_sqd_layout(lyt, (b_dir / "exact_benchmarks_layout" / func / (std::to_string(ix++) + ".sqd")).c_str());
     }
 
+    // write runtime to file
+    const auto    runtime_path = b_dir / "exact_benchmarks_runtime" /*/ num_in_dir */ / (func + ".txt");
+    std::ofstream os{runtime_path, std::ofstream::out};
+    if (!os.is_open())
+    {
+        throw std::ofstream::failure("could not open file");
+    }
+    const auto runtime_string = fmt::format("{:.2f}", mockturtle::to_seconds(st.time_total));
+    os.write(runtime_string.c_str(), static_cast<uint32_t>(runtime_string.size()));
+
     return EXIT_SUCCESS;
+
+    // sidb_circuits_with_defects(func, mockturtle::to_seconds(st.time_total), st.exact_stats.num_aspect_ratios,
+    //                            !lyts.empty());
+    // sidb_circuits_with_defects.save();
+    // sidb_circuits_with_defects.table();
+    //
+    // return EXIT_SUCCESS;
 }
 
 #else  // FICTION_Z3_SOLVER

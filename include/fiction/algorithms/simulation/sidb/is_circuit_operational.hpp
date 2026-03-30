@@ -172,6 +172,8 @@ struct circuit_operational_assessment
     }
 };
 
+// #define  PRINT_DEBUG
+
 namespace detail
 {
 
@@ -216,8 +218,7 @@ struct thread_count_manager
  * @tparam todo.
  */
 template <typename Lyt, typename GateLyt,
-          local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED,
-          typename SkeletonGateLibrary             = sidb_bdl_skeleton_1>
+          local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED>
 class is_circuit_operational_impl
 {
   public:
@@ -230,12 +231,15 @@ class is_circuit_operational_impl
      * @param spec Expected Boolean function of the layout given as a multi-output truth table.
      * @param params Parameters for the `is_operational` algorithm.
      */
-    is_circuit_operational_impl(
-        const sidb_cell_level_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>& implemented_bdl_circuit,
-        const is_circuit_operational_params& params, const std::unique_ptr<thread_count_manager>& tcm) :
+    is_circuit_operational_impl(const sidb_cell_level_bdl_circuit<Lyt, GateLyt>& implemented_bdl_circuit,
+                                const is_circuit_operational_params&             params,
+                                const std::unique_ptr<thread_count_manager>&     tcm) :
             implemented_circuit{implemented_bdl_circuit},
             parameters{params},
-            thread_counter{tcm}
+            thread_counter{tcm},
+            inp_pairs{detect_bdl_pairs<Lyt>(implemented_circuit.cell_layout, sidb_technology::cell_type::INPUT,
+                                            detect_bdl_pairs_params{0, detect_bdl_pairs_params{}.maximum_distance})}
+
     {}
     /**
      * Run the `is_operational` algorithm.
@@ -248,7 +252,7 @@ class is_circuit_operational_impl
      */
     [[nodiscard]] operational_status run() noexcept
     {
-        // perform quickcell pruning
+        /* // perform quickcell pruning
         Lyt only_canvasses{};
         implemented_circuit.cell_layout.foreach_cell(
             [&](const cell<Lyt>& c)
@@ -260,7 +264,7 @@ class is_circuit_operational_impl
             });
 
         std::set<uint64_t> consistent_super_circuit_input_indices_set{};
-        for (auto i = 0u; i < 1 << implemented_circuit.circuit.num_inputs; ++i)
+        for (auto i = 0u; i < 1 << implemented_circuit.circuit.gate_layout.num_pis(); ++i)
         {
             if (implemented_circuit.circuit.input_index_possible_in_super_circuit(i))
             {
@@ -285,7 +289,7 @@ class is_circuit_operational_impl
             const auto collect_gate_influence_bounds = [&](const cell<Lyt>& c)
             {
                 const mockturtle::node<GateLyt>& n = implemented_circuit.circuit.super_circuit.gate_layout.get_node(
-                    implemented_circuit.circuit.super_circuit.skeleton_with_canvasses
+                    implemented_circuit.circuit.super_circuit.canvasses_lyt
                         .template get_cell_tile<tile<GateLyt>>(c));
 
                 std::array<double, 2> gate_design_influence_bound_sum = {0, 0};
@@ -319,14 +323,14 @@ class is_circuit_operational_impl
                 {
                     cc_params.local_external_potential[c] = collect_gate_influence_bounds(c);
 
-                    const double skeleton_influence =
-                        *implemented_circuit.circuit.super_circuit
-                             .get_simulated_bdl_wires_for_input_index(super_circuit_input_index)
-                             .get()
-                             .get_local_internal_potential(c);
-
-                    cc_params.local_external_potential[c][0] += skeleton_influence;
-                    cc_params.local_external_potential[c][1] += skeleton_influence;
+                    // const double skeleton_influence =
+                    //     *implemented_circuit.circuit.super_circuit
+                    //          .get_simulated_bdl_wires_for_input_index(super_circuit_input_index)
+                    //          .get()
+                    //          .get_local_internal_potential(c);
+                    //
+                    // cc_params.local_external_potential[c][0] += skeleton_influence;
+                    // cc_params.local_external_potential[c][1] += skeleton_influence;
                 });
 
             const auto sim_res =
@@ -341,18 +345,18 @@ class is_circuit_operational_impl
 
             // second pruning: physical infeasibility of skeleton
             // NOTE: instead of the implementation below it might be better to only check the sub-circuit skeleton
-            bdl_input_iterator<Lyt> bii{implemented_circuit.circuit.super_circuit.skeleton,
+            bdl_input_iterator<Lyt> bii{implemented_circuit.circuit.super_circuit.canvasses_lyt,
                                         parameters.input_bdl_iterator_params};
             bii = super_circuit_input_index;
 
-            charge_distribution_surface<Lyt, local_external_potential_type::BOUNDED> simulated_bdl_wires{
-                implemented_circuit.circuit.super_circuit
-                    .get_simulated_bdl_wires_for_input_index(super_circuit_input_index)
-                    .get()};  // todo: check clone behavior
-
+            // charge_distribution_surface<Lyt, local_external_potential_type::BOUNDED> simulated_bdl_wires{
+            //     implemented_circuit.circuit.super_circuit
+            //         .get_simulated_bdl_wires_for_input_index(super_circuit_input_index)
+            //         .get()};  // todo: check clone behavior
+            //
             typename charge_distribution_surface<Lyt, local_external_potential_type::BOUNDED>::
-                local_external_potential_map_t& bounded_influence_from_canvasses =
-                    simulated_bdl_wires.get_local_external_potentials_reference();
+                local_external_potential_map_t& bounded_influence_from_canvasses{};
+                    // simulated_bdl_wires.get_local_external_potentials_reference();
 
             // first collect bounded influence from other canvasses
             (*bii).foreach_cell([&](const auto& c)
@@ -418,41 +422,83 @@ class is_circuit_operational_impl
             {
                 return operational_status::NON_OPERATIONAL;
             }
-        }
+        }*/
 
-        bdl_input_iterator<Lyt> bii{implemented_circuit.cell_layout, parameters.input_bdl_iterator_params};
-        bii = 0;
+        std::vector<bool> flip_chart{};
+        flip_chart.reserve(inp_pairs.size());
 
-        // number of different input combinations
-        for (auto i = 0u; i < 1 << implemented_circuit.circuit.num_inputs; ++i, ++bii)
+        for (const auto& pair : inp_pairs)
         {
-            if (!implemented_circuit.circuit.input_index_possible_in_super_circuit(i))
+            bool flip = false;
+
+            if (pair.upper.y == pair.lower.y)
             {
-                // input combination cannot exist in super circuit
+                const tile<GateLyt>& t =
+                    implemented_circuit.circuit.super_circuit.canvasses_lyt.template get_cell_tile<tile<GateLyt>>(
+                        pair.upper);
 
-                continue;
-            }
-
-            bool at_least_one_physically_valid = false;
-
-            for (const uint64_t super_circuit_input_index :
-                 implemented_circuit.circuit.get_consistent_super_circuit_input_indices(i).get())
-            {
-                // performs physical simulation of a given SiDB layout at a given input combination
-
-                if (const auto& sim_res = physical_simulation_of_layout(*bii, i, super_circuit_input_index);
-                    determine_status_and_logic_match(i, sim_res) == operational_status::OPERATIONAL)
+                for (int8_t x = -2; x < 0; ++x)  // todo make parametric?
                 {
-                    at_least_one_physically_valid = true;
-
-                    break;
+                    if (implemented_circuit.circuit.super_circuit.gate_layout.get_node(
+                            tile<GateLyt>{t.x + x, t.y + 1}) != 0)
+                    {
+                        flip = true;
+                        break;
+                    }
                 }
             }
 
-            // if no physically valid charge distributions were found, the layout is non-operational
-            if (!at_least_one_physically_valid)
+            flip_chart.push_back(flip);
+        }
+
+        Lyt lyt{implemented_circuit.cell_layout.clone()};
+
+        // number of different input combinations
+        for (auto iix = 0u; iix < 1 << inp_pairs.size(); ++iix)
+        {
+#ifdef PRINT_DEBUG
+            std::cout << "input index: " << iix << std::endl;
+#endif
+            if (!implemented_circuit.circuit.input_index_possible_in_super_circuit(iix))
             {
-                return operational_status::NON_OPERATIONAL;
+                // input combination cannot exist in super circuit
+#ifdef PRINT_DEBUG
+                std::cout << "SKIP" << std::endl;
+#endif
+                continue;
+            }
+
+            for (uint64_t input_number = inp_pairs.size() - 1; input_number < inp_pairs.size(); --input_number)
+            {
+                if (flip_chart.at(input_number) ^
+                    ((iix & (uint64_t{1ull} << (inp_pairs.size() - 1 - input_number))) != 0ull))
+                {
+                    lyt.assign_cell_type(inp_pairs.at(input_number).lower, technology<Lyt>::cell_type::INPUT);
+                    lyt.assign_cell_type(inp_pairs.at(input_number).upper, technology<Lyt>::cell_type::EMPTY);
+                }
+                else
+                {
+                    lyt.assign_cell_type(inp_pairs.at(input_number).lower, technology<Lyt>::cell_type::EMPTY);
+                    lyt.assign_cell_type(inp_pairs.at(input_number).upper, technology<Lyt>::cell_type::INPUT);
+                }
+            }
+
+            for (const uint64_t super_circuit_input_index :
+                 implemented_circuit.circuit.get_consistent_super_circuit_input_indices(iix).get())
+            {
+                // performs physical simulation of a given SiDB layout at a given input combination
+
+#ifdef PRINT_DEBUG
+                std::cout << "SUPER CIRCUIT INPUT INDEX: " << super_circuit_input_index << std::endl;
+                print_layout(lyt);
+                std::cout << "to simulate ^^^^^^^^^" << std::endl;
+#endif
+                if (const auto& sim_res = physical_simulation_of_layout(lyt, iix, super_circuit_input_index);
+                    determine_status_and_logic_match(iix, super_circuit_input_index, sim_res) ==
+                    operational_status::NON_OPERATIONAL)
+                {
+                    return operational_status::NON_OPERATIONAL;
+                }
             }
         }
 
@@ -460,13 +506,15 @@ class is_circuit_operational_impl
     }
 
   private:
-    const sidb_cell_level_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>& implemented_circuit{};
+    const sidb_cell_level_bdl_circuit<Lyt, GateLyt>& implemented_circuit{};
     /**
      * Parameters for the `is_operational` algorithm.
      */
     const is_circuit_operational_params& parameters;
 
     const std::unique_ptr<thread_count_manager>& thread_counter;
+
+    const std::vector<bdl_pair<cell<Lyt>>> inp_pairs{};
 
     using pair_t = std::pair<sidb_simulation_result<Lyt, ExtPotType>,
                              typename charge_distribution_surface<Lyt>::local_external_potential_map_t>;
@@ -491,16 +539,17 @@ class is_circuit_operational_impl
             implemented_circuit.circuit.collect_influence_bounds(lyt, input_index, super_circuit_input_index,
                                                                  cc_params.local_external_potential);
 
-            Lyt cell_lyt_without_internal_perturbers{};
-
-            lyt.foreach_cell(
-                [&](const auto& c)
-                {
-                    if (const auto& ct = implemented_circuit.circuit.is_not_internal_perturber(lyt, c); ct.has_value())
-                    {
-                        cell_lyt_without_internal_perturbers.assign_cell_type(c, *ct);
-                    }
-                });
+            // Lyt cell_lyt_without_internal_perturbers{};
+            //
+            // lyt.foreach_cell(
+            //     [&](const auto& c)
+            //     {
+            //         if (const auto& ct = implemented_circuit.circuit.is_not_internal_perturber(lyt, c);
+            //         ct.has_value())
+            //         {
+            //             cell_lyt_without_internal_perturbers.assign_cell_type(c, *ct);
+            //         }
+            //     });
 
             cc_params.available_threads = 1;
 
@@ -510,10 +559,10 @@ class is_circuit_operational_impl
                 {
                     std::cout << c.x << ' ' << c.y << " : " << b[0] << ' ' << b[1] << std::endl;
                 }
-                print_layout(cell_lyt_without_internal_perturbers);
+                print_layout(lyt);
             }
 
-            const auto& sim_res = clustercomplete<Lyt, ExtPotType>(cell_lyt_without_internal_perturbers, cc_params);
+            const auto& sim_res = clustercomplete<Lyt, ExtPotType>(lyt, cc_params);
 
             if (parameters.print)
             {
@@ -569,50 +618,95 @@ class is_circuit_operational_impl
     [[nodiscard]] std::vector<uint64_t> get_possible_ground_state_indices(
         const std::vector<charge_distribution_surface<Lyt, ExtPotType>>& simulated_charge_distributions) noexcept
     {
-        std::vector<std::pair<uint64_t, std::array<double, 2>>> sorted_indices{};
-        sorted_indices.reserve(simulated_charge_distributions.size());
+        std::vector<uint64_t> possible_ground_state_indices{};
+        possible_ground_state_indices.reserve(simulated_charge_distributions.size());
 
-        for (uint64_t cds_ix = 0; cds_ix < simulated_charge_distributions.size(); ++cds_ix)
+        for (uint64_t ix = 0; ix < simulated_charge_distributions.size(); ++ix)
         {
-            sorted_indices.emplace_back(cds_ix,
-                                        simulated_charge_distributions.at(cds_ix).get_electrostatic_potential_energy());
-        }
-
-        // Sort by energy[0] ascending, then energy[1] descending
-        std::sort(sorted_indices.begin(), sorted_indices.end(),
-                  [&](const auto& a, const auto& b)
-                  {
-                      const std::array<double, 2>& e1 = a.second;
-                      const std::array<double, 2>& e2 = b.second;
-
-                      if (std::abs(e1[0] - e2[0]) < constants::ERROR_MARGIN)
-                      {
-                          return e1[1] > e2[1];
-                      }
-
-                      return e1[0] < e2[0];
-                  });
-
-        std::vector possible_ground_state_indices{sorted_indices.front().first};
-        possible_ground_state_indices.reserve(sorted_indices.size());
-
-        double max_energy = sorted_indices.front().second[1];
-
-        for (uint64_t ix = 1; ix < sorted_indices.size(); ++ix)
-        {
-            const std::array<double, 2>& bounded_energy = sorted_indices.at(ix).second;
-
-            if (bounded_energy[0] > max_energy - constants::ERROR_MARGIN)
-            {
-                break;  // Done: all future entries start after max_energy
-            }
-
-            possible_ground_state_indices.push_back(sorted_indices.at(ix).first);
-
-            max_energy = std::max(max_energy, bounded_energy[1]);
+            possible_ground_state_indices.push_back(ix);
         }
 
         return possible_ground_state_indices;
+
+        // todo mistake in exact reasoning! this considers energy bounds on the subsystem, but should reason on energy
+        // todo   bounds of the whole system.... should disabled for now.
+
+        //         std::vector<std::pair<uint64_t, std::array<double, 2>>> sorted_indices{};
+        //         sorted_indices.reserve(simulated_charge_distributions.size());
+        //
+        //         for (uint64_t cds_ix = 0; cds_ix < simulated_charge_distributions.size(); ++cds_ix)
+        //         {
+        //             sorted_indices.emplace_back(cds_ix,
+        //                                         simulated_charge_distributions.at(cds_ix).get_electrostatic_potential_energy());
+        //         }
+        //
+        //         // Sort by energy[0] ascending, then energy[1] descending
+        //         std::sort(sorted_indices.begin(), sorted_indices.end(),
+        //                   [&](const auto& a, const auto& b)
+        //                   {
+        //                       const std::array<double, 2>& e1 = a.second;
+        //                       const std::array<double, 2>& e2 = b.second;
+        //
+        //                       if (std::abs(e1[0] - e2[0]) < constants::ERROR_MARGIN)
+        //                       {
+        //                           return e1[1] > e2[1];
+        //                       }
+        //
+        //                       return e1[0] < e2[0];
+        //                   });
+        //
+        //         std::vector possible_ground_state_indices{sorted_indices.front().first};
+        //
+        //         // todo ...
+        //
+        //         uint64_t i = 1;
+        //         while (i < std::min(decltype(sorted_indices.size()){4}, sorted_indices.size()))
+        //         {
+        // //             bool found_pos = false;
+        // //             bool found_neg = false;
+        // //             for (const auto& db :
+        // simulated_charge_distributions.at(sorted_indices.at(i).first).get_sidb_order())
+        // //             {
+        // //                 switch (
+        // simulated_charge_distributions.at(sorted_indices.at(i).first).get_charge_state(db))
+        // //                 {
+        // //                     case sidb_charge_state::POSITIVE: found_pos = true; break;
+        // //                     case sidb_charge_state::NEGATIVE: found_neg = true; break;
+        // //                     default: break;
+        // //                 }
+        // //                 if (found_neg || found_pos)
+        // // break;
+        // //             }
+        // //             if (found_pos || !found_neg)
+        // //             {
+        //                 possible_ground_state_indices.emplace_back(sorted_indices.at(i++).first);
+        //             // }
+        //             // else
+        //             // {
+        //             //     break;
+        //             // }
+        //         }
+        //
+        //         // todo very not exact!!!
+        //         // possible_ground_state_indices.reserve(sorted_indices.size());
+        //         //
+        //         // double max_energy = sorted_indices.front().second[1];
+        //         //
+        //         // for (uint64_t ix = 1; ix < sorted_indices.size(); ++ix)
+        //         // {
+        //         //     const std::array<double, 2>& bounded_energy = sorted_indices.at(ix).second;
+        //         //
+        //         //     if (bounded_energy[0] > max_energy - constants::ERROR_MARGIN)
+        //         //     {
+        //         //         break;  // Done: all future entries start after max_energy
+        //         //     }
+        //         //
+        //         //     possible_ground_state_indices.push_back(sorted_indices.at(ix).first);
+        //         //
+        //         //     max_energy = std::max(max_energy, bounded_energy[1]);
+        //         // }
+        //
+        //         return possible_ground_state_indices;
     }
     /**
     * todo
@@ -624,66 +718,301 @@ class is_circuit_operational_impl
     */
     [[nodiscard]] operational_status
     assess_logic_match_of_charge_distribution(const charge_distribution_surface<Lyt, ExtPotType>& given_cds,
-                                              const uint64_t input_pattern) noexcept
+                                              const uint64_t                                      input_pattern,
+                                              const uint64_t super_circuit_input_pattern) noexcept
     {
-        const charge_distribution_surface<Lyt, local_external_potential_type::BOUNDED>& simulated_bdl_wires =
-            implemented_circuit.circuit.super_circuit
-                .get_simulated_bdl_wires_for_input_index(
-                    implemented_circuit.circuit.get_consistent_super_circuit_input_indices(input_pattern).get().front())
-                .get();
-
-        if (parameters.print)
+        const auto is_input_bit_set = [&](const uint64_t input_number)
         {
-            std::cout << "match" << std::endl;
-            print_layout(given_cds);
-            std::cout << "to" << std::endl;
-            print_layout(simulated_bdl_wires);
-            std::cout << "\n";
-        }
+            return (super_circuit_input_pattern & (uint64_t{1ull} << (2 - 1 - input_number))) != 0ull;
+        };  // todo hardcoded 2 input here
 
-        for (const bdl_wire<Lyt>& wire : implemented_circuit.circuit.bdl_wires)
+        std::vector<bdl_pair<cell<Lyt>>> input_bdl_pairs = inp_pairs;
+
+#ifdef PRINT_DEBUG
+        std::cout << "layout:" << std::endl;
+        print_layout(given_cds);
+        std::cout << "inputs: " << is_input_bit_set(0) << '\t' << is_input_bit_set(1) << std::endl;
+        std::cout << "input pattern: " << input_pattern << std::endl;
+        std::cout << "super circuit input pattern: " << super_circuit_input_pattern << std::endl;
+        std::cout << "input pairs: " << input_bdl_pairs.size() << std::endl;
+#endif
+
+        // todo: this is very barebones
+        for (auto&& p : detect_bdl_pairs(implemented_circuit.cell_layout, sidb_technology::cell_type::NORMAL,
+                                         detect_bdl_pairs_params{0, detect_bdl_pairs_params{}.maximum_distance}))
         {
-            for (const bdl_pair<cell<Lyt>>& pair : wire.pairs)
+            const tile<GateLyt>& t =
+                implemented_circuit.circuit.super_circuit.canvasses_lyt.template get_cell_tile<tile<GateLyt>>(p.upper);
+
+            if (t.y == 0)
             {
-                const sidb_charge_state upper_cs = given_cds.get_charge_state(pair.upper);
-                const sidb_charge_state lower_cs = given_cds.get_charge_state(pair.lower);
+                continue;
+            }
 
-                if (upper_cs != sidb_charge_state::NONE)
+            for (int8_t x = -3; x < 3; ++x)  // todo make parametric?
+            {
+                if (implemented_circuit.circuit.super_circuit.gate_layout.is_pi_tile(tile<GateLyt>{t.x + x, t.y - 1}))
                 {
-                    if (upper_cs != simulated_bdl_wires.get_charge_state(pair.upper))
-                    {
-                        return operational_status::NON_OPERATIONAL;
-                    }
-                }
+                    input_bdl_pairs.push_back(std::move(p));
 
-                if (lower_cs != sidb_charge_state::NONE)
-                {
-                    if (lower_cs != simulated_bdl_wires.get_charge_state(pair.lower))
-                    {
-                        return operational_status::NON_OPERATIONAL;
-                    }
+                    break;
                 }
             }
         }
 
+#ifdef PRINT_DEBUG
+        std::cout << "augmented input pairs: " << input_bdl_pairs.size() << std::endl;
+
+        std::cout << "bounding min: " << bounding_box_2d<Lyt>{given_cds}.get_min().x << ", "
+                  << bounding_box_2d<Lyt>{given_cds}.get_min().y << std::endl;
+        std::cout << "bounding max: " << bounding_box_2d<Lyt>{given_cds}.get_max().x << ", "
+                  << bounding_box_2d<Lyt>{given_cds}.get_max().y << std::endl;
+#endif
+
+        for (uint8_t i = 0; i < input_bdl_pairs.size(); ++i)
+        {
+            bool south_east = true;
+
+            const tile<GateLyt>& t =
+                implemented_circuit.circuit.super_circuit.canvasses_lyt.template get_cell_tile<tile<GateLyt>>(
+                    input_bdl_pairs.at(i).upper);
+
+            for (int8_t x = -2; x < 0; ++x)  // todo make parametric?
+            {
+                if (implemented_circuit.circuit.super_circuit.gate_layout.get_node(tile<GateLyt>{t.x + x, t.y + 1}) !=
+                    0)
+                {
+                    south_east = false;
+                    break;
+                }
+            }
+
+            const bool flip = !south_east && input_bdl_pairs.at(i).upper.y == input_bdl_pairs.at(i).lower.y;
+
+            const bool bit_set = is_input_bit_set(south_east ? 0 : 1);  // todo make work with > 2 inputs
+
+            if (bit_set ^ flip)
+            {
+                if (!(given_cds.get_charge_state(input_bdl_pairs.at(i).upper) == sidb_charge_state::NONE ||
+                      given_cds.get_charge_state(input_bdl_pairs.at(i).upper) == sidb_charge_state::NEUTRAL) ||
+                    given_cds.get_charge_state(input_bdl_pairs.at(i).lower) != sidb_charge_state::NEGATIVE)
+                {
+#ifdef PRINT_DEBUG
+                    std::cout << "a" << std::endl;
+                    if (given_cds.get_charge_state(input_bdl_pairs.at(i).lower) != sidb_charge_state::NEGATIVE)
+                    {
+                        std::cout << "NEG failure at index " << uint64_t{i} << ", lower @ "
+                                  << input_bdl_pairs.at(i).lower.x << ", " << input_bdl_pairs.at(i).lower.y
+                                  << std::endl;
+                    }
+                    else
+                    {
+                        std::cout << "NEUT failure at index " << uint64_t{i} << ", upper @ "
+                                  << input_bdl_pairs.at(i).upper.x << ", " << input_bdl_pairs.at(i).upper.y
+                                  << std::endl;
+                    }
+#endif
+                    return operational_status::NON_OPERATIONAL;
+                }
+            }
+            else
+            {
+                if (given_cds.get_charge_state(input_bdl_pairs.at(i).upper) != sidb_charge_state::NEGATIVE ||
+                    !(given_cds.get_charge_state(input_bdl_pairs.at(i).lower) == sidb_charge_state::NEUTRAL ||
+                      given_cds.get_charge_state(input_bdl_pairs.at(i).lower) == sidb_charge_state::NONE))
+                {
+#ifdef PRINT_DEBUG
+                    std::cout << "b" << std::endl;
+                    if (given_cds.get_charge_state(input_bdl_pairs.at(i).upper) != sidb_charge_state::NEGATIVE)
+                    {
+                        std::cout << "NEG failure at index " << uint64_t{i} << ", upper @ "
+                                  << input_bdl_pairs.at(i).upper.x << ", " << input_bdl_pairs.at(i).upper.y
+                                  << std::endl;
+                    }
+                    else
+                    {
+                        std::cout << "NEUT failure at index " << uint64_t{i} << ", lower @ "
+                                  << input_bdl_pairs.at(i).lower.x << ", " << input_bdl_pairs.at(i).lower.y
+                                  << std::endl;
+                    }
+#endif
+                    return operational_status::NON_OPERATIONAL;
+                }
+            }
+        }
+
+        const std::vector<bdl_pair<cell<Lyt>>>& bdl_pairs =
+            detect_bdl_pairs(implemented_circuit.cell_layout, sidb_technology::cell_type::OUTPUT,
+                             detect_bdl_pairs_params{0, detect_bdl_pairs_params{}.maximum_distance});
+
+        const bool bit_set = kitty::get_bit(implemented_circuit.circuit.function, input_pattern);
+
+#ifdef PRINT_DEBUG
+        std::cout << "BDL pairs: " << bdl_pairs.size() << std::endl;
+        std::cout << "function: ";
+        kitty::print_binary(implemented_circuit.circuit.function);
+        std::cout << "\tbit set: " << bit_set << std::endl;
+#endif
+
+        for (uint8_t i = 0; i < bdl_pairs.size(); ++i)
+        {
+            bool flip = false;
+
+            if (bdl_pairs.at(i).upper.y == bdl_pairs.at(i).lower.y)
+            {
+                const tile<GateLyt>& t =
+                    implemented_circuit.circuit.super_circuit.canvasses_lyt.template get_cell_tile<tile<GateLyt>>(
+                        bdl_pairs.at(i).upper);
+
+                for (int8_t x = -2; x < 0; ++x)  // todo make parametric?
+                {
+                    if (implemented_circuit.circuit.super_circuit.gate_layout.get_node(
+                            tile<GateLyt>{t.x + x, t.y + 1}) != 0)
+                    {
+                        flip = true;
+                        break;
+                    }
+                }
+            }
+
+            if (bit_set ^ flip)
+            {
+                if (!(given_cds.get_charge_state(bdl_pairs.at(i).upper) == sidb_charge_state::NONE ||
+                      given_cds.get_charge_state(bdl_pairs.at(i).upper) == sidb_charge_state::NEUTRAL) ||
+                    given_cds.get_charge_state(bdl_pairs.at(i).lower) != sidb_charge_state::NEGATIVE)
+                {
+#ifdef PRINT_DEBUG
+                    std::cout << "c" << std::endl;
+#endif
+                    return operational_status::NON_OPERATIONAL;
+                }
+            }
+            else
+            {
+                if (given_cds.get_charge_state(bdl_pairs.at(i).upper) != sidb_charge_state::NEGATIVE ||
+                    !(given_cds.get_charge_state(bdl_pairs.at(i).lower) == sidb_charge_state::NEUTRAL ||
+                      given_cds.get_charge_state(bdl_pairs.at(i).lower) == sidb_charge_state::NONE))
+                {
+#ifdef PRINT_DEBUG
+                    std::cout << "d" << std::endl;
+#endif
+                    return operational_status::NON_OPERATIONAL;
+                }
+            }
+        }
+
+        if (const cell<Lyt> op{bounding_box_2d<Lyt>{implemented_circuit.cell_layout}.get_max()};
+            implemented_circuit.cell_layout.get_cell_type(op) == sidb_technology::cell_type::OUTPUT_PERTURBER &&
+            given_cds.get_charge_state(op) != sidb_charge_state::NEGATIVE)
+        {
+#ifdef PRINT_DEBUG
+            std::cout << "e" << std::endl;
+#endif
+            return operational_status::NON_OPERATIONAL;
+        }
+
         return operational_status::OPERATIONAL;
+
+        /*
+        const auto is_bit_set = [&](const uint64_t input_number)
+        {
+            return (input_pattern &
+                    (uint64_t{1ull} << (implemented_circuit.circuit.function.num_vars() - 1 - input_number))) != 0ull;
+        };
+
+        const std::vector<bdl_pair<cell<Lyt>>>& input_bdl_pairs =
+            detect_bdl_pairs(implemented_circuit.circuit.canvasses_lyt, sidb_technology::cell_type::INPUT);
+
+        uint8_t bit_position = 0;
+
+        for (uint8_t i = 0; i < input_bdl_pairs.size(); ++i)
+        {
+            if (is_bit_set(i))
+            {
+                if (given_cds.get_charge_state(input_bdl_pairs.at(i).lower) != sidb_charge_state::NEGATIVE)
+                {
+                    return operational_status::NON_OPERATIONAL;
+                }
+            }
+            else
+            {
+                if (given_cds.get_charge_state(input_bdl_pairs.at(i).upper) != sidb_charge_state::NEGATIVE)
+                {
+                    return operational_status::NON_OPERATIONAL;
+                }
+            }
+
+            if (i == 0)
+            {
+                bit_position += 2 * static_cast<uint8_t>(is_bit_set(i));
+            }
+            else if (i == 1)
+            {
+                bit_position += static_cast<uint8_t>(is_bit_set(i));
+            }
+            else
+            {
+                assert(false && "todo");
+            }
+        }
+
+        const std::vector<bdl_pair<cell<Lyt>>>& output_bdl_pairs =
+            detect_bdl_pairs(implemented_circuit.circuit.canvasses_lyt, sidb_technology::cell_type::OUTPUT);
+
+        for (uint8_t i = 0; i < output_bdl_pairs.size(); ++i)
+        {
+            const mockturtle::node<GateLyt>& po_n = implemented_circuit.circuit.super_circuit.gate_layout.get_node(
+                implemented_circuit.circuit.canvasses_lyt.template get_cell_tile<tile<GateLyt>>(
+                    output_bdl_pairs.at(i).upper));
+
+            std::vector<mockturtle::node<GateLyt>> logic_n{};
+            implemented_circuit.circuit.super_circuit.gate_layout.foreach_fanin(po_n,
+                                                                  [&logic_n](const auto& n) { logic_n.push_back(n); });
+            assert(logic_n.size() == 1 && "precisely one node must connect to the PO");
+
+            if (kitty::get_bit(implemented_circuit.circuit.super_circuit.gate_layout.node_function(logic_n.front()),
+        bit_position))
+            {
+                if (given_cds.get_charge_state(output_bdl_pairs.at(i).upper) != sidb_charge_state::NEUTRAL ||
+                    given_cds.get_charge_state(output_bdl_pairs.at(i).lower) != sidb_charge_state::NEGATIVE)
+                {
+                    return operational_status::NON_OPERATIONAL;
+                }
+            }
+            else
+            {
+                if (given_cds.get_charge_state(output_bdl_pairs.at(i).upper) != sidb_charge_state::NEGATIVE ||
+                    given_cds.get_charge_state(output_bdl_pairs.at(i).lower) != sidb_charge_state::NEUTRAL)
+                {
+                    return operational_status::NON_OPERATIONAL;
+                }
+            }
+        }
+
+        return operational_status::OPERATIONAL;*/
     }
 
     [[nodiscard]] operational_status
-    determine_status_and_logic_match(const uint64_t                                 i,
+    determine_status_and_logic_match(const uint64_t i, const uint64_t s_i,
                                      const sidb_simulation_result<Lyt, ExtPotType>& simulation_results) noexcept
     {
         if constexpr (ExtPotType == local_external_potential_type::BOUNDED)
         {
             for (const uint64_t cds_ix : get_possible_ground_state_indices(simulation_results.charge_distributions))
             {
-                if (assess_logic_match_of_charge_distribution(simulation_results.charge_distributions.at(cds_ix), i) ==
-                    operational_status::OPERATIONAL)
+                if (assess_logic_match_of_charge_distribution(simulation_results.charge_distributions.at(cds_ix), i,
+                                                              s_i) == operational_status::OPERATIONAL)
                 {
+#ifdef PRINT_DEBUG
+                    std::cout << "verdict: operational\n" << std::endl;
+#endif
                     return operational_status::OPERATIONAL;
                 }
             }
 
+#ifdef PRINT_DEBUG
+            std::cout << "verdict: NON-operational\n" << std::endl;
+#endif
             return operational_status::NON_OPERATIONAL;
         }
         else
@@ -692,7 +1021,7 @@ class is_circuit_operational_impl
 
             for (const auto& gs : ground_states)
             {
-                if (assess_logic_match_of_charge_distribution(gs, i) == operational_status::NON_OPERATIONAL)
+                if (assess_logic_match_of_charge_distribution(gs, i, s_i) == operational_status::NON_OPERATIONAL)
                 {
                     return operational_status::NON_OPERATIONAL;
 
@@ -723,27 +1052,75 @@ class is_circuit_operational_impl
  * `NON_OPERATIONAL`) along with auxiliary statistics.
  */
 template <typename Lyt, typename GateLyt,
-          local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED,
-          typename SkeletonGateLibrary>
+          local_external_potential_type ExtPotType = local_external_potential_type::SINGLE_VALUED>
 [[nodiscard]] operational_status
-is_circuit_operational(const sidb_cell_level_bdl_circuit<Lyt, GateLyt, SkeletonGateLibrary>& implemented_circuit,
-                       const is_circuit_operational_params&                                  params = {},
-                       const std::unique_ptr<detail::thread_count_manager>&                  tcm    = nullptr) noexcept
+is_circuit_operational(const sidb_cell_level_bdl_circuit<Lyt, GateLyt>&     implemented_circuit,
+                       const is_circuit_operational_params&                 params = {},
+                       const std::unique_ptr<detail::thread_count_manager>& tcm    = nullptr) noexcept
 {
     static_assert(is_cell_level_layout_v<Lyt>, "Lyt is not a cell-level layout");
     static_assert(has_sidb_technology_v<Lyt>, "Lyt is not an SiDB layout");
     static_assert(is_gate_level_layout_v<GateLyt>, "GateLyt is not a gate-level layout");
 
-    assert(implemented_circuit.cell_layout.num_pis() > 0 && "lyt needs input cells");
-    assert(implemented_circuit.cell_layout.num_pos() > 0 && "lyt needs output cells");
+    // assert(implemented_circuit.cell_layout.num_pis() > 0 && "lyt needs input cells");
+    // assert(implemented_circuit.cell_layout.num_pos() > 0 && "lyt needs output cells");
 
-    assert(implemented_circuit.circuit.gate_layout.num_pis() * 2 == implemented_circuit.cell_layout.num_pis() &&
-           "Each PI in the gate lyt needs to be implemented by a BDL pair");
-    assert(implemented_circuit.circuit.gate_layout.num_pos() * 2 == implemented_circuit.cell_layout.num_pos() &&
-           "Each PO in the gate lyt needs to be implemented by a BDL pair");
+    // assert(implemented_circuit.circuit.gate_layout.num_pis() * 2 == implemented_circuit.cell_layout.num_pis() &&
+    //        "Each PI in the gate lyt needs to be implemented by a BDL pair");
+    // assert(implemented_circuit.circuit.gate_layout.num_pos() * 2 == implemented_circuit.cell_layout.num_pos() &&
+    //        "Each PO in the gate lyt needs to be implemented by a BDL pair");
 
-    detail::is_circuit_operational_impl<Lyt, GateLyt, ExtPotType, SkeletonGateLibrary> p{implemented_circuit, params,
-                                                                                         tcm};
+    // todo
+    if (implemented_circuit.cell_layout.num_cells() == 0 ||
+        detect_bdl_pairs(implemented_circuit.cell_layout, std::nullopt,
+                         detect_bdl_pairs_params{0, detect_bdl_pairs_params{}.maximum_distance})
+            .empty())
+    {
+        return operational_status::OPERATIONAL;
+    }
+
+#ifdef PRINT_DEBUG
+    std::cout << std::endl;
+    print_layout(implemented_circuit.circuit.canvasses_lyt);
+    print_layout(implemented_circuit.cell_layout);
+    std::cout << "tiles: ";
+    for (const auto& n : implemented_circuit.circuit.nodes)
+    {
+        std::cout << implemented_circuit.circuit.super_circuit.gate_layout.get_tile(n) << '\t';
+    }
+    std::cout << std::endl;
+    implemented_circuit.cell_layout.foreach_cell(
+        [&](const auto& c)
+        {
+            std::string type{};
+            switch (implemented_circuit.cell_layout.get_cell_type(c))
+            {
+                case sidb_technology::cell_type::INPUT: type = "INPUT"; break;
+                case sidb_technology::cell_type::OUTPUT: type = "OUTPUT"; break;
+                case sidb_technology::cell_type::OUTPUT_PERTURBER: type = "OUTPUT_PERTURBER"; break;
+                case sidb_technology::cell_type::NORMAL: type = "NORMAL"; break;
+                case sidb_technology::cell_type::LOGIC: type = "LOGIC"; break;
+                default: type = "UNKNOWN";
+            };
+            std::cout << type << " @ " << c.x << ", " << c.y << std::endl;
+        });
+    std::cout << "num consistent super circuit inputs:" << std::endl;
+
+    for (uint64_t i = 0; i < implemented_circuit.circuit.consistent_super_circuit_input_indices_per_input.size(); ++i)
+    {
+        const std::vector<uint64_t>& s_ix =
+            implemented_circuit.circuit.consistent_super_circuit_input_indices_per_input.at(i);
+
+        std::cout << "sub circuit input index: " << i << '\t';
+        for (const uint64_t sixx : s_ix)
+        {
+            std::cout << sixx << ", ";
+        }
+        std::cout << std::endl;
+    }
+#endif
+
+    detail::is_circuit_operational_impl<Lyt, GateLyt, ExtPotType> p{implemented_circuit, params, tcm};
 
     const auto& status = p.run();
 

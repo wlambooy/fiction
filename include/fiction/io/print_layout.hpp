@@ -33,6 +33,12 @@ namespace detail
 
 // Escape color sequence for input colors (green).
 static const auto INP_COLOR = fmt::fg(fmt::color::green);
+// Escape color sequence for input colors (green).
+static const auto HEXAGON_COLOR = fmt::fg(fmt::color::gray);
+// Escape color sequence for input colors (green).
+static const auto SYMBOL_COLOR = fmt::fg(fmt::color::yellow);
+// Escape color sequence for input colors (green).
+static const auto WIRE_COLOR = fmt::fg(fmt::color::white);
 // Escape color sequence for output colors (red).
 static const auto OUT_COLOR = fmt::fg(fmt::color::red);
 // Escape color sequence for latch colors (yellow on black).
@@ -86,7 +92,222 @@ void print_gate_level_layout(std::ostream& os, const Lyt& layout, const bool io_
 
     if constexpr (is_hexagonal_layout_v<Lyt>)
     {
-        os << "[e] hexagonal layout printing is not supported" << std::endl;
+        const auto gate_repr = [&layout, io_color](const auto& t)
+        {
+            if (layout.is_empty_tile(t))
+            {
+                return " ";
+            }
+
+            // NOLINTBEGIN(*-else-after-return)
+
+            if (const auto n = layout.get_node(t); layout.is_and(n))
+            {
+                return fmt::format(detail::SYMBOL_COLOR, "∧").c_str();
+            }
+            else if (layout.is_or(n))
+            {
+                return fmt::format(detail::SYMBOL_COLOR, "∨").c_str();
+            }
+            else if (layout.is_inv(n))
+            {
+                return fmt::format(detail::SYMBOL_COLOR, "¬").c_str();
+            }
+            else if (layout.is_xor(n))
+            {
+                return fmt::format(detail::SYMBOL_COLOR, "⊕").c_str();
+            }
+            else if (layout.is_xnor(n))
+            {
+                return fmt::format(detail::SYMBOL_COLOR, "≡").c_str();
+            }
+            else if (layout.is_nand(n))
+            {
+                return fmt::format(detail::SYMBOL_COLOR, "⊼").c_str();
+            }
+            else if (layout.is_nor(n))
+            {
+                return fmt::format(detail::SYMBOL_COLOR, "⊽").c_str();
+            }
+            else if (layout.is_fanout(n))
+            {
+                return fmt::format(detail::SYMBOL_COLOR, "⅄").c_str();
+            }
+            else if (layout.is_wire(n))
+            {
+                // second-layer wire indicates a crossing
+                if (const auto at = layout.above(t); (at != t) && layout.is_wire_tile(at))
+                {
+                    if (layout.incoming_data_flow(t)[0].x == layout.outgoing_data_flow(t)[0].x)
+                    {
+                        return fmt::format(detail::SYMBOL_COLOR, "║").c_str();
+                    }
+                    return fmt::format(detail::SYMBOL_COLOR, "⛌").c_str();
+                }
+                if (layout.is_pi(n))
+                {
+                    fmt::text_style color{};
+
+                    if (io_color)
+                    {
+                        color = color | detail::INP_COLOR;
+                    }
+
+                    return fmt::format(color, "I").c_str();
+                }
+                if (layout.is_po(n))
+                {
+                    fmt::text_style color{};
+
+                    if (io_color)
+                    {
+                        color = color | detail::OUT_COLOR;
+                    }
+
+                    return fmt::format(color, "O").c_str();
+                }
+
+                return fmt::format(detail::SYMBOL_COLOR, "│").c_str();
+            }
+
+            // NOLINTEND(*-else-after-return)
+
+            return "?";
+        };
+
+        using coord_t = tile<Lyt>;
+
+        constexpr int HEX_W   = 7;
+        constexpr int HEX_H   = 6;
+        constexpr int H_PITCH = 8;  // horizontal center spacing
+        constexpr int V_PITCH = 6;  // vertical center spacing
+
+        const int rows = layout.y() + 1;
+        const int cols = layout.x() + 1;
+
+        const int canvas_w = cols * H_PITCH + HEX_W;
+        const int canvas_h = rows * V_PITCH + HEX_H;
+
+        std::vector<std::vector<std::string>> canvas(canvas_h, std::vector<std::string>(canvas_w, " "));
+
+        auto draw = [&](int r, int c, const std::string& s)
+        {
+            if (r >= 0 && r < canvas_h && c >= 0 && c < canvas_w)
+                canvas[r][c] = s;
+        };
+
+        auto hex_origin = [&](int col, int row)
+        {
+            int x = col * H_PITCH;
+            int y = row * V_PITCH;
+
+            if constexpr (std::is_same_v<typename Lyt::hex_arrangement, fiction::odd_row_hex>)
+            {
+                if (row % 2 == 1)
+                    x += H_PITCH / 2;
+            }
+            else if constexpr (std::is_same_v<typename Lyt::hex_arrangement, fiction::even_row_hex>)
+            {
+                if (row % 2 == 0)
+                    x += H_PITCH / 2;
+            }
+
+            return std::pair{y, x};
+        };
+
+        // 1️⃣ Draw pointy-top hex tiles
+        for (int r = 0; r < rows; ++r)
+        {
+            for (int c = 0; c < cols; ++c)
+            {
+                auto [y, x] = hex_origin(c, r);
+
+                draw(y + 0, x + 3, fmt::format(detail::HEXAGON_COLOR, ".").c_str());
+
+                draw(y + 1, x + 2, fmt::format(detail::HEXAGON_COLOR, "/").c_str());
+                draw(y + 1, x + 4, fmt::format(detail::HEXAGON_COLOR, "\\").c_str());
+
+                draw(y + 2, x + 1, fmt::format(detail::HEXAGON_COLOR, "/").c_str());
+                draw(y + 2, x + 5, fmt::format(detail::HEXAGON_COLOR, "\\").c_str());
+
+                draw(y + 3, x + 0, fmt::format(detail::HEXAGON_COLOR, "|").c_str());
+                draw(y + 3, x + 6, fmt::format(detail::HEXAGON_COLOR, "|").c_str());
+
+                draw(y + 4, x + 1, fmt::format(detail::HEXAGON_COLOR, "\\").c_str());
+                draw(y + 4, x + 5, fmt::format(detail::HEXAGON_COLOR, "/").c_str());
+
+                draw(y + 5, x + 2, fmt::format(detail::HEXAGON_COLOR, "\\").c_str());
+                draw(y + 5, x + 4, fmt::format(detail::HEXAGON_COLOR, "/").c_str());
+                draw(y + 5, x + 3, fmt::format(detail::HEXAGON_COLOR, ".").c_str());
+            }
+        }
+
+        // 2️⃣ Place gate symbols (direction-aware for wires)
+        for (int r = 0; r < rows; ++r)
+        {
+            for (int c = 0; c < cols; ++c)
+            {
+                coord_t t{static_cast<uint64_t>(c), static_cast<uint64_t>(r)};
+
+                auto [y, x] = hex_origin(c, r);
+
+                draw(y + V_PITCH / 2, x + H_PITCH / 2 - 1, gate_repr(t));
+            }
+        }
+
+        // 3️⃣ Draw edges once using data flow
+        for (int r = 0; r < rows; ++r)
+        {
+            for (int c = 0; c < cols; ++c)
+            {
+                coord_t t{static_cast<uint64_t>(c), static_cast<uint64_t>(r)};
+                if (layout.is_empty_tile(t))
+                    continue;
+
+                auto [y1, x1] = hex_origin(c, r);
+                int cy1       = y1 + V_PITCH / 2;
+                int cx1       = x1 + H_PITCH / 2;
+
+                auto tiles = layout.outgoing_data_flow(t);
+                for (const auto& at : layout.outgoing_data_flow(layout.above(t)))
+                {
+                    tiles.push_back(at);
+                }
+                for (const auto& tt : tiles)
+                {
+                    auto [y2, x2] = hex_origin(tt.x, tt.y);
+                    int cy2       = y2 + V_PITCH / 2;
+                    int cx2       = x2 + H_PITCH / 2;
+
+                    int cx_mid = (cx1 + cx2) / 2;
+                    int cy_mid = (cy1 + cy2) / 2;
+
+                    std::string edge_char = " ";
+                    if (cx1 == cx2)
+                        edge_char = fmt::format(detail::WIRE_COLOR, "|").c_str();
+                    else if (cy1 == cy2)
+                        edge_char = fmt::format(detail::WIRE_COLOR, "-").c_str();
+                    else if (cx2 > cx1 && cy2 > cy1)
+                        edge_char = fmt::format(detail::WIRE_COLOR, "\\").c_str();
+                    else if (cx2 < cx1 && cy2 > cy1)
+                        edge_char = fmt::format(detail::WIRE_COLOR, "/").c_str();
+                    else if (cx2 > cx1 && cy2 < cy1)
+                        edge_char = fmt::format(detail::WIRE_COLOR, "/").c_str();
+                    else if (cx2 < cx1 && cy2 < cy1)
+                        edge_char = fmt::format(detail::WIRE_COLOR, "\\").c_str();
+
+                    draw(cy_mid, cx_mid - 1, edge_char);
+                }
+            }
+        }
+
+        for (int r = 0; r < canvas_h; ++r)
+        {
+            for (int c = 0; c < canvas_w; ++c) os << canvas[r][c];
+            os << '\n';
+        }
+
+        os << "\n";
         return;
     }
     else if constexpr (is_shifted_cartesian_layout_v<Lyt>)
